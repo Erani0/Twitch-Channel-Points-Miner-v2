@@ -95,20 +95,8 @@ $(document).ready(function () {
     // Variable to keep track of whether log checkbox is checked
     var isLogCheckboxChecked = $('#log').prop('checked');
 
-    // Variable to keep track of whether auto-update log is active
-    var autoUpdateLog = true;
-
     // Variable to keep track of the last received log index
     var lastReceivedLogIndex = 0;
-
-    $('#auto-update-log').click(() => {
-        autoUpdateLog = !autoUpdateLog;
-        $('#auto-update-log').text(autoUpdateLog ? '⏸️' : '▶️');
-
-        if (autoUpdateLog) {
-            getLog();
-        }
-    });
 
     // Function to get the full log content
     function getLog() {
@@ -122,10 +110,8 @@ $(document).ready(function () {
                 // Update the last received log index
                 lastReceivedLogIndex += data.length;
 
-                if (autoUpdateLog) {
-                    // Call getLog() again after a certain interval (e.g., 1 second)
-                    setTimeout(getLog, 1000);
-                }
+                // Call getLog() again after a certain interval (e.g., 1 second)
+                setTimeout(getLog, 1000);
             });
         }
     }
@@ -197,7 +183,6 @@ $(document).ready(function () {
     $('#log').prop('checked', logCheckboxState === 'true');
     if (logCheckboxState === 'true') {
         isLogCheckboxChecked = true;
-        $('#auto-update-log').show();
         $('#log-box').show();
         // Start continuously updating the log content
         getLog();
@@ -210,12 +195,9 @@ $(document).ready(function () {
 
         if (isLogCheckboxChecked) {
             $('#log-box').show();
-            $('#auto-update-log').show();
             getLog();
-            $('html, body').scrollTop($(document).height());
         } else {
             $('#log-box').hide();
-            $('#auto-update-log').hide();
             // Clear log content when checkbox is unchecked
             // $("#log-content").text('');
         }
@@ -284,18 +266,6 @@ function getStreamers() {
     $.getJSON('streamers', function (response) {
         streamersList = response;
         sortStreamers();
-
-        // Restore the selected streamer from localStorage on page load
-        var selectedStreamer = localStorage.getItem("selectedStreamer");
-
-        if (selectedStreamer) {
-            currentStreamer = selectedStreamer;
-        } else {
-            // If no selected streamer is found, default to the first streamer in the list
-            currentStreamer = streamersList.length > 0 ? streamersList[0].name : null;
-        }
-
-        // Ensure the selected streamer is still active and scrolled into view
         renderStreamers();
     });
 }
@@ -308,7 +278,7 @@ function renderStreamers() {
             if (sortField == 'points') displayname = "<font size='-2'>" + streamer['points'] + "</font>&nbsp;" + displayname;
             else if (sortField == 'last_activity') displayname = "<font size='-2'>" + formatDate(streamer['last_activity']) + "</font>&nbsp;" + displayname;
             var isActive = currentStreamer === streamer.name;
-            if (!isActive && localStorage.getItem("selectedStreamer") === null && index === 0) {
+            if (!isActive && localStorage.getItem("selectedStreamer") === streamer.name) {
                 isActive = true;
                 currentStreamer = streamer.name;
             }
