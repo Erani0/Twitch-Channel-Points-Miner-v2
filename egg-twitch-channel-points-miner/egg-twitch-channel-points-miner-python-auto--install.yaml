@@ -44,6 +44,9 @@ scripts:
       cp -r .tmp_miner/.[!.]* ./ 2>/dev/null || true
       rm -rf .tmp_miner
 
+      echo "Entferne unnoetige Entwicklungsdateien..."
+      rm -rf .agent .ai .claude .github .vscode .superpowers tests .ai-agent-checkpoints setup.py pyproject.toml uv.lock
+
       echo "Erstelle deine konfigurierte run.py..."
       cat << 'EOF' > /mnt/server/run.py
       # -*- coding: utf-8 -*-
@@ -68,6 +71,18 @@ scripts:
                       os.remove(".setup_done")
           except Exception as e:
               print(f"Hinweis: Update-Pruefung fehlgeschlagen: {e}")
+
+      # Unnoetige Entwicklungs-Ordner und -Dateien nach dem Pull loeschen
+      for item in [".agent", ".ai", ".claude", ".github", ".vscode", ".superpowers", "tests", ".ai-agent-checkpoints", "setup.py", "pyproject.toml", "uv.lock"]:
+          if os.path.exists(item):
+              try:
+                  if os.path.isdir(item):
+                      import shutil
+                      shutil.rmtree(item, ignore_errors=True)
+                  else:
+                      os.remove(item)
+              except Exception:
+                  pass
 
       MARKER_FILE = ".setup_done"
       if not os.path.exists(MARKER_FILE):
