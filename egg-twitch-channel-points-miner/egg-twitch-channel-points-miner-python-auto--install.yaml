@@ -55,20 +55,26 @@ scripts:
       import subprocess
 
       # --- AUTO-UPDATER & AUTO-INSTALLER VOR DEM EIGENTLICHEN START ---
-      # 1. Automatisches Update ueber Git Pull
+      # 1. Automatisches Update ueber Git
       if os.path.exists(".git"):
           print("Suche nach Updates auf GitHub...")
           try:
               # Safe directory fuer Git konfigurieren (verhindert 'dubious ownership' in Docker)
               subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/home/container"], stderr=subprocess.DEVNULL)
-              # git pull ausfuehren
-              output = subprocess.check_output(["git", "pull"], stderr=subprocess.STDOUT, text=True)
-              print(output)
-              if "Already up to date." not in output:
-                  print("Updates gefunden und heruntergeladen! Anforderungen werden neu installiert...")
-                  # Loesche Marker-Datei, damit pip install erneut laeuft
+              # Lokale und Remote-Hashes vergleichen
+              local_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+              subprocess.run(["git", "fetch", "--all"], stderr=subprocess.DEVNULL)
+              remote_hash = subprocess.check_output(["git", "rev-parse", "origin/master"], text=True).strip()
+              
+              if local_hash != remote_hash:
+                  print(f"Updates gefunden! Aktualisiere von {local_hash[:7]} auf {remote_hash[:7]}...")
+                  # Hard reset loescht keine ignorierten Dateien (cookies, logs, analytics)
+                  subprocess.run(["git", "reset", "--hard", "origin/master"], check=True)
+                  # Loesche Marker-Datei, damit pip install bei neuen Anforderungen laeuft
                   if os.path.exists(".setup_done"):
                       os.remove(".setup_done")
+              else:
+                  print("Bereits auf dem neuesten Stand.")
           except Exception as e:
               print(f"Hinweis: Update-Pruefung fehlgeschlagen: {e}")
 

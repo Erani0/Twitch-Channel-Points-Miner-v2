@@ -374,6 +374,9 @@ function renderStreamers() {
         });
     });
     promised.then(() => {
+        if ((!currentStreamer || streamersList.findIndex(streamer => streamer.name === currentStreamer) === -1) && streamersList.length > 0) {
+            currentStreamer = streamersList[0].name;
+        }
         var activeIndex = streamersList.findIndex(streamer => streamer.name === currentStreamer);
         if (activeIndex >= 0) {
             changeStreamer(currentStreamer, activeIndex + 1);
