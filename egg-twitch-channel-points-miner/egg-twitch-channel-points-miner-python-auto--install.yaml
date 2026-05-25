@@ -51,25 +51,40 @@ scripts:
       import sys
       import subprocess
 
-      # --- AUTO-INSTALLER VOR DEM EIGENTLICHEN START ---
+      # --- AUTO-UPDATER & AUTO-INSTALLER VOR DEM EIGENTLICHEN START ---
+      # 1. Automatisches Update ueber Git Pull
+      if os.path.exists(".git"):
+          print("Suche nach Updates auf GitHub...")
+          try:
+              # git pull ausfuehren
+              output = subprocess.check_output(["git", "pull"], stderr=subprocess.STDOUT, text=True)
+              print(output)
+              if "Already up to date." not in output:
+                  print("Updates gefunden und heruntergeladen! Anforderungen werden neu installiert...")
+                  # Loesche Marker-Datei, damit pip install erneut laeuft
+                  if os.path.exists(".setup_done"):
+                      os.remove(".setup_done")
+          except Exception as e:
+              print(f"Hinweis: Update-Pruefung fehlgeschlagen: {e}")
+
       MARKER_FILE = ".setup_done"
       if not os.path.exists(MARKER_FILE):
           print("=========================================================================")
-          print("Erster Start erkannt: Lade und installiere benoetigte Python-Module...")
-          print("HINWEIS: Das kann beim ersten Mal 5-10 Minuten dauern (pandas, etc.).")
+          print("Installiere/Aktualisiere benoetigte Python-Module...")
+          print("HINWEIS: Das kann einige Minuten dauern (pandas, etc.).")
           print("Bitte schliesse diese Konsole nicht und warte ab!")
           print("=========================================================================")
           try:
-              # Führt pip install aus
+              # Fuehrt pip install aus
               subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "--no-cache-dir", "-r", "requirements.txt"])
               
-              # Marker-Datei erstellen, damit er es beim nächsten Neustart überspringt
+              # Marker-Datei erstellen
               with open(MARKER_FILE, "w") as f:
                   f.write("done")
                   
               print("=== Installation erfolgreich! Miner wird nun gestartet... ===")
               
-              # Startet das Python-Skript neu, damit die neuen Module geladen werden koennen
+              # Startet das Python-Skript neu
               os.execv(sys.executable, [sys.executable] + sys.argv)
           except Exception as e:
               print(f"Fehler bei der Installation der Abhaengigkeiten: {e}")
