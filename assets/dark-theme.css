@@ -1,39 +1,316 @@
-body, .dropdown *, .input {
+/* Base body styles */
+body, .dropdown *, .input, html {
     background: #343E59;
     color: #fff;
 }
+
+/* Override Bulma's white backgrounds on all components */
+.box, .card, .card-header, .card-content, .card-footer,
+.navbar, .navbar-menu, .navbar-dropdown, .navbar-item,
+.dropdown-menu, .dropdown-content, .dropdown-item,
+.modal, .modal-background, .modal-content, .modal-card,
+.modal-card-head, .modal-card-body, .modal-card-foot,
+.tabs, .tab-content, .panel, .panel-header, .panel-body, .panel-footer,
+.menu, .menu-list, .menu-label,
+.message, .message-body, .notification,
+.hero, .section, .container,
+.table, .table-container,
+.form, .control, .label, .help,
+.tag, .tags,
+.progress, .progress-bar {
+    background-color: #2B2D3E !important;
+    color: #fff !important;
+}
+
+/* Specific Bulma component overrides */
+.card-header {
+    background-color: #2B2D3E;
+    box-shadow: none;
+    border-bottom: 1px solid #444;
+}
+
+.navbar {
+    background-color: #2B2D3E;
+    box-shadow: none;
+}
+
+.navbar-item, .navbar-link {
+    color: #fff;
+}
+
+.navbar-item:hover, .navbar-link:hover {
+    background-color: #343E59 !important;
+    color: #f9826c;
+}
+
+.dropdown-menu {
+    background-color: #2B2D3E;
+    border: 1px solid #444;
+}
+
+.dropdown-content {
+    background-color: #2B2D3E;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+}
+
+.dropdown-item:hover {
+    background-color: #343E59;
+    color: #f9826c;
+}
+
+.tabs {
+    background-color: transparent;
+}
+
+.tabs li.is-active a {
+    border-bottom-color: #f9826c;
+    color: #fff;
+}
+
+.table {
+    background-color: transparent;
+    color: #fff;
+}
+
+.table th, .table td {
+    border-color: #444;
+    color: #fff;
+}
+
+.table thead th {
+    background-color: #2B2D3E;
+    color: #fff;
+}
+
+.table tbody tr:nth-child(even) {
+    background-color: #252636;
+}
+
+.table tbody tr:hover {
+    background-color: #343E59;
+}
+
+/* Form elements */
+.input, .textarea, .select select, .file-cta, .file-name {
+    background-color: #252636 !important;
+    border-color: #444 !important;
+    color: #fff !important;
+}
+
+.input::placeholder, .textarea::placeholder {
+    color: #888 !important;
+}
+
+.input:hover, .textarea:hover, .select select:hover {
+    border-color: #666 !important;
+}
+
+.input:focus, .textarea:focus, .select select:focus {
+    border-color: #f9826c !important;
+    box-shadow: 0 0 0 2px rgba(249, 130, 108, 0.2) !important;
+}
+
+.select select {
+    background-color: #252636;
+}
+
+/* Buttons */
+.button {
+    background-color: #2B2D3E;
+    border-color: #444;
+    color: #fff;
+}
+
+.button:hover {
+    background-color: #343E59;
+    border-color: #666;
+    color: #f9826c;
+}
+
+.button.is-primary {
+    background-color: #f9826c;
+    border-color: #f9826c;
+    color: #fff;
+}
+
+.button.is-primary:hover {
+    background-color: #e5735a;
+    border-color: #e5735a;
+}
+
+/* Modal */
+.modal-card {
+    background-color: #2B2D3E;
+}
+
+.modal-card-title {
+    color: #fff;
+}
+
+.delete, .modal-close {
+    background-color: #444;
+}
+
+.delete:hover, .modal-close:hover {
+    background-color: #666;
+}
+
+/* Messages */
+.message {
+    background-color: #2B2D3E;
+}
+
+.message-header {
+    background-color: #343E59;
+    color: #fff;
+}
+
+.message-body {
+    border-color: #444;
+    color: #fff;
+}
+
+/* Tags */
+.tag {
+    background-color: #343E59;
+    color: #fff;
+}
+
+.tag.is-info {
+    background-color: #008ffb;
+}
+
+.tag.is-success {
+    background-color: #00c853;
+}
+
+.tag.is-warning {
+    background-color: #ffab00;
+}
+
+.tag.is-danger {
+    background-color: #ff5252;
+}
+
+/* Progress */
+.progress {
+    background-color: #252636;
+}
+
+.progress::-webkit-progress-value {
+    background-color: #f9826c;
+}
+
+/* Links */
 a {
     color: #fff;
 }
+
 a:hover {
     color: #f9826c;
 }
-.box {
-    background-color: #2B2D3E;
-}
+
+/* Tabs styling */
 .tabs a {
     border-bottom-color: #dbdbdb;
     color: #fff;
     border-bottom-style: none;
 }
+
 .tabs li.is-active a {
     border-bottom-color: #f9826c;
     color: #fff;
     border-bottom-style: solid;
 }
+
 .tabs a:hover {
     border-bottom-color: #dbdbdb;
     color: #dbdbdb;
     border-bottom-style: solid;
 }
-.tabs ul{
+
+.tabs ul {
     margin-bottom: 5px;
     border-bottom-style: none;
 }
-.checkbox:hover{
+
+/* Checkbox styling */
+.checkbox:hover {
     color: #f9826c;
 }
+
+/* Log content */
 #log-content {
     color: #fff;
     background-color: #2B2D3E;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #d6dee1;
+    border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #d6dee1;
+    border-radius: 20px;
+    border: 6px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #a8bbbf;
+}
+
+/* Panel overrides */
+.panel-header {
+    background-color: #2B2D3E;
+    border-bottom: 1px solid #444;
+}
+
+.panel-block {
+    border-bottom: 1px solid #444;
+}
+
+.panel-block:hover {
+    background-color: #343E59;
+}
+
+/* Notification overrides */
+.notification {
+    background-color: #2B2D3E;
+    color: #fff;
+}
+
+/* Menu overrides */
+.menu-label {
+    color: #fff;
+}
+
+.menu-list a {
+    color: #fff;
+}
+
+.menu-list a:hover {
+    background-color: #343E59;
+    color: #f9826c;
+}
+
+.menu-list a.is-active {
+    background-color: #f9826c;
+    color: #fff;
+}
+
+/* Footer overrides */
+.footer {
+    background-color: #2B2D3E;
+}
+
+/* Column and level overrides */
+.column {
+    color: #fff;
 }
