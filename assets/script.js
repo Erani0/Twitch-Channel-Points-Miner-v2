@@ -173,21 +173,30 @@ function switchMobileTab(tabName, btn) {
     $('#streamers-sidebar-panel').removeClass('mobile-show');
     $('#log-panel').removeClass('mobile-show');
 
-    if (tabName === 'chart') {
-        $('#chart-panel').addClass('mobile-show');
-        // Restore log state based on desktop checkbox if we left the tab
-        isLogCheckboxChecked = $('#log').prop('checked');
-    } else if (tabName === 'streamers') {
-        $('#streamers-sidebar-panel').addClass('mobile-show');
-        // Restore log state based on desktop checkbox if we left the tab
-        isLogCheckboxChecked = $('#log').prop('checked');
-    } else if (tabName === 'logs') {
+    if (tabName === 'logs') {
+        // Hide toolbar and grid layout to give full screen to logs
+        $('.hud-layout').hide();
+        $('.hud-toolbar').hide();
         $('#log-panel').addClass('mobile-show');
+        
         // Force-enable log polling when mobile logs tab is active
         if (!isLogCheckboxChecked) {
             isLogCheckboxChecked = true;
             getLog();
         }
+    } else {
+        // Show toolbar and grid layout for charts/streamers
+        $('.hud-layout').show();
+        $('.hud-toolbar').show();
+        
+        if (tabName === 'chart') {
+            $('#chart-panel').addClass('mobile-show');
+        } else if (tabName === 'streamers') {
+            $('#streamers-sidebar-panel').addClass('mobile-show');
+        }
+        
+        // Restore log state based on desktop checkbox if we left the tab
+        isLogCheckboxChecked = $('#log').prop('checked');
     }
 }
 

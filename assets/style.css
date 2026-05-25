@@ -301,7 +301,7 @@ body {
     }
 
     #log-content {
-        max-height: calc(100vh - 240px) !important;
-        height: calc(100vh - 240px) !important;
+        max-height: calc(100vh - 160px) !important;
+        height: calc(100vh - 160px) !important;
     }
 }
