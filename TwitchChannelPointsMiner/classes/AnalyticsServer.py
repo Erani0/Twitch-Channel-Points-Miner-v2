@@ -263,6 +263,14 @@ class AnalyticsServer(Thread):
             template_folder=os.path.join(Path().absolute(), "assets"),
             static_folder=os.path.join(Path().absolute(), "assets"),
         )
+
+        @self.app.after_request
+        def add_header(response):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            return response
+
         self.app.add_url_rule(
             "/",
             "index",

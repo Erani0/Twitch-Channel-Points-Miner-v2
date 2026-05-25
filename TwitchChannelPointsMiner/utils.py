@@ -193,8 +193,10 @@ def combine(*iterables):
 
 
 def download_file(name, fpath):
+    import time
+    url = f"{GITHUB_url}/{name}".replace("\\", "/") + f"?t={int(time.time())}"
     r = requests.get(
-        path.join(GITHUB_url, name),
+        url,
         headers={"User-Agent": get_user_agent("FIREFOX")},
         stream=True,
     )
