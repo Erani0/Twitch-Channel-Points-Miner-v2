@@ -143,6 +143,27 @@ var startDate = new Date();
 startDate.setDate(startDate.getDate() - daysAgo);
 var endDate = new Date();
 
+// Log states made global for unified mobile/desktop log polling control
+var isLogCheckboxChecked = false;
+var lastReceivedLogIndex = 0;
+
+function getLog() {
+    if (isLogCheckboxChecked) {
+        $.get(`/log?lastIndex=${lastReceivedLogIndex}`, function (data) {
+            // Process and display the new log entries received
+            $("#log-content").append(data);
+            // Scroll to the bottom of the log content
+            $("#log-content").scrollTop($("#log-content")[0].scrollHeight);
+
+            // Update the last received log index
+            lastReceivedLogIndex += data.length;
+
+            // Call getLog() again after a certain interval (e.g., 1 second)
+            setTimeout(getLog, 1000);
+        });
+    }
+}
+
 // Mobile Navigation Toggles
 function switchMobileTab(tabName, btn) {
     $('.mobile-nav-btn').removeClass('is-active');
@@ -154,41 +175,25 @@ function switchMobileTab(tabName, btn) {
 
     if (tabName === 'chart') {
         $('#chart-panel').addClass('mobile-show');
+        // Restore log state based on desktop checkbox if we left the tab
+        isLogCheckboxChecked = $('#log').prop('checked');
     } else if (tabName === 'streamers') {
         $('#streamers-sidebar-panel').addClass('mobile-show');
+        // Restore log state based on desktop checkbox if we left the tab
+        isLogCheckboxChecked = $('#log').prop('checked');
     } else if (tabName === 'logs') {
         $('#log-panel').addClass('mobile-show');
-        // Auto-enable logs checkbox if checked is false
-        if (!$('#log').prop('checked')) {
-            $('#log').prop('checked', true).trigger('change');
+        // Force-enable log polling when mobile logs tab is active
+        if (!isLogCheckboxChecked) {
+            isLogCheckboxChecked = true;
+            getLog();
         }
     }
 }
 
 $(document).ready(function () {
-    // Variable to keep track of whether log checkbox is checked
-    var isLogCheckboxChecked = $('#log').prop('checked');
-
-    // Variable to keep track of the last received log index
-    var lastReceivedLogIndex = 0;
-
-    // Function to get the full log content
-    function getLog() {
-        if (isLogCheckboxChecked) {
-            $.get(`/log?lastIndex=${lastReceivedLogIndex}`, function (data) {
-                // Process and display the new log entries received
-                $("#log-content").append(data);
-                // Scroll to the bottom of the log content
-                $("#log-content").scrollTop($("#log-content")[0].scrollHeight);
-
-                // Update the last received log index
-                lastReceivedLogIndex += data.length;
-
-                // Call getLog() again after a certain interval (e.g., 1 second)
-                setTimeout(getLog, 1000);
-            });
-        }
-    }
+    // Sync initial state of the global variable with the desktop checkbox
+    isLogCheckboxChecked = $('#log').prop('checked');
 
     // Retrieve the saved header visibility preference from localStorage
     var headerVisibility = localStorage.getItem('headerVisibility');

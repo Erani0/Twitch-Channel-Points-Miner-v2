@@ -288,4 +288,20 @@ body {
     .mobile-show {
         display: block !important;
     }
+
+    /* Mobile specific log-panel adjustments */
+    #toggle-log-label {
+        display: none !important;
+    }
+
+    #log-box {
+        display: block !important;
+        margin-top: 0 !important;
+        padding: 0.5rem !important;
+    }
+
+    #log-content {
+        max-height: calc(100vh - 240px) !important;
+        height: calc(100vh - 240px) !important;
+    }
 }
