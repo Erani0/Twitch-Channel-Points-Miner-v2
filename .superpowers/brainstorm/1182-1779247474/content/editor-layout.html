@@ -1,0 +1,169 @@
+<h2>Fullscreen Editor — Layout</h2>
+<p class="subtitle">Der Editor soll den ganzen Bildschirm nutzen, in beiden Ausrichtungen ohne Moduswechsel</p>
+
+<div class="split" style="gap:1.5rem;align-items:flex-start;">
+
+  <!-- OPTION A -->
+  <div style="flex:1;">
+    <h3 style="margin-bottom:.75rem;">Option A — Szenen oben, Panels unten</h3>
+    <div style="background:#09090b;border:1px solid rgba(139,92,246,.3);border-radius:.5rem;overflow:hidden;">
+
+      <!-- Portrait mockup -->
+      <div style="padding:.5rem;border-bottom:1px solid rgba(255,255,255,.06);">
+        <div style="font-size:.65rem;color:#8b5cf6;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.05em;">📱 Hochkant</div>
+        <div style="background:#18181b;border-radius:.35rem;overflow:hidden;font-size:.62rem;">
+          <!-- Scene tabs -->
+          <div style="display:flex;background:#0e0e10;border-bottom:1px solid rgba(255,255,255,.06);">
+            <div style="padding:.3rem .5rem;color:#71717a;">🎬</div>
+            <div style="padding:.3rem .5rem;color:#71717a;">⏸</div>
+            <div style="padding:.3rem .5rem;background:#8b5cf6;color:#fff;font-weight:700;">🎮●</div>
+            <div style="padding:.3rem .5rem;color:#71717a;">🏁</div>
+            <div style="padding:.3rem .5rem;color:#8b5cf6;">＋</div>
+            <div style="margin-left:auto;padding:.3rem .5rem;color:#71717a;">⛶</div>
+          </div>
+          <!-- Canvas -->
+          <div style="background:rgba(0,0,0,.6);height:80px;display:flex;align-items:center;justify-content:center;position:relative;">
+            <span style="color:#52525b;">Canvas (16:9 Vorschau)</span>
+            <!-- mini widgets -->
+            <div style="position:absolute;top:8px;left:8px;background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.4);border-radius:3px;width:40px;height:14px;"></div>
+            <div style="position:absolute;bottom:8px;right:8px;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:3px;width:30px;height:10px;"></div>
+          </div>
+          <!-- Bottom tabs -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);background:#0e0e10;border-top:1px solid rgba(255,255,255,.06);">
+            <div style="padding:.35rem;text-align:center;color:#8b5cf6;font-weight:700;border-bottom:2px solid #8b5cf6;font-size:.6rem;">＋ Widgets</div>
+            <div style="padding:.35rem;text-align:center;color:#71717a;font-size:.6rem;">☰ Ebenen</div>
+            <div style="padding:.35rem;text-align:center;color:#71717a;font-size:.6rem;">⚙ Settings</div>
+            <div style="padding:.35rem;text-align:center;color:#71717a;font-size:.6rem;">🔧 Tools</div>
+          </div>
+          <!-- Panel content -->
+          <div style="padding:.4rem;background:#111;min-height:40px;display:flex;flex-direction:column;gap:.2rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.2rem;">
+              <div style="background:#18181b;border:1px solid rgba(139,92,246,.2);border-radius:.3rem;padding:.25rem;text-align:center;font-size:.58rem;color:#a78bfa;">💜 Follow</div>
+              <div style="background:#18181b;border:1px solid rgba(139,92,246,.2);border-radius:.3rem;padding:.25rem;text-align:center;font-size:.58rem;color:#a78bfa;">📝 Text</div>
+              <div style="background:#18181b;border:1px solid rgba(139,92,246,.2);border-radius:.3rem;padding:.25rem;text-align:center;font-size:.58rem;color:#a78bfa;">👁 Viewer</div>
+              <div style="background:#18181b;border:1px solid rgba(139,92,246,.2);border-radius:.3rem;padding:.25rem;text-align:center;font-size:.58rem;color:#a78bfa;">⏰ Timer</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Landscape mockup -->
+      <div style="padding:.5rem;">
+        <div style="font-size:.65rem;color:#8b5cf6;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.05em;">🔄 Querformat</div>
+        <div style="background:#18181b;border-radius:.35rem;overflow:hidden;font-size:.58rem;">
+          <!-- Scene tabs top -->
+          <div style="display:flex;background:#0e0e10;border-bottom:1px solid rgba(255,255,255,.06);">
+            <div style="padding:.25rem .45rem;color:#71717a;">🎬 Start</div>
+            <div style="padding:.25rem .45rem;color:#71717a;">⏸ Pause</div>
+            <div style="padding:.25rem .45rem;background:#8b5cf6;color:#fff;font-weight:700;">🎮 Spiel ●</div>
+            <div style="padding:.25rem .45rem;color:#71717a;">🏁 Ende</div>
+            <div style="padding:.25rem .45rem;color:#8b5cf6;">＋</div>
+            <div style="margin-left:auto;padding:.25rem .45rem;color:#71717a;">⛶ Vollbild</div>
+          </div>
+          <div style="display:flex;">
+            <!-- Left: widget list -->
+            <div style="width:55px;background:#111;border-right:1px solid rgba(255,255,255,.06);padding:.25rem;display:flex;flex-direction:column;gap:.15rem;">
+              <div style="background:#18181b;border-radius:.2rem;padding:.2rem;text-align:center;font-size:.55rem;color:#a78bfa;">💜</div>
+              <div style="background:#18181b;border-radius:.2rem;padding:.2rem;text-align:center;font-size:.55rem;color:#a78bfa;">📝</div>
+              <div style="background:#18181b;border-radius:.2rem;padding:.2rem;text-align:center;font-size:.55rem;color:#a78bfa;">👁</div>
+              <div style="background:#18181b;border-radius:.2rem;padding:.2rem;text-align:center;font-size:.55rem;color:#a78bfa;">⏰</div>
+            </div>
+            <!-- Center: canvas -->
+            <div style="flex:1;background:rgba(0,0,0,.6);height:65px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#52525b;font-size:.55rem;">Canvas</span>
+            </div>
+            <!-- Right: settings -->
+            <div style="width:70px;background:#111;border-left:1px solid rgba(255,255,255,.06);padding:.25rem;">
+              <div style="font-size:.5rem;color:#8b5cf6;margin-bottom:.15rem;">Einstellungen</div>
+              <div style="background:#18181b;border-radius:.2rem;height:8px;margin-bottom:.1rem;"></div>
+              <div style="background:#18181b;border-radius:.2rem;height:8px;margin-bottom:.1rem;"></div>
+              <div style="background:#18181b;border-radius:.2rem;height:12px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:.72rem;color:#4ade80;padding:.4rem .6rem;background:rgba(74,222,128,.08);border-radius:.35rem;margin-top:.5rem;">✓ Szenen immer sichtbar · Automatisch angepasst</div>
+  </div>
+
+  <!-- OPTION B -->
+  <div style="flex:1;">
+    <h3 style="margin-bottom:.75rem;">Option B — Canvas-First mit Slide-Panels (Empfohlen)</h3>
+    <div style="background:#09090b;border:1px solid rgba(139,92,246,.3);border-radius:.5rem;overflow:hidden;">
+
+      <!-- Portrait -->
+      <div style="padding:.5rem;border-bottom:1px solid rgba(255,255,255,.06);">
+        <div style="font-size:.65rem;color:#8b5cf6;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.05em;">📱 Hochkant</div>
+        <div style="background:#18181b;border-radius:.35rem;overflow:hidden;font-size:.62rem;">
+          <!-- Top bar: scenes + hamburger -->
+          <div style="display:flex;align-items:center;background:#0e0e10;padding:.25rem .4rem;gap:.3rem;border-bottom:1px solid rgba(255,255,255,.06);">
+            <div style="font-size:.6rem;color:#71717a;">☰</div>
+            <div style="display:flex;gap:.2rem;flex:1;overflow:hidden;">
+              <div style="background:#8b5cf6;border-radius:.25rem;padding:.2rem .4rem;color:#fff;font-weight:700;white-space:nowrap;">🎮 Spiel</div>
+              <div style="background:#18181b;border-radius:.25rem;padding:.2rem .4rem;color:#71717a;white-space:nowrap;">🎬 Start</div>
+              <div style="background:#18181b;border-radius:.25rem;padding:.2rem .4rem;color:#71717a;white-space:nowrap;">⏸ …</div>
+            </div>
+            <div style="font-size:.65rem;color:#8b5cf6;padding:.2rem .35rem;background:rgba(139,92,246,.15);border-radius:.25rem;">Live ●</div>
+          </div>
+          <!-- Full canvas -->
+          <div style="background:rgba(0,0,0,.7);height:90px;display:flex;align-items:center;justify-content:center;position:relative;">
+            <span style="color:#52525b;font-size:.62rem;">Canvas — volle Breite</span>
+            <div style="position:absolute;top:6px;left:6px;background:rgba(139,92,246,.25);border:1px solid rgba(139,92,246,.5);border-radius:3px;width:45px;height:16px;display:flex;align-items:center;justify-content:center;font-size:.45rem;color:#a78bfa;">Alert</div>
+            <div style="position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);border-radius:3px;width:35px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.45rem;color:#71717a;">Chat</div>
+          </div>
+          <!-- FAB + toolbar -->
+          <div style="background:#0e0e10;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;padding:.25rem .4rem;gap:.3rem;">
+            <div style="background:#8b5cf6;border-radius:.25rem;padding:.25rem .5rem;color:#fff;font-size:.6rem;font-weight:700;">＋ Widget</div>
+            <div style="flex:1;"></div>
+            <div style="font-size:.65rem;color:#71717a;">↩</div>
+            <div style="font-size:.65rem;color:#71717a;">↪</div>
+            <div style="font-size:.65rem;color:#71717a;">⚙</div>
+            <div style="font-size:.65rem;color:#71717a;">☰</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Landscape -->
+      <div style="padding:.5rem;">
+        <div style="font-size:.65rem;color:#8b5cf6;margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.05em;">🔄 Querformat — identisch wie Desktop</div>
+        <div style="background:#18181b;border-radius:.35rem;overflow:hidden;font-size:.58rem;">
+          <div style="display:flex;background:#0e0e10;border-bottom:1px solid rgba(255,255,255,.06);align-items:center;padding:.2rem .4rem;gap:.3rem;">
+            <div style="display:flex;gap:.2rem;">
+              <div style="background:#8b5cf6;border-radius:.2rem;padding:.15rem .35rem;color:#fff;font-weight:700;">🎮 Spiel ●</div>
+              <div style="background:#18181b;border-radius:.2rem;padding:.15rem .35rem;color:#71717a;">🎬 Start</div>
+              <div style="background:#18181b;border-radius:.2rem;padding:.15rem .35rem;color:#71717a;">⏸ Pause</div>
+              <div style="background:#18181b;border-radius:.2rem;padding:.15rem .35rem;color:#71717a;">🏁 Ende</div>
+              <div style="background:#18181b;border-radius:.2rem;padding:.15rem .3rem;color:#8b5cf6;">＋</div>
+            </div>
+            <div style="margin-left:auto;font-size:.55rem;color:#4ade80;">● Live</div>
+          </div>
+          <div style="display:flex;">
+            <div style="width:60px;background:#111;border-right:1px solid rgba(255,255,255,.06);padding:.2rem;display:flex;flex-direction:column;gap:.12rem;">
+              <div style="font-size:.5rem;color:#52525b;text-align:center;margin-bottom:.05rem;">Widgets</div>
+              <div style="background:#18181b;border-radius:.18rem;padding:.18rem;text-align:center;">💜</div>
+              <div style="background:#18181b;border-radius:.18rem;padding:.18rem;text-align:center;">📝</div>
+              <div style="background:#18181b;border-radius:.18rem;padding:.18rem;text-align:center;">👁</div>
+              <div style="background:#18181b;border-radius:.18rem;padding:.18rem;text-align:center;">⏰</div>
+              <div style="background:#18181b;border-radius:.18rem;padding:.18rem;text-align:center;">💬</div>
+            </div>
+            <div style="flex:1;background:rgba(0,0,0,.6);height:70px;display:flex;align-items:center;justify-content:center;">
+              <span style="color:#52525b;font-size:.55rem;">Canvas</span>
+            </div>
+            <div style="width:75px;background:#111;border-left:1px solid rgba(255,255,255,.06);padding:.2rem;">
+              <div style="font-size:.5rem;color:#8b5cf6;margin-bottom:.1rem;">⚙ Einstellungen</div>
+              <div style="display:flex;flex-direction:column;gap:.08rem;">
+                <div style="background:#18181b;border-radius:.15rem;height:7px;"></div>
+                <div style="background:#18181b;border-radius:.15rem;height:14px;"></div>
+                <div style="background:#18181b;border-radius:.15rem;height:7px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:.72rem;color:#4ade80;padding:.4rem .6rem;background:rgba(74,222,128,.08);border-radius:.35rem;margin-top:.5rem;">✓ Max. Canvas-Fläche · Querformat = Desktop-Layout · Szenen immer sichtbar</div>
+  </div>
+
+</div>
+
+<p style="color:#71717a;font-size:.82rem;margin-top:1rem;">Klicke A oder B — ich empfehle <strong>B</strong> weil es den Canvas maximiert und in Querformat automatisch zum vollen Desktop-Layout wird.</p>

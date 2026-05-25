@@ -5,8 +5,9 @@ URL = "https://www.twitch.tv"               # Browser, Apps
 IRC = "irc.chat.twitch.tv"
 IRC_PORT = 6667
 WEBSOCKET = "wss://pubsub-edge.twitch.tv/v1"
+HERMES_WEBSOCKET = "wss://hermes.twitch.tv/v1"
 CLIENT_ID = "ue6666qo983tsx6so1t0vnawi233wa"        # TV
-# CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"      # Browser
+CLIENT_ID_WEB = "kimne78kx3ncx6brgo4mv6wki5h1ko"    # Browser
 # CLIENT_ID = "r8s4dac0uhzifbpu9sjdiwzctle17ff"     # Mobile Browser
 # CLIENT_ID = "kd1unb4b3q4t58fwlpcbzcbnm76a8fp"     # Android App
 # CLIENT_ID = "851cqzxpb9bqu9z6galo155du"           # iOS App
@@ -31,10 +32,11 @@ USER_AGENTS = {
 }
 
 BRANCH = "master"
-GITHUB_url = (
-    "https://raw.githubusercontent.com/rdavydov/Twitch-Channel-Points-Miner-v2/"
-    + BRANCH
-)
+FORK_OWNER = "Armi1014"
+FORK_REPO = "Twitch-Channel-Points-Miner-v2"
+GITHUB_REPO_URL = f"https://github.com/{FORK_OWNER}/{FORK_REPO}"
+GITHUB_RAW_BASE_URL = f"https://raw.githubusercontent.com/{FORK_OWNER}/{FORK_REPO}/"
+GITHUB_url = GITHUB_RAW_BASE_URL + BRANCH
 
 
 class GQLOperations:
@@ -54,7 +56,7 @@ class GQLOperations:
         "extensions": {
             "persistedQuery": {
                 "version": 1,
-                "sha256Hash": "3093517e37e4f4cb48906155bcd894150aef92617939236d2508f3375ab732ce",
+                "sha256Hash": "ed230aa1e33e07eebb8928504583da78a5173989fadfb1ac94be06a04f3cdbe9",
             }
         },
     }
@@ -207,6 +209,27 @@ class GQLOperations:
             "persistedQuery": {
                 "version": 1,
                 "sha256Hash": "eecf815273d3d949e5cf0085cc5084cd8a1b5b7b6f7990cf43cb0beadf546907",
+            }
+        },
+    }
+    RewardList = {
+        "operationName": "RewardList",
+        "variables": {
+            "shouldIncludeAllSuspendedStreaks": False,
+        },
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "0b1471876d7647993731b9e3c6a13bf304c67fb31d07f06a945d42286ee377c4",
+            }
+        },
+    }
+    ChatRoomBanStatus = {
+        "operationName": "ChatRoomBanStatus",
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "319f2a9a3ac7ddecd7925944416c14b818b65676ab69da604460b68938d22bea",
             }
         },
     }

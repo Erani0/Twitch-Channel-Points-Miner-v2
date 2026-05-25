@@ -1,0 +1,64 @@
+<h2>StreamLayer v2 — Was bauen wir?</h2>
+<p class="subtitle">Das ist ein großes Vorhaben mit 4 unabhängigen Subsystemen. Wähle die Prioritätsreihenfolge — was zuerst?</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.5rem 0;">
+
+  <div class="option" data-choice="scenes" onclick="toggleSelect(this)" style="flex-direction:column;align-items:flex-start;gap:.5rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;width:100%;">
+      <div class="letter">1</div>
+      <div class="content">
+        <h3>🎬 Szenen-System</h3>
+        <p>Start · Pause · Spiel · Ende — live umschalten vom Handy ohne OBS anzufassen. Komplett neue DB-Struktur, WebSocket live-switching, Scene-Switcher UI auf der Website.</p>
+      </div>
+    </div>
+    <div style="font-size:.75rem;color:#a78bfa;padding:.4rem .6rem;background:rgba(139,92,246,.1);border-radius:.4rem;width:100%;box-sizing:border-box;">
+      ⚡ Kern-Feature — ohne das ist alles andere nur ein statisches Overlay
+    </div>
+  </div>
+
+  <div class="option" data-choice="widgets" onclick="toggleSelect(this)" style="flex-direction:column;align-items:flex-start;gap:.5rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;width:100%;">
+      <div class="letter">2</div>
+      <div class="content">
+        <h3>🧩 Echte Widgets</h3>
+        <p>Alert-Box mit Animationen wie StreamElements, Text-Widget, Timer (Countdown/Countup), Viewer-Zähler, Sub-Zähler, Recent Events, Social-Banner, Web-Source (iframe), Kamera-Placeholder.</p>
+      </div>
+    </div>
+    <div style="font-size:.75rem;color:#a78bfa;padding:.4rem .6rem;background:rgba(139,92,246,.1);border-radius:.4rem;width:100%;box-sizing:border-box;">
+      📦 ~10 neue Widget-Typen
+    </div>
+  </div>
+
+  <div class="option" data-choice="templates" onclick="toggleSelect(this)" style="flex-direction:column;align-items:flex-start;gap:.5rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;width:100%;">
+      <div class="letter">3</div>
+      <div class="content">
+        <h3>🎨 Vorlagen / Templates</h3>
+        <p>Vorgefertigte Overlays (Gaming, Minimal, Purple Stream, Retro) die man als Startpunkt anwenden kann. Pro Szene eine passende Vorlage. Widgets werden automatisch angelegt.</p>
+      </div>
+    </div>
+    <div style="font-size:.75rem;color:#a78bfa;padding:.4rem .6rem;background:rgba(139,92,246,.1);border-radius:.4rem;width:100%;box-sizing:border-box;">
+      🚀 Einfacher Einstieg für neue Streamer
+    </div>
+  </div>
+
+  <div class="option" data-choice="editor" onclick="toggleSelect(this)" style="flex-direction:column;align-items:flex-start;gap:.5rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;width:100%;">
+      <div class="letter">4</div>
+      <div class="content">
+        <h3>📱 Fullscreen Editor</h3>
+        <p>Hochkant + Querformat ohne speziellen Modus. Vollbild-Editor der den gesamten Bildschirm nutzt. Touch-Drag funktioniert, große Tap-Ziele, Scene-Switcher direkt im Editor.</p>
+      </div>
+    </div>
+    <div style="font-size:.75rem;color:#a78bfa;padding:.4rem .6rem;background:rgba(139,92,246,.1);border-radius:.4rem;width:100%;box-sizing:border-box;">
+      📱 Macht alle anderen Features auf Handy nutzbar
+    </div>
+  </div>
+
+</div>
+
+<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:.5rem;padding:1rem;margin-top:.5rem;">
+  <p style="margin:0;font-size:.85rem;color:#c4b5fd;"><strong>Meine Empfehlung:</strong> Zuerst Szenen-System (1) + Fullscreen Editor (4) als Fundament, dann Widgets (2), dann Templates (3). So hat man schnell etwas das wirklich nutzbar ist.</p>
+</div>
+
+<p style="color:#71717a;font-size:.82rem;margin-top:1rem;">Klicke was dir wichtig ist — du kannst mehrere auswählen. Dann sag mir im Chat ob du die Reihenfolge ändern willst.</p>

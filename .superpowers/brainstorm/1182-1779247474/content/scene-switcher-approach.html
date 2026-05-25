@@ -1,0 +1,93 @@
+<h2>Szenen-Umschaltung — Wie soll das funktionieren?</h2>
+<p class="subtitle">Der Streamer hat sein Handy neben sich. Wie schaltet er zwischen Start, Pause, Spiel und Ende um?</p>
+
+<div class="options">
+
+  <div class="option" data-choice="control-panel" onclick="toggleSelect(this)" style="flex-direction:column;align-items:flex-start;gap:.75rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;width:100%;">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Eigene "Stream Control" Seite</h3>
+        <p>Eine separate, mobiloptimierte Seite nur zum Umschalten. Große Buttons, kein Ablenkung durch den Editor. Der Streamer öffnet diese Seite während dem Stream auf dem Handy.</p>
+      </div>
+    </div>
+    <div style="background:#0e0e10;border:1px solid rgba(139,92,246,.3);border-radius:.5rem;padding:.75rem;width:100%;box-sizing:border-box;">
+      <div style="font-size:.7rem;color:#71717a;margin-bottom:.5rem;">Mockup: Stream Control Handy-Ansicht</div>
+      <div style="display:flex;flex-direction:column;gap:.4rem;">
+        <div style="background:#7c3aed;color:#fff;border-radius:.5rem;padding:.6rem 1rem;text-align:center;font-weight:700;font-size:.85rem;">🔴 LIVE · Spiel-Szene aktiv</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;">
+          <div style="background:#18181b;border:2px solid rgba(255,255,255,.06);border-radius:.4rem;padding:.5rem;text-align:center;font-size:.78rem;color:#71717a;">🎬 Start</div>
+          <div style="background:#18181b;border:2px solid rgba(255,255,255,.06);border-radius:.4rem;padding:.5rem;text-align:center;font-size:.78rem;color:#71717a;">⏸ Pause</div>
+          <div style="background:#18181b;border:2px solid #8b5cf6;border-radius:.4rem;padding:.5rem;text-align:center;font-size:.85rem;color:#a78bfa;font-weight:700;">🎮 Spiel ✓</div>
+          <div style="background:#18181b;border:2px solid rgba(255,255,255,.06);border-radius:.4rem;padding:.5rem;text-align:center;font-size:.78rem;color:#71717a;">🏁 Ende</div>
+        </div>
+        <div style="display:flex;gap:.4rem;">
+          <div style="flex:1;background:#18181b;border:1px solid rgba(139,92,246,.2);border-radius:.4rem;padding:.4rem;text-align:center;font-size:.7rem;color:#71717a;">Alert testen</div>
+          <div style="flex:1;background:#18181b;border:1px solid rgba(139,92,246,.2);border-radius:.4rem;padding:.4rem;text-align:center;font-size:.7rem;color:#71717a;">Chat</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:.75rem;color:#4ade80;padding:.3rem .6rem;background:rgba(74,222,128,.08);border-radius:.35rem;">✓ Beste Handy-UX · Schnelles Umschalten · Keine Ablenkung</div>
+  </div>
+
+  <div class="option" data-choice="editor-integrated" onclick="toggleSelect(this)" style="flex-direction:column;align-items:flex-start;gap:.75rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;width:100%;">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Im Editor integriert</h3>
+        <p>Der Szenen-Switcher ist direkt im Overlay-Designer. Szenen-Tabs oben, der Editor zeigt die aktive Szene. Umschalten durch Antippen des Tabs → sofort live.</p>
+      </div>
+    </div>
+    <div style="background:#0e0e10;border:1px solid rgba(139,92,246,.3);border-radius:.5rem;padding:.75rem;width:100%;box-sizing:border-box;">
+      <div style="font-size:.7rem;color:#71717a;margin-bottom:.5rem;">Mockup: Szenen-Tabs im Editor</div>
+      <div style="display:flex;gap:.3rem;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:.4rem;margin-bottom:.4rem;">
+        <div style="background:#18181b;border:1px solid rgba(255,255,255,.08);border-radius:.3rem .3rem 0 0;padding:.3rem .6rem;font-size:.72rem;color:#71717a;">🎬 Start</div>
+        <div style="background:#18181b;border:1px solid rgba(255,255,255,.08);border-radius:.3rem .3rem 0 0;padding:.3rem .6rem;font-size:.72rem;color:#71717a;">⏸ Pause</div>
+        <div style="background:#8b5cf6;border-radius:.3rem .3rem 0 0;padding:.3rem .6rem;font-size:.72rem;color:#fff;font-weight:700;">🎮 Spiel ●</div>
+        <div style="background:#18181b;border:1px solid rgba(255,255,255,.08);border-radius:.3rem .3rem 0 0;padding:.3rem .6rem;font-size:.72rem;color:#71717a;">🏁 Ende</div>
+        <div style="background:#18181b;border:1px dashed rgba(139,92,246,.3);border-radius:.3rem .3rem 0 0;padding:.3rem .5rem;font-size:.72rem;color:#8b5cf6;">＋</div>
+      </div>
+      <div style="background:rgba(0,0,0,.4);border-radius:.3rem;height:60px;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:.7rem;color:#52525b;">Canvas: Spiel-Szene</span>
+      </div>
+    </div>
+    <div style="font-size:.75rem;color:#facc15;padding:.3rem .6rem;background:rgba(250,204,21,.08);border-radius:.35rem;">⚠ Alles an einem Ort · Aber Editor-UX auf Handy bleibt komplex</div>
+  </div>
+
+  <div class="option" data-choice="both" onclick="toggleSelect(this)" style="flex-direction:column;align-items:flex-start;gap:.75rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;width:100%;">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>Beides (Empfohlen)</h3>
+        <p>Szenen-Tabs im Editor zum Bearbeiten — PLUS eine separate Stream-Control-Seite zum schnellen Umschalten während dem Stream. Handy öffnet die Control-Seite, PC nutzt den Editor.</p>
+      </div>
+    </div>
+    <div style="background:#0e0e10;border:1px solid rgba(139,92,246,.3);border-radius:.5rem;padding:.75rem;width:100%;box-sizing:border-box;display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+      <div>
+        <div style="font-size:.65rem;color:#8b5cf6;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em;">Editor (PC)</div>
+        <div style="display:flex;gap:.2rem;margin-bottom:.3rem;">
+          <div style="background:#18181b;border-radius:.25rem;padding:.2rem .4rem;font-size:.6rem;color:#71717a;">🎬</div>
+          <div style="background:#18181b;border-radius:.25rem;padding:.2rem .4rem;font-size:.6rem;color:#71717a;">⏸</div>
+          <div style="background:#8b5cf6;border-radius:.25rem;padding:.2rem .4rem;font-size:.6rem;color:#fff;">🎮●</div>
+          <div style="background:#18181b;border-radius:.25rem;padding:.2rem .4rem;font-size:.6rem;color:#71717a;">🏁</div>
+        </div>
+        <div style="background:rgba(0,0,0,.4);border-radius:.25rem;height:45px;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:.6rem;color:#52525b;">Canvas</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:.65rem;color:#8b5cf6;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em;">Stream Control (Handy)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.2rem;">
+          <div style="background:#18181b;border-radius:.3rem;padding:.3rem;text-align:center;font-size:.6rem;color:#71717a;">🎬 Start</div>
+          <div style="background:#18181b;border-radius:.3rem;padding:.3rem;text-align:center;font-size:.6rem;color:#71717a;">⏸ Pause</div>
+          <div style="background:#7c3aed;border-radius:.3rem;padding:.3rem;text-align:center;font-size:.6rem;color:#fff;font-weight:700;">🎮 Spiel ✓</div>
+          <div style="background:#18181b;border-radius:.3rem;padding:.3rem;text-align:center;font-size:.6rem;color:#71717a;">🏁 Ende</div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:.75rem;color:#4ade80;padding:.3rem .6rem;background:rgba(74,222,128,.08);border-radius:.35rem;">✓ Bestes aus beiden Welten · Richtige Tool für die richtige Aufgabe</div>
+  </div>
+
+</div>
+
+<p style="color:#71717a;font-size:.82rem;margin-top:1rem;">Klicke deine bevorzugte Option und antworte im Terminal.</p>

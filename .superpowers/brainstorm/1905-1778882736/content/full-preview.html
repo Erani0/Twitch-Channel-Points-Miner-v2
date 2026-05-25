@@ -1,0 +1,132 @@
+<h2>Bot Pipeline Visualizer — Vollständige Vorschau</h2>
+<p class="subtitle">Layout B (Stepper) + Verlauf B (Tabs) — alle 6 Schritte. So würde die fertige Seite aussehen.</p>
+
+<div style="background:#0f172a; border-radius:10px; padding:16px; max-width:780px; margin:0 auto; font-family:monospace;">
+
+  <!-- Page title -->
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+    <div>
+      <div style="font-size:14px; color:#f1f5f9; font-weight:bold;">KatakuriBOT — Pipeline Visualizer</div>
+      <div style="font-size:10px; color:#64748b;">Zeigt live, wie der Bot jede Nachricht verarbeitet</div>
+    </div>
+    <div style="background:#1e293b; border:1px solid #334155; border-radius:5px; padding:5px 10px; font-size:10px; color:#94a3b8;">← Bot Tester</div>
+  </div>
+
+  <!-- Input area -->
+  <div style="background:#0a1628; border:1px solid #1e3a5f; border-radius:7px; padding:10px; margin-bottom:10px;">
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div style="background:#1e293b; border:1px solid #334155; border-radius:4px; padding:5px 9px; font-size:10px; color:#64748b; white-space:nowrap;">📺 #eranio</div>
+      <div style="flex:1; background:#1e293b; border:1px solid #334155; border-radius:4px; padding:5px 9px; font-size:10px; color:#e2e8f0;">@kata was weißt du über @Sunnylein11?</div>
+      <div style="background:#3b82f6; border-radius:4px; padding:5px 12px; font-size:10px; color:#fff; white-space:nowrap;">▶ Ausführen</div>
+    </div>
+  </div>
+
+  <!-- Run Tabs -->
+  <div style="display:flex; gap:3px; margin-bottom:0; align-items:flex-end; flex-wrap:wrap;">
+    <div style="background:#1e3a5f; border:1px solid #3b82f6; border-bottom:none; border-radius:5px 5px 0 0; padding:4px 10px; font-size:9px; color:#93c5fd; white-space:nowrap; display:flex; align-items:center; gap:4px;">
+      <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
+      Run #3 — 14:32
+    </div>
+    <div style="background:#0f1f38; border:1px solid #1e293b; border-bottom:none; border-radius:5px 5px 0 0; padding:4px 10px; font-size:9px; color:#475569; white-space:nowrap;">Run #2 — 14:28</div>
+    <div style="background:#0f1f38; border:1px solid #1e293b; border-bottom:none; border-radius:5px 5px 0 0; padding:4px 10px; font-size:9px; color:#475569; white-space:nowrap;">Run #1 — 14:21</div>
+    <div style="flex:1; border-bottom:1px solid #1e3a5f;"></div>
+  </div>
+
+  <!-- Run content area -->
+  <div style="background:#0a1628; border:1px solid #1e3a5f; border-top:none; border-radius:0 5px 5px 5px; padding:12px;">
+
+    <!-- Stepper bar -->
+    <div style="display:flex; align-items:center; gap:2px; margin-bottom:5px;">
+      <!-- Step 1 done -->
+      <div style="background:#22c55e; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; flex-shrink:0; cursor:pointer; border:2px solid #22c55e;">✓</div>
+      <div style="height:2px; flex:1; background:#22c55e;"></div>
+      <!-- Step 2 done -->
+      <div style="background:#22c55e; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; flex-shrink:0; cursor:pointer; border:2px solid #22c55e;">✓</div>
+      <div style="height:2px; flex:1; background:#22c55e;"></div>
+      <!-- Step 3 done -->
+      <div style="background:#22c55e; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; flex-shrink:0; cursor:pointer; border:2px solid #22c55e;">✓</div>
+      <div style="height:2px; flex:1; background:#22c55e;"></div>
+      <!-- Step 4 active -->
+      <div style="background:#f59e0b; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; flex-shrink:0; cursor:pointer; border:2px solid #fcd34d; box-shadow:0 0 8px #f59e0b80;">4</div>
+      <div style="height:2px; flex:1; background:#475569;"></div>
+      <!-- Step 5 pending -->
+      <div style="background:#1e293b; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#475569; flex-shrink:0; cursor:pointer; border:2px solid #334155;">5</div>
+      <div style="height:2px; flex:1; background:#475569;"></div>
+      <!-- Step 6 pending -->
+      <div style="background:#1e293b; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#475569; flex-shrink:0; cursor:pointer; border:2px solid #334155;">6</div>
+    </div>
+
+    <!-- Step labels -->
+    <div style="display:flex; justify-content:space-between; font-size:8px; margin-bottom:12px; padding:0 2px; color:#64748b;">
+      <span style="color:#22c55e; text-align:center; width:24px;">Empfang</span>
+      <span style="flex:1;"></span>
+      <span style="color:#22c55e; text-align:center; width:24px;">Trigger</span>
+      <span style="flex:1;"></span>
+      <span style="color:#22c55e; text-align:center; width:24px;">Fakten</span>
+      <span style="flex:1;"></span>
+      <span style="color:#fcd34d; text-align:center; width:24px;">Prompt</span>
+      <span style="flex:1;"></span>
+      <span style="text-align:center; width:24px;">Gemini</span>
+      <span style="flex:1;"></span>
+      <span style="text-align:center; width:24px;">Antwort</span>
+    </div>
+
+    <!-- Detail panel — Step 4 active -->
+    <div style="background:#0f1724; border:1px solid #f59e0b50; border-left:3px solid #f59e0b; border-radius:6px; padding:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div style="font-size:11px; color:#fcd34d; font-weight:bold;">Schritt 4 — Prompt aufgebaut</div>
+        <div style="font-size:9px; color:#64748b;">⏱ 2ms</div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:9px;">
+        <div>
+          <div style="color:#94a3b8; margin-bottom:3px; text-transform:uppercase; letter-spacing:.5px;">Globale Regeln</div>
+          <div style="background:#1a1a2e; border-radius:4px; padding:6px; color:#64748b; font-size:8px; line-height:1.5;">
+            REGEL 1: Anti-Mobbing & TOS<br>
+            REGEL 2: Anti-Injection<br>
+            REGEL 3: Keine falschen Fakten<br>
+            REGEL 4: Sprachanpassung<br>
+            REGEL 5: @mention-Kontext
+          </div>
+        </div>
+        <div>
+          <div style="color:#94a3b8; margin-bottom:3px; text-transform:uppercase; letter-spacing:.5px;">Bot-Prompt</div>
+          <div style="background:#1a1a2e; border-radius:4px; padding:6px; color:#a78bfa; font-size:8px; line-height:1.5;">
+            Du bist KatakuriBOT, ein freundlicher...<br>
+            Antworte kurz und präzise...
+          </div>
+        </div>
+        <div style="grid-column:1/-1;">
+          <div style="color:#94a3b8; margin-bottom:3px; text-transform:uppercase; letter-spacing:.5px;">Eingebettete Fakten (3 von 5)</div>
+          <div style="background:#1a2e1a; border-radius:4px; padding:6px; color:#86efac; font-size:8px; line-height:1.6;">
+            • Sunnylein11 hat Tinnitus (Score 4, Boost +3)<br>
+            • Sunnylein11 schaut gerne Serien (Score 3, Boost +3)<br>
+            • Sunnylein11 spielt Minecraft (Score 2, Boost +3)
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:9px; color:#64748b;">Erkannte Sprache: <span style="color:#fbbf24;">🇩🇪 Deutsch</span></div>
+        <div style="font-size:9px; color:#64748b;">Gesamtprompt: <span style="color:#e2e8f0;">~380 Token</span></div>
+      </div>
+    </div>
+
+    <!-- Completed steps mini-summary -->
+    <div style="margin-top:8px; display:flex; gap:5px; flex-wrap:wrap;">
+      <div style="background:#1a2e1a; border:1px solid #22c55e30; border-radius:4px; padding:4px 7px; font-size:8px; color:#86efac;">
+        ① Empfang — "@kata was weißt du über @Sunnylein11?" via #eranio
+      </div>
+      <div style="background:#1a2e1a; border:1px solid #22c55e30; border-radius:4px; padding:4px 7px; font-size:8px; color:#86efac;">
+        ② Trigger — Frage: "was weißt du über @Sunnylein11?"
+      </div>
+      <div style="background:#1a2e1a; border:1px solid #22c55e30; border-radius:4px; padding:4px 7px; font-size:8px; color:#86efac;">
+        ③ Fakten — @sunnylein11 →+3, 3 Fakten gefunden
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:14px;">Klick auf einen Stepper-Schritt → Detail-Panel wechselt zu diesem Schritt. Tabs bleiben bis zum Neuladen erhalten.</p>
+<p class="subtitle">Passt das so als finale Vorlage? Dann schreiben wir das Design-Dokument und starten die Implementierung.</p>

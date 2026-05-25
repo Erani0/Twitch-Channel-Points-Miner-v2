@@ -1,0 +1,147 @@
+<h2>Widget-Typen — Was soll es geben?</h2>
+<p class="subtitle">Wähle alle Kategorien die du haben möchtest. Bereits vorhanden sind grau markiert.</p>
+
+<div style="display:flex;flex-direction:column;gap:1.2rem;margin-top:1rem;">
+
+  <!-- ALERTS -->
+  <div>
+    <div class="label" style="margin-bottom:.5rem;">🔔 Alert-Widgets (Animiert)</div>
+    <div class="options" data-multiselect style="flex-direction:row;flex-wrap:wrap;gap:.5rem;">
+      <div class="option" data-choice="alert-follow" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">💜</div>
+        <div class="content" style="text-align:center;">
+          <h3 style="font-size:.8rem;margin:0;">Follow Alert</h3>
+          <p style="font-size:.65rem;margin:.2rem 0 0;color:#8b5cf6;">Bereits vorhanden</p>
+        </div>
+      </div>
+      <div class="option" data-choice="alert-sub" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">⭐</div>
+        <div class="content" style="text-align:center;">
+          <h3 style="font-size:.8rem;margin:0;">Sub Alert</h3>
+          <p style="font-size:.65rem;margin:.2rem 0 0;color:#8b5cf6;">Bereits vorhanden</p>
+        </div>
+      </div>
+      <div class="option" data-choice="alert-raid" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">⚔️</div>
+        <div class="content" style="text-align:center;">
+          <h3 style="font-size:.8rem;margin:0;">Raid Alert</h3>
+          <p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Neu + Animation</p>
+        </div>
+      </div>
+      <div class="option" data-choice="alert-cheer" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">💎</div>
+        <div class="content" style="text-align:center;">
+          <h3 style="font-size:.8rem;margin:0;">Cheer Alert</h3>
+          <p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Neu + Animation</p>
+        </div>
+      </div>
+      <div class="option" data-choice="alert-gift" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">🎁</div>
+        <div class="content" style="text-align:center;">
+          <h3 style="font-size:.8rem;margin:0;">Gift Alert</h3>
+          <p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Neu + Animation</p>
+        </div>
+      </div>
+      <div class="option" data-choice="alert-donation" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">💸</div>
+        <div class="content" style="text-align:center;">
+          <h3 style="font-size:.8rem;margin:0;">Donation Alert</h3>
+          <p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Via Webhook</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATISTICS -->
+  <div>
+    <div class="label" style="margin-bottom:.5rem;">📊 Statistik-Widgets</div>
+    <div class="options" data-multiselect style="flex-direction:row;flex-wrap:wrap;gap:.5rem;">
+      <div class="option" data-choice="stat-follower" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">👥</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Follower-Zähler</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#8b5cf6;">Bereits vorhanden</p></div>
+      </div>
+      <div class="option" data-choice="stat-viewer" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">👁</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Viewer-Zähler</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Live via Twitch API</p></div>
+      </div>
+      <div class="option" data-choice="stat-sub" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">⭐</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Sub-Zähler</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Neu</p></div>
+      </div>
+      <div class="option" data-choice="stat-uptime" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">⏱</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Stream-Uptime</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Stopuhr</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE ACTIVITY -->
+  <div>
+    <div class="label" style="margin-bottom:.5rem;">📋 Live-Activity</div>
+    <div class="options" data-multiselect style="flex-direction:row;flex-wrap:wrap;gap:.5rem;">
+      <div class="option" data-choice="chat" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">💬</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Chat-Box</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#8b5cf6;">Bereits vorhanden</p></div>
+      </div>
+      <div class="option" data-choice="recent-events" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">📜</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Recent Events</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Letzte Follows/Subs</p></div>
+      </div>
+      <div class="option" data-choice="goal-bar" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">🎯</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Ziel-Balken</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#8b5cf6;">Bereits vorhanden</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATIVE -->
+  <div>
+    <div class="label" style="margin-bottom:.5rem;">🎨 Kreativ & Layout</div>
+    <div class="options" data-multiselect style="flex-direction:row;flex-wrap:wrap;gap:.5rem;">
+      <div class="option" data-choice="text" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">📝</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Text-Widget</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Freier Text + Styling</p></div>
+      </div>
+      <div class="option" data-choice="image" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">🖼</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Bild / GIF</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#8b5cf6;">Bereits vorhanden</p></div>
+      </div>
+      <div class="option" data-choice="timer" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">⏰</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Timer</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Countdown / Countup</p></div>
+      </div>
+      <div class="option" data-choice="social" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">📱</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Social-Banner</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Twitter/Discord/etc.</p></div>
+      </div>
+      <div class="option" data-choice="webcam" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(25% - .5rem);min-width:140px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">📷</div>
+        <div class="content" style="text-align:center;"><h3 style="font-size:.8rem;margin:0;">Webcam-Rahmen</h3><p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Placeholder + Rahmen</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXTERNAL -->
+  <div>
+    <div class="label" style="margin-bottom:.5rem;">🌐 Extern / Erweitert</div>
+    <div class="options" data-multiselect style="flex-direction:row;flex-wrap:wrap;gap:.5rem;">
+      <div class="option" data-choice="websource" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(33% - .5rem);min-width:160px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">🔗</div>
+        <div class="content" style="text-align:center;">
+          <h3 style="font-size:.8rem;margin:0;">Web-Source</h3>
+          <p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Iframe — externe Alerts (StreamElements, Streamlabs)</p>
+        </div>
+      </div>
+      <div class="option" data-choice="nowplaying" onclick="toggleSelect(this)" style="flex:0 0 auto;width:calc(33% - .5rem);min-width:160px;flex-direction:column;gap:.3rem;padding:.6rem;">
+        <div style="font-size:1.4rem;text-align:center;">🎵</div>
+        <div class="content" style="text-align:center;">
+          <h3 style="font-size:.8rem;margin:0;">Now Playing</h3>
+          <p style="font-size:.65rem;margin:.2rem 0 0;color:#a1a1aa;">Spotify / letzter Song</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="color:#71717a;font-size:.82rem;margin-top:1.2rem;">Wähle alles was du möchtest — mehrfach auswählen ist OK. Im Terminal gerne ergänzen was fehlt.</p>
