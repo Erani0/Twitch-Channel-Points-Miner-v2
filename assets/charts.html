@@ -20,6 +20,35 @@
     <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.42.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+    <!-- Inline overrides to bypass any browser cache issues -->
+    <style>
+        .streamers-sidebar .tabs {
+            border-right: none !important;
+            display: block !important;
+            width: 100% !important;
+            overflow: visible !important;
+            white-space: normal !important;
+        }
+        .streamers-sidebar .tabs ul {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            display: flex !important;
+            width: 100% !important;
+            border-bottom: none !important;
+        }
+        .streamers-sidebar .tabs li {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+        }
+        .streamers-sidebar .tabs a {
+            display: block !important;
+            width: 100% !important;
+            border-bottom: none !important;
+            text-align: left !important;
+            padding: 0.75rem 1.25rem !important;
+        }
+    </style>
 </head>
 
 <body>

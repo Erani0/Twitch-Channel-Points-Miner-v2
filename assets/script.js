@@ -54,11 +54,14 @@ var options = {
     title: {
         text: 'Channel points (dates are displayed in UTC)',
         align: 'left',
+        margin: 25,
+        offsetX: 15,
+        offsetY: 15,
         style: {
             fontFamily: 'Rajdhani, sans-serif',
-            fontSize: '1.2rem',
+            fontSize: '1.35rem',
             fontWeight: 700,
-            color: '#00ffaa'
+            color: '#ffffff'
         }
     },
     colors: ["#00ffaa"],
