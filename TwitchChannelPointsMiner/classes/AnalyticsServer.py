@@ -168,10 +168,12 @@ def json_all():
 
 
 def index(refresh=5, days_ago=7):
+    server_name = os.environ.get("SERVER_NAME", "Eranios Twitch Miner")
     return render_template(
         "charts.html",
         refresh=(refresh * 60 * 1000),
         daysAgo=days_ago,
+        server_name=server_name,
     )
 
 

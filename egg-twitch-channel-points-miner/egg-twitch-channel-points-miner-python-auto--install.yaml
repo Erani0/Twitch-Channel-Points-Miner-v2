@@ -248,3 +248,15 @@ variables:
       - required
       - string
       - 'max:100'
+  -
+    sort: null
+    name: 'Server Name / Titel'
+    description: 'Der Name/Titel, der als Webseiten-Titel im Dashboard angezeigt werden soll'
+    env_variable: SERVER_NAME
+    default_value: 'Eranios Twitch Miner'
+    user_viewable: true
+    user_editable: true
+    rules:
+      - required
+      - string
+      - 'max:100'
