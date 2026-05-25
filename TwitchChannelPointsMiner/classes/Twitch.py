@@ -134,6 +134,8 @@ class Twitch(object):
         "_streak_rotation_cursor",
         "_client_version_checked_at",
         "_last_client_version_error_log",
+        "_reported_completed_drops",
+        "_reported_skipped_drops",
     ]
 
     def __init__(self, username, user_agent, password=None, watch_streak_max_parallel=None):
@@ -186,6 +188,8 @@ class Twitch(object):
         self._streak_rotation_cursor = 0
         self._client_version_checked_at = 0.0
         self._last_client_version_error_log = 0.0
+        self._reported_completed_drops = set()
+        self._reported_skipped_drops = set()
 
     def login(self):
         if not os.path.isfile(self.cookies_file):
@@ -846,7 +850,11 @@ class Twitch(object):
             "GET",
             qualities_url,
             request_name=f"broadcast_qualities:{streamer.username}",
-            headers={"User-Agent": self.user_agent},
+            headers={
+                "User-Agent": self.user_agent,
+                "Origin": "https://www.twitch.tv",
+                "Referer": "https://www.twitch.tv/",
+            },
             timeout=20,
         )
         logger.debug(
@@ -872,7 +880,11 @@ class Twitch(object):
             "GET",
             quality_url,
             request_name=f"stream_url_list:{streamer.username}",
-            headers={"User-Agent": self.user_agent},
+            headers={
+                "User-Agent": self.user_agent,
+                "Origin": "https://www.twitch.tv",
+                "Referer": "https://www.twitch.tv/",
+            },
             timeout=20,
         )
         logger.debug(
@@ -895,10 +907,14 @@ class Twitch(object):
             return False
 
         stream_response = self._request_with_retry(
-            "HEAD",
+            "GET",
             stream_url,
-            request_name=f"stream_lowest_quality_head:{streamer.username}",
-            headers={"User-Agent": self.user_agent},
+            request_name=f"stream_lowest_quality_get:{streamer.username}",
+            headers={
+                "User-Agent": self.user_agent,
+                "Origin": "https://www.twitch.tv",
+                "Referer": "https://www.twitch.tv/",
+            },
             timeout=20,
         )
         logger.debug(
@@ -1942,7 +1958,14 @@ class Twitch(object):
 
         return active_selection[: self.max_streak_sessions]
 
-    def send_minute_watched_events(self, streamers, priority, chunk_size=3):
+    def send_minute_watched_events(
+        self,
+        streamers,
+        priority,
+        watch_only_drops=False,
+        stop_watch_when_drops_completed=False,
+        chunk_size=3,
+    ):
         while self.running:
             try:
                 streamers_index = [
@@ -1960,6 +1983,64 @@ class Twitch(object):
                         # Why this user It's currently online but the last updated was more than 10minutes ago?
                         # Please perform a manually update and check if the user it's online
                         self.check_streamer_online(streamers[index])
+
+                if stop_watch_when_drops_completed is True:
+                    original_indices = list(streamers_index)
+                    streamers_index = [
+                        index for index in streamers_index
+                        if streamers[index].has_drops_available()
+                    ]
+                    removed = [
+                        streamers[index].username
+                        for index in original_indices
+                        if index not in streamers_index
+                    ]
+                    # Remove streamers from reported set if they now have drops again
+                    self._reported_completed_drops -= set(
+                        streamers[index].username
+                        for index in streamers_index
+                        if streamers[index].username in self._reported_completed_drops
+                    )
+                    new_removed = [
+                        username
+                        for username in removed
+                        if username not in self._reported_completed_drops
+                    ]
+                    self._reported_completed_drops.update(removed)
+                    if new_removed:
+                        logger.info(
+                            f"Stopped watching completed-drop channels: {', '.join(new_removed)}",
+                            extra={"emoji": ":package:", "event": Events.DROP_STATUS},
+                        )
+
+                if watch_only_drops is True:
+                    original_indices = list(streamers_index)
+                    streamers_index = [
+                        index for index in streamers_index
+                        if streamers[index].drops_condition() is True
+                    ]
+                    removed = [
+                        streamers[index].username
+                        for index in original_indices
+                        if index not in streamers_index
+                    ]
+                    # Remove streamers from reported set if they now pass drops condition
+                    self._reported_skipped_drops -= set(
+                        streamers[index].username
+                        for index in streamers_index
+                        if streamers[index].username in self._reported_skipped_drops
+                    )
+                    new_removed = [
+                        username
+                        for username in removed
+                        if username not in self._reported_skipped_drops
+                    ]
+                    self._reported_skipped_drops.update(removed)
+                    if new_removed:
+                        logger.info(
+                            f"Watch-only drops active, skipped channels: {', '.join(new_removed)}",
+                            extra={"emoji": ":eyes:", "event": Events.DROP_STATUS},
+                        )
 
                 """
                 Normally we respect the 2-stream limit, but if any watch-streaks are pending
@@ -1987,7 +2068,6 @@ class Twitch(object):
                             request_name=f"minute_watched:{streamers[index].username}",
                             data=streamers[index].stream.encode_payload(),
                             headers={"User-Agent": self.user_agent},
-                            # timeout=60,
                             timeout=20,
                         )
                         logger.debug(

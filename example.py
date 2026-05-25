@@ -192,8 +192,11 @@ twitch_miner = TwitchChannelPointsMiner(
     use_hermes=USE_HERMES,
     watch_streak_max_parallel=WATCH_STREAK_MAX_PARALLEL,
     watch_streak_min_offline_seconds=WATCH_STREAK_OFFLINE_WAIT_SECONDS,
+    watch_only_drops=False,                     # Set to True if you only want to watch channels with active drops (PR 814)
+    stop_watch_when_drops_completed=False,      # Set to True if you want to stop watching a channel when its drops are completed (PR 814)
     logger_settings=LOGGER_SETTINGS,
     streamer_settings=DEFAULT_STREAMER_SETTINGS,
+)
 )
 
 # Useful files written under logs/:

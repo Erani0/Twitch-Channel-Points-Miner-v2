@@ -114,6 +114,8 @@ class TwitchChannelPointsMiner:
         "_daily_points_baseline_dirty",
         "_watch_streak_days_lookup_attempted",
         "_chat_ban_lookup_attempted",
+        "watch_only_drops",
+        "stop_watch_when_drops_completed",
     ]
 
     def __init__(
@@ -124,6 +126,8 @@ class TwitchChannelPointsMiner:
         enable_analytics: bool = False,
         disable_ssl_cert_verification: bool = False,
         disable_at_in_nickname: bool = False,
+        watch_only_drops: bool = False,
+        stop_watch_when_drops_completed: bool = False,
         # Settings for logging and selenium as you can see.
         priority: list[Priority] | Priority | None = None,
         # This settings will be global shared trought Settings class
@@ -145,6 +149,8 @@ class TwitchChannelPointsMiner:
 
         Settings.disable_at_in_nickname = disable_at_in_nickname
         Settings.use_hermes = use_hermes
+        self.watch_only_drops = watch_only_drops
+        self.stop_watch_when_drops_completed = stop_watch_when_drops_completed
 
         # Wait for Twitch.tv connectivity with a timeout to avoid hanging forever
         error_printed = False
@@ -875,6 +881,8 @@ class TwitchChannelPointsMiner:
         blacklist: list[str] | None = None,
         followers: bool = False,
         followers_order: FollowersOrder = FollowersOrder.ASC,
+        watch_only_drops: bool = None,
+        stop_watch_when_drops_completed: bool = None,
     ):
         streamers_list = list(streamers) if streamers is not None else []
         blacklist_list = list(blacklist) if blacklist is not None else []
@@ -883,6 +891,8 @@ class TwitchChannelPointsMiner:
             blacklist=blacklist_list,
             followers=followers,
             followers_order=followers_order,
+            watch_only_drops=watch_only_drops,
+            stop_watch_when_drops_completed=stop_watch_when_drops_completed,
         )
 
     def run(
@@ -891,7 +901,13 @@ class TwitchChannelPointsMiner:
         blacklist: list[str] | None = None,
         followers: bool = False,
         followers_order: FollowersOrder = FollowersOrder.ASC,
+        watch_only_drops: bool = None,
+        stop_watch_when_drops_completed: bool = None,
     ):
+        if watch_only_drops is not None:
+            self.watch_only_drops = watch_only_drops
+        if stop_watch_when_drops_completed is not None:
+            self.stop_watch_when_drops_completed = stop_watch_when_drops_completed
         if self.running:
             logger.error("You can't start multiple sessions of this instance!")
             return
@@ -1084,7 +1100,13 @@ class TwitchChannelPointsMiner:
 
             self.minute_watcher_thread = threading.Thread(
                 target=self.twitch.send_minute_watched_events,
-                args=(self.streamers, self.priority, 60),
+                args=(
+                    self.streamers,
+                    self.priority,
+                    self.watch_only_drops,
+                    self.stop_watch_when_drops_completed,
+                    60,
+                ),
             )
             self.minute_watcher_thread.name = "Minute watcher"
             self.minute_watcher_thread.start()

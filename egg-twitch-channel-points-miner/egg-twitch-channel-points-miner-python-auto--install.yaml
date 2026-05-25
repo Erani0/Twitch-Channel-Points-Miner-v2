@@ -1,0 +1,202 @@
+_comment: 'DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PANEL'
+meta:
+  version: PLCN_v3
+  update_url: null
+exported_at: '2026-05-25T18:37:41+02:00'
+name: 'Twitch Channel Points Miner (Python Auto-Install)'
+author: jesse@pelican-panel.local
+uuid: 10a9d6f6-3cfe-46b5-a28e-aeb15185810b
+description: 'Führt die Installation direkt in der run.py aus. Einfacher Startup Befehl.'
+icon: null
+tags: {  }
+features: null
+docker_images:
+  'Python 3.11': 'ghcr.io/pterodactyl/yolks:python_3.11'
+file_denylist: {  }
+startup_commands:
+  Default: 'python -u /home/container/run.py --port {{SERVER_PORT}}'
+config:
+  files: {  }
+  startup:
+    done: 'Start session:'
+  logs: {  }
+  stop: ^C
+scripts:
+  installation:
+    script: |
+      #!/bin/bash
+      set -e
+
+      echo "=== START DER INSTALLATION ==="
+      apt-get update -y
+      apt-get install -y git
+
+      cd /mnt/server
+
+      echo "Raeume temporaere Ordner auf..."
+      rm -rf .tmp_miner
+
+      echo "Lade Twitch-Channel-Points-Miner-v2 von GitHub herunter..."
+      git clone https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2.git .tmp_miner
+
+      echo "Verschiebe Dateien..."
+      cp -r .tmp_miner/* ./
+      cp -r .tmp_miner/.[!.]* ./ 2>/dev/null || true
+      rm -rf .tmp_miner
+
+      echo "Erstelle deine konfigurierte run.py..."
+      cat << 'EOF' > /mnt/server/run.py
+      # -*- coding: utf-8 -*-
+      import os
+      import sys
+      import subprocess
+
+      # --- AUTO-INSTALLER VOR DEM EIGENTLICHEN START ---
+      MARKER_FILE = ".setup_done"
+      if not os.path.exists(MARKER_FILE):
+          print("=========================================================================")
+          print("Erster Start erkannt: Lade und installiere benoetigte Python-Module...")
+          print("HINWEIS: Das kann beim ersten Mal 5-10 Minuten dauern (pandas, etc.).")
+          print("Bitte schliesse diese Konsole nicht und warte ab!")
+          print("=========================================================================")
+          try:
+              # Führt pip install aus
+              subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "--no-cache-dir", "-r", "requirements.txt"])
+              
+              # Marker-Datei erstellen, damit er es beim nächsten Neustart überspringt
+              with open(MARKER_FILE, "w") as f:
+                  f.write("done")
+                  
+              print("=== Installation erfolgreich! Miner wird nun gestartet... ===")
+              
+              # Startet das Python-Skript neu, damit die neuen Module geladen werden koennen
+              os.execv(sys.executable, [sys.executable] + sys.argv)
+          except Exception as e:
+              print(f"Fehler bei der Installation der Abhaengigkeiten: {e}")
+              sys.exit(1)
+
+
+      # --- HIER STARTET DER EIGENTLICHE MINER CODE ---
+      import logging
+      from colorama import Fore
+      from TwitchChannelPointsMiner import TwitchChannelPointsMiner
+      from TwitchChannelPointsMiner.logger import LoggerSettings, ColorPalette
+      from TwitchChannelPointsMiner.classes.Chat import ChatPresence
+      from TwitchChannelPointsMiner.classes.Discord import Discord
+      from TwitchChannelPointsMiner.classes.Telegram import Telegram
+      from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
+      from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
+      from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
+
+      TWITCH_USER = os.environ.get("TWITCH_USER", "")
+      TWITCH_PASS = os.environ.get("TWITCH_PASS", "")
+
+      SERVER_PORT = int(os.environ.get("SERVER_PORT", 5000))
+      for i, arg in enumerate(sys.argv):
+          if arg == "--port" and i + 1 < len(sys.argv):
+              SERVER_PORT = int(sys.argv[i + 1])
+          elif arg.startswith("--port="):
+              SERVER_PORT = int(arg.split("=")[1])
+
+      twitch_miner = TwitchChannelPointsMiner(
+          username=TWITCH_USER,
+          password=TWITCH_PASS,
+          claim_drops_startup=True,
+          priority=[Priority.STREAK, Priority.DROPS, Priority.ORDER],
+          enable_analytics=True,
+          disable_ssl_cert_verification=False,
+          disable_at_in_nickname=True,
+          logger_settings=LoggerSettings(
+              save=True,
+              console_level=logging.INFO,
+              console_username=False,
+              auto_clear=True,
+              time_zone="Europe/Berlin",
+              file_level=logging.INFO,
+              emoji=True,
+              less=False,
+              colored=True,
+              color_palette=ColorPalette(
+                  STREAMER_online="GREEN",
+                  streamer_offline="red",
+                  BET_wiN=Fore.MAGENTA
+              )
+          ),
+          streamer_settings=StreamerSettings(
+              make_predictions=False,
+              follow_raid=True,
+              claim_drops=True,
+              claim_moments=True,
+              watch_streak=True,
+              chat=ChatPresence.ONLINE,
+              bet=BetSettings(
+                  strategy=Strategy.SMART,
+                  percentage=5,
+                  percentage_gap=20,
+                  max_points=50000,
+                  stealth_mode=True,
+                  delay_mode=DelayMode.FROM_END,
+                  delay=6,
+                  minimum_points=20000,
+                  filter_condition=FilterCondition(
+                      by=OutcomeKeys.TOTAL_USERS,
+                      where=Condition.LTE,
+                      value=800
+                  )
+              )
+          )
+      )
+
+      twitch_miner.analytics(host="0.0.0.0", port=SERVER_PORT, refresh=5, days_ago=360)
+
+      twitch_miner.mine(
+          [
+              Streamer("Zicke8", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=True, watch_streak=True, bet=BetSettings(strategy=Strategy.SMART, percentage=5, stealth_mode=True, percentage_gap=20, max_points=234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800)))),
+              Streamer("shlorox", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=True, watch_streak=True, bet=BetSettings(strategy=Strategy.SMART, percentage=5, stealth_mode=True, percentage_gap=20, max_points=234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800)))),
+              Streamer("Vanessa_Lopez_Official", settings=StreamerSettings(make_predictions=False, follow_raid=False, watch_streak=True, bet=BetSettings(strategy=Strategy.SMART, percentage=5, stealth_mode=False, percentage_gap=30, max_points=50000, filter_condition=FilterCondition(by=OutcomeKeys.ODDS, where=Condition.LT, value=300)))),
+              Streamer("PYKA", settings=StreamerSettings(make_predictions=False, follow_raid=False, claim_drops=True, watch_streak=True, bet=BetSettings(strategy=Strategy.SMART, percentage=5, stealth_mode=True, percentage_gap=20, max_points=234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800)))),
+              Streamer("Z1ppo", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
+              Streamer("Sintica", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
+              Streamer("Colaway", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
+              Streamer("ColawayTV", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
+              Streamer("Shady_Devil_x", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
+              Streamer("Halbsteiv", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
+              Streamer("DirkNeuenfels", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
+              Streamer("sickEmoAngel", settings=StreamerSettings(make_predictions=False, follow_raid=True, watch_streak=True)),
+              Streamer("Sherpa", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=True, watch_streak=True, bet=BetSettings(strategy=Strategy.HIGH_ODDS, percentage=7, stealth_mode=True, percentage_gap=20, max_points=90, filter_condition=FilterCondition(by=OutcomeKeys.PERCENTAGE_USERS, where=Condition.GTE, value=300)))),
+              Streamer("eranio")
+          ],
+          followers=True,
+          followers_order=FollowersOrder.ASC
+      )
+
+      EOF
+
+      echo "=== INSTALLATION ERFOLGREICH ABGESCHLOSSEN ==="
+    container: 'ghcr.io/pterodactyl/installers:debian'
+    entrypoint: bash
+variables:
+  -
+    sort: null
+    name: 'Twitch Passwort'
+    description: 'Dein Twitch Passwort (wird sicher übergeben)'
+    env_variable: TWITCH_PASS
+    default_value: ''
+    user_viewable: true
+    user_editable: true
+    rules:
+      - required
+      - string
+      - 'max:255'
+  -
+    sort: null
+    name: 'Twitch Username'
+    description: 'Dein Twitch Benutzername'
+    env_variable: TWITCH_USER
+    default_value: ''
+    user_viewable: true
+    user_editable: true
+    rules:
+      - required
+      - string
+      - 'max:100'
