@@ -1,7 +1,7 @@
 _comment: 'DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PANEL'
 meta:
   version: PLCN_v3
-  update_url: null
+  update_url: https://raw.githubusercontent.com/Erani0/Twitch-Channel-Points-Miner-v2/refs/heads/master/egg-twitch-channel-points-miner/egg-twitch-channel-points-miner-python-auto--install.yaml
 exported_at: '2026-05-25T18:37:41+02:00'
 name: 'Twitch Channel Points Miner (Python Auto-Install)'
 author: info@eranio.de
