@@ -56,6 +56,8 @@ scripts:
       if os.path.exists(".git"):
           print("Suche nach Updates auf GitHub...")
           try:
+              # Safe directory fuer Git konfigurieren (verhindert 'dubious ownership' in Docker)
+              subprocess.run(["git", "config", "--global", "--add", "safe.directory", "/home/container"], stderr=subprocess.DEVNULL)
               # git pull ausfuehren
               output = subprocess.check_output(["git", "pull"], stderr=subprocess.STDOUT, text=True)
               print(output)
