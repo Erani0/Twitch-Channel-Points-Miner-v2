@@ -10,42 +10,86 @@ var options = {
             enabled: true,
             autoScaleYaxis: true
         },
-        // background: '#2B2D3E',
-        foreColor: '#fff'
+        toolbar: {
+            show: true,
+            tools: {
+                download: true,
+                selection: true,
+                zoom: true,
+                zoomin: true,
+                zoomout: true,
+                pan: true,
+                reset: true
+            }
+        },
+        foreColor: '#7e839e'
+    },
+    grid: {
+        borderColor: '#1a1c2b',
+        strokeDashArray: 3,
+        xaxis: {
+            lines: {
+                show: true
+            }
+        },
+        yaxis: {
+            lines: {
+                show: true
+            }
+        }
     },
     dataLabels: {
         enabled: false
     },
     stroke: {
         curve: 'smooth',
+        width: 3
     },
     markers: {
         size: 0,
+        hover: {
+            size: 6
+        }
     },
     title: {
         text: 'Channel points (dates are displayed in UTC)',
-        align: 'left'
+        align: 'left',
+        style: {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '1.2rem',
+            fontWeight: 700,
+            color: '#00ffaa'
+        }
     },
-    colors: ["#f9826c"],
+    colors: ["#00ffaa"],
     fill: {
         type: 'gradient',
         gradient: {
             shadeIntensity: 1,
             inverseColors: false,
-            opacityFrom: 0.5,
-            opacityTo: 0,
+            opacityFrom: 0.4,
+            opacityTo: 0.02,
             stops: [0, 90, 100]
         },
     },
     yaxis: {
         title: {
-            text: 'Channel points'
+            text: 'Channel points',
+            style: {
+                color: '#7e839e'
+            }
         },
     },
     xaxis: {
         type: 'datetime',
         labels: {
             datetimeUTC: false
+        },
+        axisBorder: {
+            color: '#1a1c2b'
+        },
+        axisTicks: {
+            color: '#1a1c2b'
         }
     },
     tooltip: {
@@ -61,13 +105,13 @@ var options = {
             dataPointIndex,
             w
         }) => {
-            return (`<div class="apexcharts-active">
-                <div class="apexcharts-tooltip-title">${w.globals.seriesNames[seriesIndex]}</div>
+            return (`<div class="apexcharts-active" style="padding: 10px; border-radius: 4px; border: 1px solid #222538;">
+                <div class="apexcharts-tooltip-title" style="font-weight: bold; color: #00ffaa; font-family: Rajdhani, sans-serif; margin-bottom: 5px;">${w.globals.seriesNames[seriesIndex]}</div>
                 <div class="apexcharts-tooltip-series-group apexcharts-active" style="order: 1; display: flex; padding-bottom: 0px !important;">
                     <div class="apexcharts-tooltip-text">
-                        <div class="apexcharts-tooltip-y-group">
-                            <span class="apexcharts-tooltip-text-label"><b>Points</b>: ${series[seriesIndex][dataPointIndex]}</span><br>
-                            <span class="apexcharts-tooltip-text-label"><b>Reason</b>: ${w.globals.seriesZ[seriesIndex][dataPointIndex] ? w.globals.seriesZ[seriesIndex][dataPointIndex] : ''}</span>
+                        <div class="apexcharts-tooltip-y-group" style="font-family: Inter, sans-serif;">
+                            <span class="apexcharts-tooltip-text-label"><b>Points</b>: <span style="color: #fff;">${series[seriesIndex][dataPointIndex]}</span></span><br>
+                            <span class="apexcharts-tooltip-text-label"><b>Reason</b>: <span style="color: #00f0ff;">${w.globals.seriesZ[seriesIndex][dataPointIndex] ? w.globals.seriesZ[seriesIndex][dataPointIndex] : 'Unknown'}</span></span>
                         </div>
                     </div>
                 </div>
@@ -75,7 +119,12 @@ var options = {
         }
     },
     noData: {
-        text: 'Loading...'
+        text: 'Loading...',
+        style: {
+            color: '#7e839e',
+            fontSize: '14px',
+            fontFamily: 'Inter, sans-serif'
+        }
     }
 };
 
@@ -90,6 +139,28 @@ var sortField = 'name';
 var startDate = new Date();
 startDate.setDate(startDate.getDate() - daysAgo);
 var endDate = new Date();
+
+// Mobile Navigation Toggles
+function switchMobileTab(tabName, btn) {
+    $('.mobile-nav-btn').removeClass('is-active');
+    $(btn).addClass('is-active');
+
+    $('#chart-panel').removeClass('mobile-show');
+    $('#streamers-sidebar-panel').removeClass('mobile-show');
+    $('#log-panel').removeClass('mobile-show');
+
+    if (tabName === 'chart') {
+        $('#chart-panel').addClass('mobile-show');
+    } else if (tabName === 'streamers') {
+        $('#streamers-sidebar-panel').addClass('mobile-show');
+    } else if (tabName === 'logs') {
+        $('#log-panel').addClass('mobile-show');
+        // Auto-enable logs checkbox if checked is false
+        if (!$('#log').prop('checked')) {
+            $('#log').prop('checked', true).trigger('change');
+        }
+    }
+}
 
 $(document).ready(function () {
     // Variable to keep track of whether log checkbox is checked
@@ -198,8 +269,6 @@ $(document).ready(function () {
             getLog();
         } else {
             $('#log-box').hide();
-            // Clear log content when checkbox is unchecked
-            // $("#log-content").text('');
         }
     });
 });
@@ -222,13 +291,18 @@ function changeStreamer(streamer, index) {
     currentStreamer = streamer;
 
     // Update the chart title with the current streamer's name
-    options.title.text = `${streamer.replace(".json", "")}'s channel points (dates are displayed in UTC)`;
+    options.title.text = `${streamer.replace(".json", "")}'s channel points`;
     chart.updateOptions(options);
 
     // Save the selected streamer in localStorage
     localStorage.setItem("selectedStreamer", currentStreamer);
 
     getStreamerData(streamer);
+
+    // Dynamic Mobile UX: Automatically switch back to Chart tab when a streamer is selected
+    if ($(window).width() <= 768) {
+        switchMobileTab('chart', document.getElementById('btn-tab-chart'));
+    }
 }
 
 function getStreamerData(streamer) {
@@ -275,28 +349,35 @@ function renderStreamers() {
     var promised = new Promise((resolve, reject) => {
         streamersList.forEach((streamer, index, array) => {
             displayname = streamer.name.replace(".json", "");
-            if (sortField == 'points') displayname = "<font size='-2'>" + streamer['points'] + "</font>&nbsp;" + displayname;
-            else if (sortField == 'last_activity') displayname = "<font size='-2'>" + formatDate(streamer['last_activity']) + "</font>&nbsp;" + displayname;
+            if (sortField == 'points') displayname = "<font size='-2' style='color:#00f0ff; font-family:monospace;'>" + streamer['points'] + "</font>&nbsp;" + displayname;
+            else if (sortField == 'last_activity') displayname = "<font size='-2' style='color:#00f0ff;'>" + formatDate(streamer['last_activity']) + "</font>&nbsp;" + displayname;
             var isActive = currentStreamer === streamer.name;
             if (!isActive && localStorage.getItem("selectedStreamer") === streamer.name) {
                 isActive = true;
                 currentStreamer = streamer.name;
             }
             var activeClass = isActive ? 'is-active' : '';
-            var listItem = `<li id="streamer-${streamer.name}" class="${activeClass}"><a onClick="changeStreamer('${streamer.name}', ${index + 1}); return false;">${displayname}</a></li>`;
+            var listItem = `<li id="streamer-${streamer.name.replace(/\./g, '_')}" class="${activeClass}"><a onClick="changeStreamer('${streamer.name}', ${index + 1}); return false;">${displayname}</a></li>`;
             $("#streamers-list").append(listItem);
             if (isActive) {
                 // Scroll the selected streamer into view
-                document.getElementById(`streamer-${streamer.name}`).scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
+                var elementId = `streamer-${streamer.name.replace(/\./g, '_')}`;
+                var element = document.getElementById(elementId);
+                if (element) {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }
             }
             if (index === array.length - 1) resolve();
         });
     });
     promised.then(() => {
-        changeStreamer(currentStreamer, streamersList.findIndex(streamer => streamer.name === currentStreamer) + 1);
+        var activeIndex = streamersList.findIndex(streamer => streamer.name === currentStreamer);
+        if (activeIndex >= 0) {
+            changeStreamer(currentStreamer, activeIndex + 1);
+        }
     });
 }
 
@@ -336,7 +417,7 @@ function clearAnnotations() {
     chart.clearAnnotations();
 }
 
-// Toggle
+// Toggle bindings
 $('#annotations').click(() => {
     updateAnnotations();
 });
@@ -344,11 +425,16 @@ $('#dark-mode').click(() => {
     toggleDarkMode();
 });
 
-$('.dropdown').click(() => {
+$('.dropdown').click((e) => {
+    e.stopPropagation();
     $('.dropdown').toggleClass('is-active');
 });
 
-// Input date
+$(document).click(() => {
+    $('.dropdown').removeClass('is-active');
+});
+
+// Input date events
 $('#startDate').change(() => {
     startDate = new Date($('#startDate').val());
     getStreamerData(currentStreamer);

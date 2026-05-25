@@ -1,39 +1,144 @@
+/* Custom Dark-Tech HUD Design System */
+:root {
+    --bg-primary: #0a0b10;
+    --bg-secondary: #13141f;
+    --bg-card: #181a29;
+    --accent: #00ffaa; /* Neon Mint */
+    --accent-glow: rgba(0, 255, 170, 0.15);
+    --accent-cyan: #00f0ff; /* Neon Cyan */
+    --accent-cyan-glow: rgba(0, 240, 255, 0.15);
+    --text-primary: #f1f3f9;
+    --text-muted: #7e839e;
+    --border-color: #222538;
+    --border-active: #00ffaa;
+    --font-header: 'Rajdhani', 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
+}
+
 body {
-    background: #343E59;
-    color: #fff;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
 }
+
 a {
-    color: #fff;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
 }
+
 a:hover {
-    color: #f9826c;
+    color: var(--accent);
 }
+
+/* Bulma overrides for premium appearance */
 .box {
-    background-color: #2B2D3E;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
+
+.box:hover {
+    border-color: rgba(0, 255, 170, 0.3);
+    box-shadow: 0 4px 25px rgba(0, 255, 170, 0.05);
+}
+
+/* Tabs list custom HUD style */
+.tabs {
+    border-right: 1px solid var(--border-color);
+}
+
+.tabs ul {
+    border-bottom: none;
+}
+
 .tabs a {
-    border-bottom-color: #dbdbdb;
-    color: #fff;
-    border-bottom-style: none;
+    color: var(--text-muted);
+    border-bottom: none;
+    padding: 0.75rem 1.25rem;
+    font-family: var(--font-header);
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    border-left: 2px solid transparent;
+    transition: all 0.25s ease;
 }
+
 .tabs li.is-active a {
-    border-bottom-color: #f9826c;
-    color: #fff;
-    border-bottom-style: solid;
-}
-.tabs a:hover {
-    border-bottom-color: #dbdbdb;
-    color: #dbdbdb;
-    border-bottom-style: solid;
-}
-.tabs ul{
-    margin-bottom: 5px;
+    color: var(--accent);
+    background-color: rgba(0, 255, 170, 0.04);
+    border-left: 2px solid var(--accent);
     border-bottom-style: none;
 }
-.checkbox:hover{
-    color: #f9826c;
+
+.tabs a:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.02);
+    border-left: 2px solid var(--border-color);
 }
+
+/* Logs console styling */
+#log-box {
+    background-color: #07080c !important;
+    border: 1px solid #1a1c2b;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
 #log-content {
-    color: #fff;
-    background-color: #2B2D3E;
+    color: #a3e635; /* Terminal green */
+    background-color: transparent;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+/* Dropdown and buttons */
+.button {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    font-family: var(--font-header);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+}
+
+.button:hover {
+    background-color: var(--bg-card);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.dropdown-content {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+.dropdown-item {
+    color: var(--text-muted);
+    font-family: var(--font-header);
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--accent);
+}
+
+/* Inputs styling */
+.input {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    transition: all 0.2s ease;
+}
+
+.input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.125em var(--accent-glow);
 }

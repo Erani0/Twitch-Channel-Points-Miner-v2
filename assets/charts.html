@@ -5,40 +5,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Eranios Twitch Miner</title>
-    <link rel="icon" type="image/png" sizes="32x32"
-        href="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png">
-    <link rel="icon" type="image/png" sizes="16x16"
-        href="https://static.twitchcdn.net/assets/favicon-16-52e571ffea063af7a7f4.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://static.twitchcdn.net/assets/favicon-16-52e571ffea063af7a7f4.png">
 
+    <!-- CSS & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.1/css/bulma.css" rel="stylesheet" />
+    <link href="{{url_for('static', filename='style.css')}}" rel="stylesheet" />
+    <link href="{{url_for('static', filename='dark-theme.css')}}" rel="stylesheet" />
+
+    <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.42.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.1/css/bulma.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"
-        integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-    <link href="{{url_for('static', filename='dark-theme.css')}}" rel="stylesheet" />
-    <link href="{{url_for('static', filename='style.css')}}" rel="stylesheet" />
-
 </head>
 
-<body style="height: 100vh;">
-    <div class="container has-text-centered" style="height: 100vh;">
-        <div class="columns" id="header">
-            <div class="column has-text-right">
-                <a href="https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2" target="_blank"><img
-                        style="margin-top: -20px;" width="600px" src="{{url_for('static', filename='banner.png')}}"
-                        alt="banner"></a>
+<body>
+    <div class="container">
+        
+        <!-- Header HUD -->
+        <header class="columns is-vcentered" id="header">
+            <div class="column has-text-centered-mobile">
+                <a href="#" class="header-banner">
+                    <img width="380" src="{{url_for('static', filename='banner.png')}}" alt="banner">
+                </a>
             </div>
-        </div>
+        </header>
 
-        <div class="columns">
-            <div class="column is-narrow has-text-center">
+        <!-- Control Toolbar HUD -->
+        <section class="hud-toolbar">
+            <div class="toolbar-left">
+                <!-- Sorting Dropdown -->
                 <div class="dropdown">
                     <div class="dropdown-trigger">
                         <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
-                            <span id="sorting-by"></span>
+                            <span id="sorting-by">Sort By</span>
                             <span class="icon is-small">
                                 <i class="fas fa-angle-down" aria-hidden="true"></i>
                             </span>
@@ -46,94 +49,114 @@
                     </div>
                     <div class="dropdown-menu" id="dropdown-menu" role="menu">
                         <div class="dropdown-content">
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Name ascending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Name descending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Points ascending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Points descending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Last activity ascending
-                            </a>
-                            <a href="#" class="dropdown-item" onClick="changeSortBy(this)">
-                                Last activity descending
-                            </a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Name ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Name descending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Points ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Points descending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Last activity ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Last activity descending</a>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="column is-2 has-text-left">
-                <input class="input" type="date" id="startDate">
+
+            <!-- Date Range Controls -->
+            <div class="field is-horizontal" style="margin-bottom: 0;">
+                <div class="field-body">
+                    <div class="field">
+                        <p class="control">
+                            <input class="input is-small" type="date" id="startDate">
+                        </p>
+                    </div>
+                    <div class="field">
+                        <p class="control">
+                            <input class="input is-small" type="date" id="endDate">
+                        </p>
+                    </div>
+                </div>
             </div>
-            <div class="column is-2 has-text-left">
-                <input class="input" type="date" id="endDate">
-            </div>
-            <div class="column has-text-right" style="margin: auto">
-                <label class="checkbox checkbox-label">
-                    Log
+
+            <!-- Switch Toggles -->
+            <div class="toolbar-right">
+                <label class="hud-checkbox">
                     <input type="checkbox" id="log">
+                    <span>Logs</span>
                 </label>
-                <label class="checkbox checkbox-label">
-                    Annotations
-                    <input type="checkbox" checked="true" id="annotations">
+                <label class="hud-checkbox">
+                    <input type="checkbox" checked id="annotations">
+                    <span>Annotations</span>
                 </label>
-                <label class="checkbox checkbox-label">
-                    Dark mode
-                    <input type="checkbox" checked="true" id="dark-mode">
+                <label class="hud-checkbox">
+                    <input type="checkbox" checked id="dark-mode">
+                    <span>Dark theme</span>
                 </label>
-                <label class="checkbox checkbox-label">
-                    Header
-                    <input type="checkbox" checked="true" id="toggle-header">
+                <label class="hud-checkbox">
+                    <input type="checkbox" checked id="toggle-header">
+                    <span>Header</span>
                 </label>
             </div>
-        </div>
-        <div class="columns">
-            <div class="column is-narrow">
+        </section>
+
+        <!-- Main HUD Layout Grid -->
+        <div class="hud-layout">
+            <!-- Left Panel: Streamers List -->
+            <aside class="streamers-sidebar" id="streamers-sidebar-panel">
                 <div class="tabs">
                     <ul id="streamers-list"></ul>
                 </div>
-            </div>
-            <div class="column">
+            </aside>
+
+            <!-- Right Panel: Main Points Chart -->
+            <main class="chart-container mobile-show" id="chart-panel">
                 <div class="box" id="chart" style="padding: 0.30rem;"></div>
-            </div>
+            </main>
         </div>
-        <div class="columns">
-            <div class="column is-12">
-                <div class="box" id="log-box" style="padding: 0.30rem; display: none;">
-                    <pre
-                        id="log-content">In your run.py file set save=True in logger_settings to save logs to a file.&#10;&#13;</pre>
-                </div>
+
+        <!-- Terminal Live Log Output Panel -->
+        <section class="log-section" id="log-panel">
+            <div class="box" id="log-box" style="display: none;">
+                <pre id="log-content">In your run.py file set save=True in logger_settings to save logs to a file.&#10;&#13;</pre>
             </div>
-        </div>
+        </section>
+
+        <!-- Sticky Bottom Tab bar for Mobile Handys -->
+        <nav class="mobile-nav-tabs">
+            <button class="mobile-nav-btn is-active" id="btn-tab-chart" onclick="switchMobileTab('chart', this)">
+                <i class="fas fa-chart-area"></i>
+                <span>Chart</span>
+            </button>
+            <button class="mobile-nav-btn" id="btn-tab-streamers" onclick="switchMobileTab('streamers', this)">
+                <i class="fas fa-user-friends"></i>
+                <span>Streamers</span>
+            </button>
+            <button class="mobile-nav-btn" id="btn-tab-logs" onclick="switchMobileTab('logs', this)">
+                <i class="fas fa-terminal"></i>
+                <span>Logs</span>
+            </button>
+        </nav>
     </div>
-</body>
 
-<script type="text/javascript">
-    // n.b. Seems that we are unable to call Flask variable in JS code imported from JS file.
-    // That's why "link[href='{{url_for('static', filename='dark-theme.css')}}']", {{ refresh }}, {{ daysAgo }} are here.
-
-    function toggleDarkMode() {
-        var darkMode = $('#dark-mode').prop("checked")
-        $("link[href='{{url_for('static', filename='dark-theme.css')}}']").prop("disabled", !darkMode);
-        chart.updateOptions({
-            colors: darkMode === true ? ["#f9826c"] : ['#008ffb'],
-            chart: {
-                foreColor: darkMode === true ? "#fff" : '#373d3f'
-            },
-            tooltip: {
-                theme: darkMode === true ? "dark" : "light"
+    <!-- Initialization and dynamic bindings -->
+    <script type="text/javascript">
+        function toggleDarkMode() {
+            var darkMode = $('#dark-mode').prop("checked");
+            $("link[href='{{url_for('static', filename='dark-theme.css')}}']").prop("disabled", !darkMode);
+            if (window.chart) {
+                chart.updateOptions({
+                    colors: darkMode === true ? ["#00ffaa"] : ['#008ffb'],
+                    chart: {
+                        foreColor: darkMode === true ? "#f1f3f9" : '#373d3f'
+                    },
+                    tooltip: {
+                        theme: darkMode === true ? "dark" : "light"
+                    }
+                });
             }
-        })
-    }
-    var refresh = parseInt("{{ refresh }}");
-    var daysAgo = parseInt("{{ daysAgo }}");
-</script>
-<script type="text/javascript" src="{{url_for('static', filename='script.js')}}"></script>
+        }
+        var refresh = parseInt("{{ refresh }}");
+        var daysAgo = parseInt("{{ daysAgo }}");
+    </script>
+    <script type="text/javascript" src="{{url_for('static', filename='script.js')}}"></script>
+</body>
 
 </html>

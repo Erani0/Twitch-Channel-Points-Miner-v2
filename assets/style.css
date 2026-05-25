@@ -1,62 +1,272 @@
+/* Premium Gamer HUD base and layouts */
 html,
 body {
     overflow-x: hidden;
     overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    font-size: 14px;
 }
 
-a {
-    text-decoration: none;
+.container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 1.5rem;
 }
 
-.tabs ul {
-    -webkit-flex-direction: column;
-    flex-direction: column;
-    flex-grow: 0px;
-}
-
-.tabs {
-    max-height: 500px;
-    overflow-y: auto;
-    direction: rtl;
-}
-
-.checkbox-label {
-    font-size: 20px;
-    padding-left: 15px;
-    font-weight: bold
-}
-
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-    width: 20px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background-color: transparent;
+    background: var(--bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
-    background-color: #d6dee1;
-}
-
-::-webkit-scrollbar-thumb {
-    background-color: #d6dee1;
-    border-radius: 20px;
-}
-
-::-webkit-scrollbar-thumb {
-    background-color: #d6dee1;
-    border-radius: 20px;
-    border: 6px solid transparent;
-    background-clip: content-box;
+    background: var(--border-color);
+    border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background-color: #a8bbbf;
+    background: var(--accent);
+}
+
+/* Header & Title HUD styling */
+#header {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.header-banner img {
+    max-height: 50px;
+    object-fit: contain;
+}
+
+/* Toolbar Control area */
+.hud-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.hud-toolbar .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.hud-toolbar .toolbar-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem;
+    margin-left: auto;
+}
+
+/* Switch & Checkbox inputs custom styles */
+.hud-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-header);
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.hud-checkbox:hover {
+    color: var(--accent);
+}
+
+.hud-checkbox input {
+    position: relative;
+    width: 32px;
+    height: 16px;
+    appearance: none;
+    background: var(--bg-primary);
+    outline: none;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.hud-checkbox input:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.hud-checkbox input::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.hud-checkbox input:checked::before {
+    left: 18px;
+    background: var(--bg-primary);
+}
+
+/* Responsive Grid and layouts */
+.hud-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    min-height: 520px;
+}
+
+.streamers-sidebar {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    max-height: 520px;
+    overflow-y: auto;
+}
+
+.streamers-sidebar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Mobile Tabs navigation bar */
+.mobile-nav-tabs {
+    display: none;
+}
+
+/* Terminal Log styling */
+#log-box {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border-radius: 4px;
 }
 
 #log-content {
-    text-align: left;
+    max-height: 350px;
+    overflow-y: auto;
     white-space: pre-wrap;
-    max-height: 500px;
-    padding: 0;
+    word-break: break-all;
+}
+
+/* ApexCharts customization */
+.apexcharts-canvas {
+    font-family: var(--font-body) !important;
+}
+
+.apexcharts-tooltip {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+/* Mobile Responsiveness Rules */
+@media screen and (max-width: 768px) {
+    .container {
+        padding: 0.75rem;
+        padding-bottom: 80px; /* Space for mobile nav bar */
+    }
+
+    #header {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding-bottom: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .header-banner img {
+        max-height: 38px;
+    }
+
+    .hud-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    .hud-toolbar .toolbar-right {
+        margin-left: 0;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .hud-layout {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    /* Bottom sticky tab bar for mobile view toggles */
+    .mobile-nav-tabs {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: rgba(19, 20, 31, 0.9);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border-color);
+        z-index: 1000;
+        justify-content: space-around;
+        align-items: center;
+    }
+
+    .mobile-nav-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: var(--text-muted);
+        font-family: var(--font-header);
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        padding: 0.5rem;
+        gap: 2px;
+        transition: color 0.2s ease;
+    }
+
+    .mobile-nav-btn.is-active {
+        color: var(--accent);
+    }
+
+    .mobile-nav-btn i {
+        font-size: 1.2rem;
+    }
+
+    /* Switch sections based on active mobile tab */
+    .streamers-sidebar,
+    .chart-container,
+    .log-section {
+        display: none;
+    }
+
+    .mobile-show {
+        display: block !important;
+    }
 }
