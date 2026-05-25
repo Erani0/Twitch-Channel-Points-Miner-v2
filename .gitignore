@@ -156,3 +156,14 @@ analytics/*
 keep_replit_alive.py
 .replit
 replit.nix
+
+# AI Agent & IDE development files
+.agent/
+.ai/
+.claude/
+.superpowers/
+.vscode/
+.ai-agent-checkpoints/
+*.js
+*.pyc
+__pycache__/
