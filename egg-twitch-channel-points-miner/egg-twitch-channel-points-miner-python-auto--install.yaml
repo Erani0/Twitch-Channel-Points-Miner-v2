@@ -45,7 +45,7 @@ scripts:
       rm -rf .tmp_miner
 
       echo "Entferne unnoetige Entwicklungsdateien..."
-      rm -rf .github tests setup.py pyproject.toml uv.lock assets egg-twitch-channel-points-miner CODE_OF_CONDUCT.md CONTRIBUTING.md FAQ.md FEEDBACK_AUDIT.md FORK_FEATURES.md LICENSE README.md .gitattributes
+      rm -rf .github tests setup.py pyproject.toml uv.lock egg-twitch-channel-points-miner CODE_OF_CONDUCT.md CONTRIBUTING.md FAQ.md FEEDBACK_AUDIT.md FORK_FEATURES.md LICENSE README.md .gitattributes
 
       echo "Erstelle deine konfigurierte run.py..."
       cat << 'EOF' > /mnt/server/run.py
@@ -73,7 +73,7 @@ scripts:
               print(f"Hinweis: Update-Pruefung fehlgeschlagen: {e}")
 
       # Unnoetige Entwicklungs-Ordner und -Dateien bei jedem Start loeschen
-      for item in [".agent", ".ai", ".claude", ".github", ".vscode", ".superpowers", "tests", ".ai-agent-checkpoints", "setup.py", "pyproject.toml", "uv.lock", "assets", "egg-twitch-channel-points-miner", "Dockerfile", "CLAUDE.md", "CLONE.md", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md", "DELETE_PYCACHE.bat", "FAQ.md", "FEEDBACK_AUDIT.md", "FORK_FEATURES.md", "LICENSE", "README.md", "TRAFFIC.md", "example.py", "pickle_view.py", ".pre-commit-config.yaml", ".gitattributes"]:
+      for item in [".agent", ".ai", ".claude", ".github", ".vscode", ".superpowers", "tests", ".ai-agent-checkpoints", "setup.py", "pyproject.toml", "uv.lock", "egg-twitch-channel-points-miner", "Dockerfile", "CLAUDE.md", "CLONE.md", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md", "DELETE_PYCACHE.bat", "FAQ.md", "FEEDBACK_AUDIT.md", "FORK_FEATURES.md", "LICENSE", "README.md", "TRAFFIC.md", "example.py", "pickle_view.py", ".pre-commit-config.yaml", ".gitattributes"]:
           if os.path.exists(item):
               try:
                   if os.path.isdir(item):
