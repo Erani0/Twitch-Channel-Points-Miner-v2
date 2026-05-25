@@ -3,9 +3,9 @@ meta:
   version: PLCN_v3
   update_url: null
 exported_at: '2026-05-25T18:37:41+02:00'
-name: 'Twitch Channel Points Miner (Forked & Auto-Installed)'
+name: 'Twitch Channel Points Miner (Python Auto-Install)'
 author: info@eranio.de
-uuid: 2b4c735d-6c1f-4e08-99e5-9c8846c4bf92
+uuid: 10a9d6f6-3cfe-46b5-a28e-aeb15185810b
 description: 'Führt die Installation direkt in der run.py aus. Einfacher Startup Befehl.'
 icon: null
 tags: {  }
