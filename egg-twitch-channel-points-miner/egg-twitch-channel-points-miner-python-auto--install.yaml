@@ -3,9 +3,9 @@ meta:
   version: PLCN_v3
   update_url: null
 exported_at: '2026-05-25T18:37:41+02:00'
-name: 'Twitch Channel Points Miner (Python Auto-Install)'
-author: jesse@pelican-panel.local
-uuid: 10a9d6f6-3cfe-46b5-a28e-aeb15185810b
+name: 'Twitch Channel Points Miner (Forked & Auto-Installed)'
+author: info@eranio.de
+uuid: 2b4c735d-6c1f-4e08-99e5-9c8846c4bf92
 description: 'Führt die Installation direkt in der run.py aus. Einfacher Startup Befehl.'
 icon: null
 tags: {  }
@@ -37,7 +37,7 @@ scripts:
       rm -rf .tmp_miner
 
       echo "Lade Twitch-Channel-Points-Miner-v2 von GitHub herunter..."
-      git clone https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2.git .tmp_miner
+      git clone https://github.com/Erani0/Twitch-Channel-Points-Miner-v2.git .tmp_miner
 
       echo "Verschiebe Dateien..."
       cp -r .tmp_miner/* ./
@@ -106,6 +106,10 @@ scripts:
           enable_analytics=True,
           disable_ssl_cert_verification=False,
           disable_at_in_nickname=True,
+          watch_only_drops=False,
+          stop_watch_when_drops_completed=False,
+          watch_streak_max_parallel=2,
+          use_hermes=True,
           logger_settings=LoggerSettings(
               save=True,
               console_level=logging.INFO,

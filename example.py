@@ -197,7 +197,6 @@ twitch_miner = TwitchChannelPointsMiner(
     logger_settings=LOGGER_SETTINGS,
     streamer_settings=DEFAULT_STREAMER_SETTINGS,
 )
-)
 
 # Useful files written under logs/:
 # - report_YYYY-MM-DD_<account>.xlsx

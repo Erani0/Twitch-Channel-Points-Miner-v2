@@ -289,10 +289,11 @@ class Twitch(object):
         if (
             streamer.stream.game_name() is not None
             and streamer.stream.game_id() is not None
-            and streamer.settings.claim_drops is True
         ):
             event_properties["game"] = streamer.stream.game_name()
             event_properties["game_id"] = streamer.stream.game_id()
+
+        if streamer.settings.claim_drops is True:
             # Update also the campaigns_ids so we are sure to tracking the correct campaign
             streamer.stream.campaigns_ids = (
                 self.__get_campaign_ids_from_streamer(streamer)
@@ -2404,6 +2405,8 @@ class Twitch(object):
         campaigns = (
             channel.get("viewerDropCampaigns") if isinstance(channel, dict) else None
         )
+        if campaigns is None and isinstance(channel, dict):
+            campaigns = channel.get("activeDropCampaigns")
         if not campaigns:
             return []
         ids = []
