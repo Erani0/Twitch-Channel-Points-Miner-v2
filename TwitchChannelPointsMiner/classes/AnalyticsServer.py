@@ -193,16 +193,15 @@ def streamers():
 
 def download_assets(assets_folder, required_files):
     Path(assets_folder).mkdir(parents=True, exist_ok=True)
-    logger.info(f"Downloading assets to {assets_folder}")
+    logger.info(f"Downloading/Updating assets to {assets_folder}...")
 
     for f in required_files:
-        if os.path.isfile(os.path.join(assets_folder, f)) is False:
-            if (
-                download_file(os.path.join("assets", f),
-                              os.path.join(assets_folder, f))
-                is True
-            ):
-                logger.info(f"Downloaded {f}")
+        if (
+            download_file(os.path.join("assets", f),
+                          os.path.join(assets_folder, f))
+            is True
+        ):
+            logger.info(f"Downloaded/Updated {f}")
 
 
 def check_assets():
@@ -214,15 +213,8 @@ def check_assets():
         "dark-theme.css",
     ]
     assets_folder = os.path.join(Path().absolute(), "assets")
-    if os.path.isdir(assets_folder) is False:
-        logger.info(f"Assets folder not found at {assets_folder}")
-        download_assets(assets_folder, required_files)
-    else:
-        for f in required_files:
-            if os.path.isfile(os.path.join(assets_folder, f)) is False:
-                logger.info(f"Missing file {f} in {assets_folder}")
-                download_assets(assets_folder, required_files)
-                break
+    # Always download/update assets to ensure the latest design is loaded
+    download_assets(assets_folder, required_files)
 
 last_sent_log_index = 0
 
