@@ -97,41 +97,30 @@ scripts:
                   print(f"Warnung: 'git fetch' fehlgeschlagen: {fetch.stderr.strip()}")
               remote_hash = subprocess.check_output(["git", "rev-parse", "origin/master"], text=True).strip()
 
-              # Zusaetzliche, von Git unabhaengige Versionspruefung ueber die __init__.py
-              # auf GitHub - erzwingt ein Update, selbst wenn der Hash-Vergleich oben aus
-              # irgendeinem Grund (z.B. fehlgeschlagener Fetch) faelschlich "aktuell" sagt.
+              # Zusaetzliche, von Git unabhaengige Versionspruefung ueber die __init__.py auf
+              # GitHub - REIN INFORMATIV. raw.githubusercontent.com cached Antworten teils
+              # einige Minuten nach einem Push, daher darf das NIE alleine einen Reset/Reclone
+              # ausloesen (hat vorher zu einer Neustart-Endlosschleife durch veraltete CDN-
+              # Antworten gefuehrt) - der Git-Hash-Vergleich unten bleibt die einzige Quelle
+              # der Wahrheit dafuer, ob wirklich ein Update noetig ist.
               local_ver = _local_version()
               remote_ver = _remote_version()
-              version_mismatch = local_ver is not None and remote_ver is not None and local_ver != remote_ver
-              if version_mismatch:
-                  print(f"Versionsunterschied erkannt: lokal {local_ver}, GitHub {remote_ver}.")
+              if (
+                  local_ver is not None
+                  and remote_ver is not None
+                  and local_ver != remote_ver
+                  and local_hash == remote_hash
+              ):
+                  print(
+                      f"Hinweis: Versionsangabe weicht ab (lokal {local_ver}, GitHub-Metadaten "
+                      f"{remote_ver}), aber Git meldet denselben Commit-Stand - vermutlich nur "
+                      "eine kurzzeitig veraltete CDN-Antwort, kein Handlungsbedarf."
+                  )
 
-              if local_hash != remote_hash or version_mismatch:
+              if local_hash != remote_hash:
                   print(f"Updates gefunden! Aktualisiere von {local_hash[:7]} auf {remote_hash[:7]}...")
                   # Hard reset loescht keine ignorierten Dateien (cookies, logs, analytics)
                   subprocess.run(["git", "reset", "--hard", "origin/master"], check=True)
-
-                  # Falls die Version danach immer noch nicht passt, ist der lokale Git-Stand
-                  # kaputt (z.B. origin/master zeigt selbst noch auf einen alten Commit wegen
-                  # eines fehlgeschlagenen Fetches) - dann frisch neu klonen statt raten.
-                  if version_mismatch and _local_version() != remote_ver:
-                      print("Update ueber Git hat die Version nicht angeglichen, klone frisch neu...")
-                      import shutil
-                      tmp_dir = ".tmp_miner_update"
-                      shutil.rmtree(tmp_dir, ignore_errors=True)
-                      subprocess.run(["git", "clone", "https://github.com/Erani0/Twitch-Channel-Points-Miner-v2.git", tmp_dir], check=True)
-                      for entry in os.listdir(tmp_dir):
-                          if entry == ".git":
-                              continue
-                          src = os.path.join(tmp_dir, entry)
-                          dst = os.path.join(".", entry)
-                          if os.path.isdir(src):
-                              shutil.rmtree(dst, ignore_errors=True)
-                              shutil.copytree(src, dst)
-                          else:
-                              shutil.copy2(src, dst)
-                      shutil.rmtree(tmp_dir, ignore_errors=True)
-
                   # Loesche Marker-Datei, damit pip install bei neuen Anforderungen laeuft
                   if os.path.exists(".setup_done"):
                       os.remove(".setup_done")
