@@ -100,8 +100,13 @@ class GQLOperations:
         "operationName": "ChannelPointsContext",
         "extensions": {
             "persistedQuery": {
+                # Do not "update" this to upstream's value (7fe050e3...) again: that
+                # one targets installs still on the original 1530a003... hash, while
+                # this fork sourced its own newer one back in May that has been
+                # working in practice. Swapping to upstream's coincided with channel
+                # points failing to load.
                 "version": 1,
-                "sha256Hash": "7fe050e3761eb2cf258d70ee1a21cbd76fa8cf3d7e7b12fc437e7029d446b5e3",
+                "sha256Hash": "374314de591e69925fce3ddc2bcf085796f56ebb8cad67a0daa3165c03adc345",
             }
         },
     }
