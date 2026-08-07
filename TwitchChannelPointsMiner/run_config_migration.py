@@ -15,11 +15,13 @@ Python afterwards - any failure leaves the original file untouched.
 
 import ast
 import inspect
-import logging
 import os
 import time
 
-logger = logging.getLogger(__name__)
+# Deliberately uses print() instead of the logging module: this runs from run.py
+# before TwitchChannelPointsMiner has configured any logging handlers, so
+# logger.info()/logger.warning() calls here would be silently swallowed.
+_PREFIX = "run_config_migration:"
 
 
 def discover_new_constructor_kwargs(cls) -> dict[str, str]:
@@ -74,37 +76,29 @@ def ensure_constructor_kwargs(
         with open(file_path, "r", encoding="utf-8") as f:
             original_source = f.read()
     except OSError as exc:
-        logger.warning("run_config_migration: could not read %s: %s", file_path, exc)
+        print(f"{_PREFIX} could not read {file_path}: {exc}")
         return False
 
     try:
         tree = ast.parse(original_source)
     except SyntaxError as exc:
-        logger.warning(
-            "run_config_migration: %s is not valid Python, leaving it untouched: %s",
-            file_path,
-            exc,
+        print(
+            f"{_PREFIX} {file_path} is not valid Python, leaving it untouched: {exc}"
         )
         return False
 
     call_node = _find_call(tree, class_name)
     if call_node is None:
-        logger.debug(
-            "run_config_migration: no %s(...) call found in %s, nothing to migrate",
-            class_name,
-            file_path,
-        )
+        # Nothing to migrate - not worth printing, this is the common case.
         return False
 
     if call_node.end_lineno is None or call_node.end_lineno == call_node.lineno:
         # Single-line call - inserting a new line here would land outside the
         # parentheses. Too risky to patch automatically; ask the user instead.
-        logger.warning(
-            "run_config_migration: %s(...) call in %s is on a single line, "
-            "please add the following manually: %s",
-            class_name,
-            file_path,
-            ", ".join(f"{name}={default}" for name, default in expected_kwargs.items()),
+        pending = ", ".join(f"{name}={default}" for name, default in expected_kwargs.items())
+        print(
+            f"{_PREFIX} {class_name}(...) call in {file_path} is on a single line, "
+            f"please add the following manually: {pending}"
         )
         return False
 
@@ -128,11 +122,7 @@ def ensure_constructor_kwargs(
     try:
         ast.parse(patched_source)
     except SyntaxError as exc:
-        logger.warning(
-            "run_config_migration: patch would break %s, leaving it untouched: %s",
-            file_path,
-            exc,
-        )
+        print(f"{_PREFIX} patch would break {file_path}, leaving it untouched: {exc}")
         return False
 
     timestamp = int(time.time())
@@ -145,15 +135,11 @@ def ensure_constructor_kwargs(
             f.write(patched_source)
         os.replace(tmp_path, file_path)
     except OSError as exc:
-        logger.warning("run_config_migration: failed to write %s: %s", file_path, exc)
+        print(f"{_PREFIX} failed to write {file_path}: {exc}")
         return False
 
-    logger.info(
-        "run_config_migration: added new setting(s) %s to %s (backup: %s)",
-        ", ".join(missing.keys()),
-        file_path,
-        backup_path,
-    )
+    added = ", ".join(missing.keys())
+    print(f"{_PREFIX} added new setting(s) {added} to {file_path} (backup: {backup_path})")
     return True
 
 
