@@ -319,9 +319,8 @@ function changeStreamer(streamer, index) {
     $("li").eq(index - 1).addClass('is-active');
     currentStreamer = streamer;
 
-    // Update the chart title with the current streamer's name
-    options.title.text = `${streamer.replace(".json", "")}'s channel points`;
-    chart.updateOptions(options);
+    // Chart title is set in getStreamerData() - it depends on which series
+    // (points vs streak) is currently being shown, not just the streamer name.
 
     // Save the selected streamer in localStorage
     localStorage.setItem("selectedStreamer", currentStreamer);
@@ -365,7 +364,13 @@ function getStreamerData(streamer) {
                 : [{
                     title: { text: 'Channel points', style: { color: '#7e839e' } }
                 }];
+            var displayName = streamer.replace(".json", "");
             chart.updateOptions({
+                title: {
+                    text: isStreakView
+                        ? `${displayName}'s watch streak`
+                        : `${displayName}'s channel points`
+                },
                 yaxis: newYaxis,
                 colors: isStreakView ? ['#ff9d45'] : ['#00ffaa']
             });

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import random
@@ -655,51 +654,6 @@ class TwitchChannelPointsMiner:
             return 0
         return max(0, int(days))
 
-    def _reset_corrupted_streak_backfill(self) -> None:
-        """TEMPORARY MIGRATION - introduced in 2.3.9, remove this method and its
-        call site again in a later release once installs have had a chance to
-        pick it up. One-time cleanup, run once per install: an earlier release
-        backfilled "streak" history by counting WATCH_STREAK claims backwards,
-        assuming exactly one day of streak per claim. That assumption turned out
-        to be wrong in practice (inflated values), so this wipes any "streak"
-        entries so real, go-forward tracking (Streamer.persistent_streak_days,
-        called from _build_streamer_export_rows) starts clean. Guarded by a
-        marker file so it only ever runs once, not on every future startup.
-        """
-        marker_path = os.path.join(
-            "logs", f"streak_backfill_reset.{self._safe_account_name()}.done"
-        )
-        if os.path.isfile(marker_path):
-            return
-
-        if Settings.enable_analytics is True:
-            for streamer in self.streamers:
-                path = os.path.join(
-                    Settings.analytics_path, f"{streamer.username}.json"
-                )
-                if not os.path.isfile(path):
-                    continue
-                try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                except Exception:
-                    continue
-                if not isinstance(data, dict) or "streak" not in data:
-                    continue
-                del data["streak"]
-                try:
-                    with open(path, "w", encoding="utf-8") as f:
-                        json.dump(data, f, indent=4)
-                except Exception:
-                    continue
-
-        try:
-            Path("logs").mkdir(parents=True, exist_ok=True)
-            with open(marker_path, "w", encoding="utf-8") as f:
-                f.write("done")
-        except Exception:
-            pass
-
     def _build_streamer_export_rows(self) -> list[dict[str, str]]:
         sorted_streamers = sorted(
             self.streamers,
@@ -1155,7 +1109,6 @@ class TwitchChannelPointsMiner:
                 self.streamer_follow_dates = {}
                 logger.warning("Failed to load follower dates for export: %s", exc)
 
-            self._reset_corrupted_streak_backfill()  # TEMPORARY - see docstring, remove in a later release
             self._export_streamers_snapshot()
             self.streamers_export_thread = threading.Thread(
                 target=self._streamers_export_loop
