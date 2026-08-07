@@ -100,6 +100,8 @@ class GQLOperations:
         "operationName": "ChannelPointsContext",
         "extensions": {
             "persistedQuery": {
+                # Previous hash this fork used (kept here for manual rollback if this
+                # one ever stops working): 374314de591e69925fce3ddc2bcf085796f56ebb8cad67a0daa3165c03adc345
                 "version": 1,
                 "sha256Hash": "7fe050e3761eb2cf258d70ee1a21cbd76fa8cf3d7e7b12fc437e7029d446b5e3",
             }
