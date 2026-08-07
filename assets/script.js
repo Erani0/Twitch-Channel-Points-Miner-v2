@@ -78,14 +78,15 @@ var options = {
     },
     // Overridden per-view in getStreamerData() - only one series (points or
     // streak) is ever shown at a time, so only one y-axis is ever needed.
-    yaxis: {
+    // Kept as an array so it stays the same shape as the updateOptions payload.
+    yaxis: [{
         title: {
             text: 'Channel points',
             style: {
                 color: '#7e839e'
             }
         },
-    },
+    }],
     xaxis: {
         type: 'datetime',
         labels: {
@@ -105,19 +106,21 @@ var options = {
             show: true,
             format: 'HH:mm:ss dd MMM',
         },
+        // Anything thrown in here means ApexCharts renders no tooltip at all,
+        // so every lookup is guarded rather than assumed to be present.
         custom: ({
             series,
             seriesIndex,
             dataPointIndex,
             w
         }) => {
-            var seriesName = w.globals.seriesNames[seriesIndex];
-            var value = series[seriesIndex][dataPointIndex];
+            var seriesName = (w.globals.seriesNames || [])[seriesIndex] || '';
+            var value = (series[seriesIndex] || [])[dataPointIndex];
             var isStreak = seriesName === 'Watch Streak';
             var label = isStreak ? 'Streak day' : 'Points';
             var extraRow = '';
             if (!isStreak) {
-                var reason = w.globals.seriesZ[seriesIndex] ? w.globals.seriesZ[seriesIndex][dataPointIndex] : null;
+                var reason = ((w.globals.seriesZ || [])[seriesIndex] || [])[dataPointIndex];
                 extraRow = `<br><span class="apexcharts-tooltip-text-label"><b>Reason</b>: <span style="color: #00f0ff;">${reason ? reason : 'Unknown'}</span></span>`;
             }
             return (`<div class="apexcharts-active" style="padding: 10px; border-radius: 4px; border: 1px solid #222538;">
@@ -340,41 +343,34 @@ function getStreamerData(streamer) {
             endDate: formatDate(endDate)
         }, function (response) {
             // Only one series (and matching y-axis) shown at a time - showing points
-            // and streak together made both harder to read (wildly different scales)
-            // and broke hover, and a single series with a stale two-axis config left
-            // over from the previous view showed the wrong axis title/scale.
+            // and streak together made both harder to read (wildly different scales).
+            // Everything goes through a SINGLE updateOptions call including series:
+            // calling updateOptions and updateSeries back to back kicks off two
+            // overlapping re-renders, which left the chart without working hover.
+            // No per-series `type` either - that silently switches ApexCharts into
+            // mixed/combo mode, which changes how tooltips are handled.
             var isStreakView = sortField === 'watch_streak_days';
-            var newSeries = isStreakView
-                ? [{
-                    name: 'Watch Streak',
-                    type: 'line',
-                    data: response["streak"] || []
-                }]
-                : [{
-                    name: streamer.replace(".json", ""),
-                    type: 'area',
-                    data: response["series"]
-                }];
-            var newYaxis = isStreakView
-                ? [{
-                    min: 0,
-                    forceNiceScale: true,
-                    title: { text: 'Watch streak (days)', style: { color: '#7e839e' } }
-                }]
-                : [{
-                    title: { text: 'Channel points', style: { color: '#7e839e' } }
-                }];
             var displayName = streamer.replace(".json", "");
             chart.updateOptions({
+                series: isStreakView
+                    ? [{ name: 'Watch Streak', data: response["streak"] || [] }]
+                    : [{ name: displayName, data: response["series"] || [] }],
                 title: {
                     text: isStreakView
                         ? `${displayName}'s watch streak`
                         : `${displayName}'s channel points`
                 },
-                yaxis: newYaxis,
+                yaxis: isStreakView
+                    ? [{
+                        min: 0,
+                        forceNiceScale: true,
+                        title: { text: 'Watch streak (days)', style: { color: '#7e839e' } }
+                    }]
+                    : [{
+                        title: { text: 'Channel points', style: { color: '#7e839e' } }
+                    }],
                 colors: isStreakView ? ['#ff9d45'] : ['#00ffaa']
             });
-            chart.updateSeries(newSeries, true)
             clearAnnotations();
             annotations = response["annotations"];
             updateAnnotations();
