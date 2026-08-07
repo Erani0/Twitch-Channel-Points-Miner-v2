@@ -64,7 +64,7 @@ var options = {
             color: '#ffffff'
         }
     },
-    colors: ["#00ffaa"],
+    colors: ["#00ffaa", "#ff9d45"],
     fill: {
         type: 'gradient',
         gradient: {
@@ -75,14 +75,27 @@ var options = {
             stops: [0, 90, 100]
         },
     },
-    yaxis: {
-        title: {
-            text: 'Channel points',
-            style: {
-                color: '#7e839e'
-            }
+    yaxis: [
+        {
+            title: {
+                text: 'Channel points',
+                style: {
+                    color: '#7e839e'
+                }
+            },
         },
-    },
+        {
+            opposite: true,
+            min: 0,
+            forceNiceScale: true,
+            title: {
+                text: 'Watch streak (days)',
+                style: {
+                    color: '#7e839e'
+                }
+            },
+        }
+    ],
     xaxis: {
         type: 'datetime',
         labels: {
@@ -108,13 +121,21 @@ var options = {
             dataPointIndex,
             w
         }) => {
+            var seriesName = w.globals.seriesNames[seriesIndex];
+            var value = series[seriesIndex][dataPointIndex];
+            var isStreak = seriesName === 'Watch Streak';
+            var label = isStreak ? 'Streak day' : 'Points';
+            var extraRow = '';
+            if (!isStreak) {
+                var reason = w.globals.seriesZ[seriesIndex] ? w.globals.seriesZ[seriesIndex][dataPointIndex] : null;
+                extraRow = `<br><span class="apexcharts-tooltip-text-label"><b>Reason</b>: <span style="color: #00f0ff;">${reason ? reason : 'Unknown'}</span></span>`;
+            }
             return (`<div class="apexcharts-active" style="padding: 10px; border-radius: 4px; border: 1px solid #222538;">
-                <div class="apexcharts-tooltip-title" style="font-weight: bold; color: #00ffaa; font-family: Rajdhani, sans-serif; margin-bottom: 5px;">${w.globals.seriesNames[seriesIndex]}</div>
+                <div class="apexcharts-tooltip-title" style="font-weight: bold; color: #00ffaa; font-family: Rajdhani, sans-serif; margin-bottom: 5px;">${seriesName}</div>
                 <div class="apexcharts-tooltip-series-group apexcharts-active" style="order: 1; display: flex; padding-bottom: 0px !important;">
                     <div class="apexcharts-tooltip-text">
                         <div class="apexcharts-tooltip-y-group" style="font-family: Inter, sans-serif;">
-                            <span class="apexcharts-tooltip-text-label"><b>Points</b>: <span style="color: #fff;">${series[seriesIndex][dataPointIndex]}</span></span><br>
-                            <span class="apexcharts-tooltip-text-label"><b>Reason</b>: <span style="color: #00f0ff;">${w.globals.seriesZ[seriesIndex][dataPointIndex] ? w.globals.seriesZ[seriesIndex][dataPointIndex] : 'Unknown'}</span></span>
+                            <span class="apexcharts-tooltip-text-label"><b>${label}</b>: <span style="color: #fff;">${value}</span></span>${extraRow}
                         </div>
                     </div>
                 </div>
@@ -329,10 +350,18 @@ function getStreamerData(streamer) {
             startDate: formatDate(startDate),
             endDate: formatDate(endDate)
         }, function (response) {
-            chart.updateSeries([{
-                name: streamer.replace(".json", ""),
-                data: response["series"]
-            }], true)
+            chart.updateSeries([
+                {
+                    name: streamer.replace(".json", ""),
+                    type: 'area',
+                    data: response["series"]
+                },
+                {
+                    name: 'Watch Streak',
+                    type: 'line',
+                    data: response["streak"] || []
+                }
+            ], true)
             clearAnnotations();
             annotations = response["annotations"];
             updateAnnotations();
