@@ -672,6 +672,12 @@ class TwitchChannelPointsMiner:
                 if isinstance(streamer.channel_points, (int, float))
                 else 0
             )
+            watch_streak_days = self._watch_streak_days(streamer)
+            if Settings.enable_analytics is True:
+                # Persist alongside the same per-streamer analytics JSON that already
+                # holds points/last-activity, so the dashboard needs no second file
+                # and the streak count has the same annotated history as everything else.
+                streamer.persistent_streak_days(watch_streak_days)
             rows.append(
                 {
                     "Streamer": streamer.username,
@@ -684,7 +690,7 @@ class TwitchChannelPointsMiner:
                     "Banned": self._format_yes_no(
                         self._fetch_chat_ban_status_from_twitch(streamer)
                     ),
-                    "Watchstreaks": self._watch_streak_days(streamer),
+                    "Watchstreaks": watch_streak_days,
                     "Points gained": self._points_gained(streamer),
                 }
             )

@@ -259,6 +259,7 @@ $(document).ready(function () {
     sortBy = localStorage.getItem("sort-by");
     if (sortBy.includes("Points")) sortField = 'points';
     else if (sortBy.includes("Last activity")) sortField = 'last_activity';
+    else if (sortBy.includes("Streak")) sortField = 'watch_streak_days';
     else sortField = 'name';
     $('#sorting-by').text(sortBy);
     getStreamers();
@@ -368,6 +369,7 @@ function renderStreamers() {
             displayname = streamer.name.replace(".json", "");
             if (sortField == 'points') displayname = "<font size='-2' style='color:#00f0ff; font-family:monospace;'>" + streamer['points'] + "</font>&nbsp;" + displayname;
             else if (sortField == 'last_activity') displayname = "<font size='-2' style='color:#00f0ff;'>" + formatDate(streamer['last_activity']) + "</font>&nbsp;" + displayname;
+            else if (sortField == 'watch_streak_days') displayname = "<font size='-2' style='color:#ff9d45; font-family:monospace;'>" + (streamer['watch_streak_days'] ?? '-') + "</font>&nbsp;" + displayname;
             var isActive = currentStreamer === streamer.name;
             if (!isActive && localStorage.getItem("selectedStreamer") === streamer.name) {
                 isActive = true;
@@ -411,6 +413,7 @@ function changeSortBy(option) {
     sortBy = option.innerText.trim();
     if (sortBy.includes("Points")) sortField = 'points'
     else if (sortBy.includes("Last activity")) sortField = 'last_activity'
+    else if (sortBy.includes("Streak")) sortField = 'watch_streak_days'
     else sortField = 'name';
     sortStreamers();
     renderStreamers();
