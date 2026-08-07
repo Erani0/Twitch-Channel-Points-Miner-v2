@@ -160,9 +160,13 @@ scripts:
           print("Bitte schliesse diese Konsole nicht und warte ab!")
           print("=========================================================================")
           try:
+              # pip selbst zuerst aktualisieren, damit die "A new release of pip is
+              # available"-Meldung nicht bei jedem Setup erneut auftaucht
+              subprocess.run([sys.executable, "-m", "pip", "install", "--user", "--no-cache-dir", "--upgrade", "pip"])
+
               # Fuehrt pip install aus
               subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "--no-cache-dir", "-r", "requirements.txt"])
-              
+
               # Marker-Datei erstellen
               with open(MARKER_FILE, "w") as f:
                   f.write("done")
