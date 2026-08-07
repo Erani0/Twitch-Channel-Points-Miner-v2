@@ -655,66 +655,50 @@ class TwitchChannelPointsMiner:
             return 0
         return max(0, int(days))
 
-    def _backfill_streak_history_from_claims(self) -> None:
-        """One-time reconstruction, run once at startup: for a streamer whose
-        analytics file has no "streak" series yet but does have historical
-        WATCH_STREAK claim annotations, walk backwards from the currently known
-        streak day count - one day less per earlier claim - and write those as
-        backdated points using each claim's real timestamp.
-
-        This is an estimate, not ground truth: if the streak was actually broken
-        and restarted at some point between two of those claims, the
-        reconstructed values before that break will be too high. Streamers that
-        already have real streak history (going forward from when this feature
-        was added) are left untouched - never overwritten with guessed values.
+    def _reset_corrupted_streak_backfill(self) -> None:
+        """TEMPORARY MIGRATION - introduced in 2.3.9, remove this method and its
+        call site again in a later release once installs have had a chance to
+        pick it up. One-time cleanup, run once per install: an earlier release
+        backfilled "streak" history by counting WATCH_STREAK claims backwards,
+        assuming exactly one day of streak per claim. That assumption turned out
+        to be wrong in practice (inflated values), so this wipes any "streak"
+        entries so real, go-forward tracking (Streamer.persistent_streak_days,
+        called from _build_streamer_export_rows) starts clean. Guarded by a
+        marker file so it only ever runs once, not on every future startup.
         """
-        if Settings.enable_analytics is not True or self.watch_streak_cache is None:
+        marker_path = os.path.join(
+            "logs", f"streak_backfill_reset.{self._safe_account_name()}.done"
+        )
+        if os.path.isfile(marker_path):
             return
 
-        for streamer in self.streamers:
-            path = os.path.join(Settings.analytics_path, f"{streamer.username}.json")
-            if not os.path.isfile(path):
-                continue
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    existing = json.load(f)
-            except Exception:
-                continue
-            if not isinstance(existing, dict) or existing.get("streak"):
-                continue  # already has real streak history - never touch it
-
-            claims = sorted(
-                (
-                    a
-                    for a in existing.get("annotations", [])
-                    if isinstance(a, dict)
-                    and "WATCH_STREAK" in a.get("label", {}).get("text", "")
-                    and a.get("x") is not None
-                ),
-                key=lambda a: a["x"],
-            )
-            if not claims:
-                continue
-
-            status = self.watch_streak_cache.get_streamer_status(
-                streamer.username, account_name=self.username
-            )
-            current_days = status.watch_streak_days if status is not None else None
-            if current_days is None:
-                continue
-
-            backfill_points = []
-            day = current_days
-            for claim in reversed(claims):
-                if day < 0:
-                    break
-                backfill_points.append((claim["x"], day))
-                day -= 1
-
-            for timestamp_ms, day_value in reversed(backfill_points):
-                streamer.persistent_streak_days(
-                    day_value, at_timestamp=timestamp_ms / 1000
+        if Settings.enable_analytics is True:
+            for streamer in self.streamers:
+                path = os.path.join(
+                    Settings.analytics_path, f"{streamer.username}.json"
                 )
+                if not os.path.isfile(path):
+                    continue
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                except Exception:
+                    continue
+                if not isinstance(data, dict) or "streak" not in data:
+                    continue
+                del data["streak"]
+                try:
+                    with open(path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, indent=4)
+                except Exception:
+                    continue
+
+        try:
+            Path("logs").mkdir(parents=True, exist_ok=True)
+            with open(marker_path, "w", encoding="utf-8") as f:
+                f.write("done")
+        except Exception:
+            pass
 
     def _build_streamer_export_rows(self) -> list[dict[str, str]]:
         sorted_streamers = sorted(
@@ -1171,7 +1155,7 @@ class TwitchChannelPointsMiner:
                 self.streamer_follow_dates = {}
                 logger.warning("Failed to load follower dates for export: %s", exc)
 
-            self._backfill_streak_history_from_claims()
+            self._reset_corrupted_streak_backfill()  # TEMPORARY - see docstring, remove in a later release
             self._export_streamers_snapshot()
             self.streamers_export_thread = threading.Thread(
                 target=self._streamers_export_loop

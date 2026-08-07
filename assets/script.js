@@ -64,7 +64,8 @@ var options = {
             color: '#ffffff'
         }
     },
-    colors: ["#00ffaa", "#ff9d45"],
+    // Overridden per-view in getStreamerData() to match whichever single series is shown.
+    colors: ["#00ffaa"],
     fill: {
         type: 'gradient',
         gradient: {
@@ -75,27 +76,16 @@ var options = {
             stops: [0, 90, 100]
         },
     },
-    yaxis: [
-        {
-            title: {
-                text: 'Channel points',
-                style: {
-                    color: '#7e839e'
-                }
-            },
+    // Overridden per-view in getStreamerData() - only one series (points or
+    // streak) is ever shown at a time, so only one y-axis is ever needed.
+    yaxis: {
+        title: {
+            text: 'Channel points',
+            style: {
+                color: '#7e839e'
+            }
         },
-        {
-            opposite: true,
-            min: 0,
-            forceNiceScale: true,
-            title: {
-                text: 'Watch streak (days)',
-                style: {
-                    color: '#7e839e'
-                }
-            },
-        }
-    ],
+    },
     xaxis: {
         type: 'datetime',
         labels: {
@@ -350,18 +340,36 @@ function getStreamerData(streamer) {
             startDate: formatDate(startDate),
             endDate: formatDate(endDate)
         }, function (response) {
-            chart.updateSeries([
-                {
-                    name: streamer.replace(".json", ""),
-                    type: 'area',
-                    data: response["series"]
-                },
-                {
+            // Only one series (and matching y-axis) shown at a time - showing points
+            // and streak together made both harder to read (wildly different scales)
+            // and broke hover, and a single series with a stale two-axis config left
+            // over from the previous view showed the wrong axis title/scale.
+            var isStreakView = sortField === 'watch_streak_days';
+            var newSeries = isStreakView
+                ? [{
                     name: 'Watch Streak',
                     type: 'line',
                     data: response["streak"] || []
-                }
-            ], true)
+                }]
+                : [{
+                    name: streamer.replace(".json", ""),
+                    type: 'area',
+                    data: response["series"]
+                }];
+            var newYaxis = isStreakView
+                ? [{
+                    min: 0,
+                    forceNiceScale: true,
+                    title: { text: 'Watch streak (days)', style: { color: '#7e839e' } }
+                }]
+                : [{
+                    title: { text: 'Channel points', style: { color: '#7e839e' } }
+                }];
+            chart.updateOptions({
+                yaxis: newYaxis,
+                colors: isStreakView ? ['#ff9d45'] : ['#00ffaa']
+            });
+            chart.updateSeries(newSeries, true)
             clearAnnotations();
             annotations = response["annotations"];
             updateAnnotations();

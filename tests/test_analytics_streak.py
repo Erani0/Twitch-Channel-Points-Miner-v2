@@ -13,7 +13,6 @@ from TwitchChannelPointsMiner.classes.AnalyticsServer import (
 from TwitchChannelPointsMiner.classes.Settings import Settings
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer
 from TwitchChannelPointsMiner.TwitchChannelPointsMiner import TwitchChannelPointsMiner
-from TwitchChannelPointsMiner.WatchStreakCache import WatchStreakCache
 
 
 class PersistentStreakDaysTest(unittest.TestCase):
@@ -95,12 +94,12 @@ class PersistentStreakDaysTest(unittest.TestCase):
         self.assertIn(f"{streamer.username}.json", names)
 
 
-class BackfillStreakHistoryTest(unittest.TestCase):
+class ResetCorruptedStreakBackfillTest(unittest.TestCase):
     def setUp(self):
-        self._tmp_dir = tempfile.TemporaryDirectory()
-        self.addCleanup(self._tmp_dir.cleanup)
+        self._tmp_analytics_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp_analytics_dir.cleanup)
         self._previous_analytics_path = getattr(Settings, "analytics_path", None)
-        Settings.analytics_path = self._tmp_dir.name
+        Settings.analytics_path = self._tmp_analytics_dir.name
         self.addCleanup(
             lambda: setattr(Settings, "analytics_path", self._previous_analytics_path)
         )
@@ -110,66 +109,56 @@ class BackfillStreakHistoryTest(unittest.TestCase):
             lambda: setattr(Settings, "enable_analytics", self._previous_enable_analytics)
         )
 
-    def _file_path(self, streamer):
-        return os.path.join(self._tmp_dir.name, f"{streamer.username}.json")
+        self._tmp_cwd_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp_cwd_dir.cleanup)
+        self._previous_cwd = os.getcwd()
+        os.chdir(self._tmp_cwd_dir.name)
+        self.addCleanup(lambda: os.chdir(self._previous_cwd))
 
-    def _build_miner(self, streamers, current_days):
+    def _file_path(self, streamer):
+        return os.path.join(self._tmp_analytics_dir.name, f"{streamer.username}.json")
+
+    def _build_miner(self, streamers):
         miner = object.__new__(TwitchChannelPointsMiner)
         miner.streamers = streamers
         miner.username = "testaccount"
-        miner.watch_streak_cache = WatchStreakCache(default_account_name="testaccount")
-        for streamer in streamers:
-            miner.watch_streak_cache.set_streamer_status(
-                streamer.username,
-                watch_streak_detected=True,
-                is_online=True,
-                watch_streak_days=current_days,
-                account_name="testaccount",
-            )
         return miner
 
-    def test_reconstructs_days_backwards_from_watch_streak_claims(self):
-        streamer = Streamer("claimedstreamer")
+    def test_removes_streak_key_and_leaves_everything_else_intact(self):
+        streamer = Streamer("corrupted")
         streamer.channel_points = 100
         streamer.persistent_series(event_type="Watch")
-        # Three historical WATCH_STREAK claims, oldest first.
-        streamer.persistent_annotations("WATCH_STREAK", "+250 - WATCH_STREAK")
-        streamer.persistent_annotations("WATCH_STREAK", "+250 - WATCH_STREAK")
-        streamer.persistent_annotations("WATCH_STREAK", "+250 - WATCH_STREAK")
+        streamer.persistent_streak_days(250)  # the bad, inflated backfilled value
 
-        miner = self._build_miner([streamer], current_days=10)
-        miner._backfill_streak_history_from_claims()
-
-        with open(self._file_path(streamer), "r", encoding="utf-8") as f:
-            data = json.load(f)
-        self.assertEqual([entry["y"] for entry in data["streak"]], [8, 9, 10])
-
-    def test_does_not_touch_streamer_with_existing_streak_history(self):
-        streamer = Streamer("alreadytracked")
-        streamer.channel_points = 100
-        streamer.persistent_series(event_type="Watch")
-        streamer.persistent_annotations("WATCH_STREAK", "+250 - WATCH_STREAK")
-        streamer.persistent_streak_days(5)  # real, go-forward tracked value
-
-        miner = self._build_miner([streamer], current_days=99)
-        miner._backfill_streak_history_from_claims()
-
-        with open(self._file_path(streamer), "r", encoding="utf-8") as f:
-            data = json.load(f)
-        # Must be untouched - still just the one real value, not overwritten/appended to.
-        self.assertEqual([entry["y"] for entry in data["streak"]], [5])
-
-    def test_no_claims_means_no_backfill(self):
-        streamer = Streamer("noclaims")
-        streamer.channel_points = 100
-        streamer.persistent_series(event_type="Watch")
-
-        miner = self._build_miner([streamer], current_days=7)
-        miner._backfill_streak_history_from_claims()
+        miner = self._build_miner([streamer])
+        miner._reset_corrupted_streak_backfill()
 
         with open(self._file_path(streamer), "r", encoding="utf-8") as f:
             data = json.load(f)
         self.assertNotIn("streak", data)
+        self.assertIn("series", data, "unrelated data must survive the cleanup")
+
+    def test_only_runs_once_per_install(self):
+        streamer = Streamer("runsonce")
+        streamer.persistent_streak_days(1)
+
+        miner = self._build_miner([streamer])
+        miner._reset_corrupted_streak_backfill()
+
+        # Simulate real, go-forward tracking writing a fresh value after the cleanup.
+        streamer.persistent_streak_days(2)
+
+        # A second cleanup pass (e.g. next restart) must be a no-op now.
+        miner._reset_corrupted_streak_backfill()
+
+        with open(self._file_path(streamer), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertEqual([entry["y"] for entry in data["streak"]], [2])
+
+    def test_streamer_without_a_file_yet_does_not_crash(self):
+        streamer = Streamer("neverwritten")
+        miner = self._build_miner([streamer])
+        miner._reset_corrupted_streak_backfill()  # must not raise
 
 
 if __name__ == "__main__":
