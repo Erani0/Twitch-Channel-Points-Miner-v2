@@ -43,6 +43,7 @@ from TwitchChannelPointsMiner.classes.TwitchLogin import TwitchLogin
 from TwitchChannelPointsMiner.constants import (
     CLIENT_ID,
     CLIENT_VERSION,
+    DROP_ID,
     URL,
     GQLOperations,
 )
@@ -1525,9 +1526,27 @@ class Twitch(object):
                     else now
                 )
                 key_parts.append((0 if eligible else 1, attempts, stream_created_at))
+            elif prior == Priority.STREAK_LENGTH_ASCENDING:
+                days = self._current_watch_streak_days(streamer)
+                key_parts.append(days if days is not None else float("inf"))
+            elif prior == Priority.STREAK_LENGTH_DESCENDING:
+                days = self._current_watch_streak_days(streamer)
+                key_parts.append(-days if days is not None else float("inf"))
             else:
                 key_parts.append(0)
         return tuple(key_parts)
+
+    def _current_watch_streak_days(self, streamer) -> Optional[int]:
+        """Current known watch-streak day count for streamer, or None if unknown.
+        Backed by the same per-account cache used for streak detection/detail
+        (WatchStreakCache.set_streamer_status), so this reflects the last value
+        Twitch reported without any extra requests."""
+        if self.watch_streak_cache is None:
+            return None
+        status = self.watch_streak_cache.get_streamer_status(
+            streamer.username, account_name=self.account_username
+        )
+        return status.watch_streak_days if status is not None else None
 
     def _priority_candidates(self, streamers, streamers_index, prior, now):
         if prior == Priority.ORDER:
@@ -1603,6 +1622,27 @@ class Twitch(object):
         if not eligible_streamers_index:
             return []
 
+        # The active DropDiscovery channel (if any) always keeps its slot regardless
+        # of priority/points-limit ranking below, and never counts against the
+        # regular streamers' share of max_watch_amount - it occupies the "universal"
+        # slot on its own until its campaign is done (see DropDiscovery).
+        auto_drop_index = next(
+            (
+                idx
+                for idx in eligible_streamers_index
+                if getattr(streamers[idx], "is_auto_drop_channel", False) is True
+            ),
+            None,
+        )
+        reserved_for_auto_drop = 1 if auto_drop_index is not None else 0
+        watch_amount = max(0, self.max_watch_amount - reserved_for_auto_drop)
+        auto_drop_result = [auto_drop_index] if auto_drop_index is not None else []
+        eligible_streamers_index = [
+            idx for idx in eligible_streamers_index if idx != auto_drop_index
+        ]
+        if not eligible_streamers_index:
+            return auto_drop_result
+
         forced_streak_selection = []
         if not priority or priority[0] != Priority.STREAK:
             forced_streak_selection = self._select_capped_streak_streamers(
@@ -1617,7 +1657,7 @@ class Twitch(object):
         ]
 
         if not streamers_index and not forced_streak_selection:
-            return []
+            return auto_drop_result
 
         if priority and priority[0] != Priority.STREAK and (
             self._last_selection_was_streak or self._last_streak_selection
@@ -1633,7 +1673,7 @@ class Twitch(object):
                 self._last_streak_selection = selection_names
             if streak_selection:
                 self._last_selection_was_streak = True
-                return streak_selection[: self.max_watch_amount]
+                return auto_drop_result + streak_selection[:watch_amount]
             self._last_selection_was_streak = False
             start_index = 1
         else:
@@ -1651,8 +1691,12 @@ class Twitch(object):
             ),
         )
 
-        available_slots = max(0, self.max_watch_amount - len(forced_streak_selection))
-        return forced_streak_selection + sorted_candidates[:available_slots]
+        available_slots = max(0, watch_amount - len(forced_streak_selection))
+        return (
+            auto_drop_result
+            + forced_streak_selection
+            + sorted_candidates[:available_slots]
+        )
 
     def _offline_gap_seconds(self, streamer) -> Optional[float]:
         if streamer.offline_at and streamer.online_at and streamer.online_at > streamer.offline_at:
@@ -2451,6 +2495,110 @@ class Twitch(object):
             .get("inventory", {})
             or {}
         )
+
+    def get_active_campaigns(self):
+        """Public wrapper around the private dashboard/details lookup, used by
+        DropDiscovery to find campaigns independently of the configured streamer list."""
+        campaigns_details = self.__get_campaigns_details(
+            self.__get_drops_dashboard(status="ACTIVE")
+        )
+        campaigns = []
+        for details in campaigns_details:
+            if details is None:
+                continue
+            campaign = Campaign(details)
+            if campaign.dt_match is True:
+                campaign.clear_drops()
+                if campaign.drops != []:
+                    campaigns.append(campaign)
+        return campaigns
+
+    def _find_live_channel_for_campaign(self, campaign):
+        """Return the login of a live, drops-eligible channel for this campaign, or
+        None. Whitelist campaigns (campaign.channels) are checked directly; open
+        campaigns fall back to a directory search filtered by the drops tag."""
+        if campaign.channels:
+            return self.__find_live_whitelisted_channel(campaign)
+        return self.__find_live_channel_in_directory(campaign)
+
+    def __find_live_whitelisted_channel(self, campaign):
+        best_login = None
+        best_viewers = -1
+        for chunk in create_chunks(campaign.channels, 20):
+            json_data = []
+            for channel_id in chunk:
+                item = copy.deepcopy(GQLOperations.WithIsStreamLiveQuery)
+                item["variables"] = {"id": channel_id}
+                json_data.append(item)
+            response = self.post_gql_request(json_data)
+            if not isinstance(response, list):
+                logger.debug(
+                    "[drop-discovery] Unexpected liveness response for campaign %s, skipping chunk",
+                    campaign.id,
+                )
+                continue
+            for channel_id, r in zip(chunk, response):
+                if self._log_gql_errors("WithIsStreamLiveQuery", r):
+                    continue
+                user = r.get("data", {}).get("user") if isinstance(r, dict) else None
+                stream = user.get("stream") if isinstance(user, dict) else None
+                if not isinstance(stream, dict) or stream.get("id") is None:
+                    continue
+                login = campaign.channel_logins.get(channel_id)
+                if not login:
+                    continue
+                # viewersCount may not be part of this persisted query's response shape;
+                # default to 0 so we still pick a channel instead of finding none.
+                viewers = stream.get("viewersCount") or 0
+                if viewers > best_viewers:
+                    best_viewers = viewers
+                    best_login = login
+        return best_login
+
+    def __find_live_channel_in_directory(self, campaign):
+        game = campaign.game if isinstance(campaign.game, dict) else {}
+        slug = game.get("slug")
+        if not slug:
+            logger.debug(
+                "[drop-discovery] No game slug available for campaign %s, skipping directory search",
+                campaign.id,
+            )
+            return None
+
+        json_data = copy.deepcopy(GQLOperations.DirectoryPage_Game)
+        json_data["variables"]["slug"] = slug
+        json_data["variables"]["options"]["tags"] = [DROP_ID]
+        response = self.post_gql_request(json_data)
+        if self._log_gql_errors(json_data.get("operationName"), response):
+            return None
+        if not isinstance(response, dict):
+            return None
+
+        try:
+            edges = response["data"]["game"]["streams"]["edges"]
+        except (KeyError, TypeError):
+            logger.debug(
+                "[drop-discovery] Unexpected directory response shape for campaign %s: %s",
+                campaign.id,
+                response,
+            )
+            return None
+
+        best_login = None
+        best_viewers = -1
+        for edge in edges or []:
+            node = edge.get("node") if isinstance(edge, dict) else None
+            if not isinstance(node, dict):
+                continue
+            broadcaster = node.get("broadcaster") or {}
+            login = broadcaster.get("login")
+            if not login:
+                continue
+            viewers = node.get("viewersCount") or 0
+            if viewers > best_viewers:
+                best_viewers = viewers
+                best_login = login
+        return best_login
 
     def __get_drops_dashboard(self, status=None):
         json_data = GQLOperations.ViewerDropsDashboard

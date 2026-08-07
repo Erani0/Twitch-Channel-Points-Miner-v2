@@ -126,6 +126,24 @@ scripts:
       from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
       from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
 
+      # Neue optionale Einstellungen automatisch in diese run.py nachtragen. Liest die
+      # Liste direkt aus der TwitchChannelPointsMiner-Konstruktor-Signatur aus, d.h. diese
+      # Egg-Datei muss bei neuen Settings NICHT mehr angepasst werden - nur fehlende
+      # Keyword-Argumente werden ergaenzt, bestehende Werte/Formatierung bleiben unangetastet.
+      # Greift erst ab dem naechsten Neustart, da hier nur die Datei gepatcht wird.
+      try:
+          from TwitchChannelPointsMiner.run_config_migration import (
+              discover_new_constructor_kwargs,
+              ensure_constructor_kwargs,
+          )
+          ensure_constructor_kwargs(
+              os.path.abspath(__file__),
+              "TwitchChannelPointsMiner",
+              discover_new_constructor_kwargs(TwitchChannelPointsMiner),
+          )
+      except Exception as e:
+          print(f"Hinweis: Einstellungs-Migration fehlgeschlagen: {e}")
+
       TWITCH_USER = os.environ.get("TWITCH_USER", "")
       TWITCH_PASS = os.environ.get("TWITCH_PASS", "")
 

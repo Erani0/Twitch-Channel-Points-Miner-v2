@@ -27,6 +27,7 @@ class Campaign(object):
         "dt_match",
         "drops",
         "channels",
+        "channel_logins",
     ]
 
     def __init__(self, dict):
@@ -34,11 +35,15 @@ class Campaign(object):
         self.game = dict["game"]
         self.name = dict["name"]
         self.status = dict["status"]
-        self.channels = (
-            []
-            if dict["allow"]["channels"] is None
-            else list(map(lambda x: x["id"], dict["allow"]["channels"]))
-        )
+        allowed_channels = dict["allow"]["channels"] or []
+        self.channels = list(map(lambda x: x["id"], allowed_channels))
+        # id -> login, so a whitelist channel can be watched without a separate
+        # id-to-username lookup (used by DropDiscovery to find a live allowed channel).
+        self.channel_logins = {
+            x["id"]: (x.get("login") or x.get("name"))
+            for x in allowed_channels
+            if x.get("login") or x.get("name")
+        }
         self.in_inventory = False
 
         self.end_at = parse_datetime(dict["endAt"])

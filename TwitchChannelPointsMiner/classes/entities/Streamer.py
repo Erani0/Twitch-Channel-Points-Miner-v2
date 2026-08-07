@@ -103,12 +103,16 @@ class Streamer(object):
         "watch_streak_cache",
         "watch_streak_cache_path",
         "watch_streak_account",
+        "is_auto_drop_channel",
     ]
 
     def __init__(self, username, settings=None):
         self.username: str = username.lower().strip()
         self.channel_id: str = ""
         self.settings = settings
+        # Set by DropDiscovery for channels it added itself (not from the user's
+        # configured streamer list); used to reserve/release the shared watch slot.
+        self.is_auto_drop_channel = False
         self.is_online = False
         self.stream_up = 0
         self.online_at = 0

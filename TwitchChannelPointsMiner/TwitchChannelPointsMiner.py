@@ -116,6 +116,10 @@ class TwitchChannelPointsMiner:
         "_chat_ban_lookup_attempted",
         "watch_only_drops",
         "stop_watch_when_drops_completed",
+        "auto_discover_drops",
+        "drop_discovery",
+        "drop_discovery_thread",
+        "_dynamic_streamers_lock",
     ]
 
     def __init__(
@@ -128,6 +132,7 @@ class TwitchChannelPointsMiner:
         disable_at_in_nickname: bool = False,
         watch_only_drops: bool = False,
         stop_watch_when_drops_completed: bool = False,
+        auto_discover_drops: bool = False,
         # Settings for logging and selenium as you can see.
         priority: list[Priority] | Priority | None = None,
         # This settings will be global shared trought Settings class
@@ -151,6 +156,10 @@ class TwitchChannelPointsMiner:
         Settings.use_hermes = use_hermes
         self.watch_only_drops = watch_only_drops
         self.stop_watch_when_drops_completed = stop_watch_when_drops_completed
+        self.auto_discover_drops = auto_discover_drops
+        self.drop_discovery = None
+        self.drop_discovery_thread = None
+        self._dynamic_streamers_lock = threading.Lock()
 
         # Wait for Twitch.tv connectivity with a timeout to avoid hanging forever
         error_printed = False
@@ -286,6 +295,27 @@ class TwitchChannelPointsMiner:
 
         for sign in [signal.SIGINT, signal.SIGSEGV, signal.SIGTERM]:
             signal.signal(sign, self.end)
+
+    def add_dynamic_streamer(self, streamer: Streamer) -> None:
+        """Append a streamer discovered at runtime (e.g. by DropDiscovery) to the
+        shared, already-running streamer list. Only ever appends at the end, and
+        keeps original_streamers (index-aligned points baseline) in sync, so no
+        other component's cached index into self.streamers is invalidated."""
+        with self._dynamic_streamers_lock:
+            self.streamers.append(streamer)
+            self.original_streamers.append(streamer.channel_points)
+
+    def remove_dynamic_streamer(self, streamer: Streamer) -> None:
+        """Remove a previously dynamically-added streamer. Looks the entry up by
+        identity right before deleting so original_streamers stays aligned, and
+        does nothing if it's already gone (e.g. removed by another caller)."""
+        with self._dynamic_streamers_lock:
+            try:
+                index = self.streamers.index(streamer)
+            except ValueError:
+                return
+            del self.streamers[index]
+            del self.original_streamers[index]
 
     def analytics(
         self,
@@ -1098,6 +1128,16 @@ class TwitchChannelPointsMiner:
                 self.sync_campaigns_thread.name = "Sync campaigns/inventory"
                 self.sync_campaigns_thread.start()
 
+            if self.auto_discover_drops is True:
+                from TwitchChannelPointsMiner.classes.DropDiscovery import DropDiscovery
+
+                self.drop_discovery = DropDiscovery(self.twitch, self)
+                self.drop_discovery_thread = threading.Thread(
+                    target=self.drop_discovery.run
+                )
+                self.drop_discovery_thread.name = "Drop discovery"
+                self.drop_discovery_thread.start()
+
             self.minute_watcher_thread = threading.Thread(
                 target=self.twitch.send_minute_watched_events,
                 args=(
@@ -1191,6 +1231,9 @@ class TwitchChannelPointsMiner:
             return
         
         logger.info("CTRL+C Detected! Please wait just a moment!")
+
+        if self.drop_discovery is not None:
+            self.drop_discovery.stop()
 
         for streamer in self.streamers:
             if (

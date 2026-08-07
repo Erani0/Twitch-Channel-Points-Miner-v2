@@ -172,6 +172,34 @@ class GQLOperations:
             }
         },
     }
+    # Used to find live channels for a given game, filtered by tag (e.g. DROP_ID), to
+    # discover a drops-eligible channel that isn't in the configured streamer list.
+    DirectoryPage_Game = {
+        "operationName": "DirectoryPage_Game",
+        "variables": {
+            "limit": 10,
+            "slug": None,
+            "imageWidth": 50,
+            "includeCostreaming": False,
+            "options": {
+                "broadcasterLanguages": [],
+                "freeformTags": None,
+                "includeRestricted": ["SUB_ONLY_LIVE"],
+                "recommendationsContext": {"platform": "web"},
+                "sort": "VIEWER_COUNT",
+                "systemFilters": [],
+                "tags": [],
+                "requestID": "JIRA-VXP-2397",
+            },
+            "sortTypeIsRecency": False,
+        },
+        "extensions": {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "86bcceb4e8b1a51256ff8eed8bd8aae4acacf80d737efe904f84f3aeadf8cafd",
+            }
+        },
+    }
     GetIDFromLogin = {
         "operationName": "GetIDFromLogin",
         "variables": {"login": None},

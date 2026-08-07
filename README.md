@@ -1,112 +1,92 @@
-# Twitch Channel Points Miner (Armi1014 Fork)
+# Twitch Channel Points Miner (Erani0 fork)
 
-A **reliability-first fork** of `Twitch-Channel-Points-Miner-v2`.
+This is my personal fork of `Twitch-Channel-Points-Miner-v2`. I run it myself, on my own Pterodactyl/Pelican Panel server, farming channel points, drops and watch streaks across a fairly large streamer list, so most of what's in here got added because something actually broke or annoyed me in real use — not because it sounded good on paper.
 
-Built for people who want:
-- **better watch streak reliability**
-- **cleaner favorite / priority behavior**
-- **faster startup in real use**
-- **less transient Twitch/API/network log noise**
+A quick note on lineage, because it matters for understanding what's below: this started as [rdavydov's original project](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2), got picked up and hardened by [Armi1014's reliability fork](https://github.com/Armi1014/Twitch-Channel-Points-Miner-v2), and this repo continues from there with a pretty different set of priorities: self-hosting on a game panel, mobile-friendly dashboard, drop hunting that doesn't depend on you manually listing every streamer, and a watch streak system that's been rewritten more than once because Twitch keeps changing what it tells us.
 
-If upstream mostly works for you but occasionally behaves weirdly, this fork is meant to be the **more practical, more stable version**.
-It also aims to be the **faster fork in day-to-day use**, especially during startup and early channel refreshes.
+> Not affiliated with Twitch. This is automation of a public website — use it at your own risk, and don't be surprised if Twitch changes something and breaks part of it. It happens.
 
-> Not affiliated with Twitch. Use at your own risk.
+## Quick start
 
-## Quick Start
-
-If you are coming from upstream, one of the first things you should notice is that this fork is tuned to spend less time stuck in slow startup behavior before it becomes usable.
+If you're just running it locally / on a normal server:
 
 ```sh
-git clone https://github.com/Armi1014/Twitch-Channel-Points-Miner-v2
+git clone https://github.com/Erani0/Twitch-Channel-Points-Miner-v2.git
 cd Twitch-Channel-Points-Miner-v2
-cp example.py run.py
-uv sync
-uv run run.py
-```
-
-Hermes is the default websocket backend in this fork. If you need the legacy PubSub path, set `USE_HERMES = False` in your runner file.
-
-**Pip Alternative**
-
-```sh
 python -m venv .venv
-source .venv/bin/activate
-cp example.py run.py
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python run.py
 ```
 
-## Why this fork
+Copy `example.py` to `run.py`, fill in your Twitch username/streamer list, and run it with `python run.py`. That's the whole setup for a plain install.
 
-Compared to upstream, this fork focuses on **reliability first**:
+### Running it on Pterodactyl / Pelican Panel
 
-* better handling of transient Twitch/API/network issues
-* more reliable watch streak behavior, including already-online channels at startup
-* per-account streak cache files to avoid multi-account conflicts
-* clearer `Priority.FAVORITE` behavior
-* faster startup and less waiting during the initial refresh cycle
-* reduced recurring timeout / backend error log spam
-* Hermes websocket support with explicit PubSub fallback
+This is honestly the main way I use it, and it's the part that's most specific to this fork. There's a ready-made egg in [`egg-twitch-channel-points-miner/`](egg-twitch-channel-points-miner) that you can import into your panel. It clones the repo straight from GitHub, builds a `run.py` for you, and then on every container start it:
 
-**Example startup improvement**
+1. Compares your local git commit against `origin/master` and does a `git reset --hard` if there's a newer version — so you get updates just by restarting the server, no manual `git pull`.
+2. Patches your `run.py` to add any *new* settings that got introduced since you installed, without touching your streamer list or anything else you've customized. This part exists because I got tired of new features silently doing nothing for people who installed a while ago and never knew there was a new option to turn on. It only ever adds missing keyword arguments — if it can't do that safely (say, your `run.py` got hand-edited into something the parser doesn't recognize), it leaves the file alone and logs a warning instead of guessing.
+3. Strips out dev-only files (tests, CI config, `.claude/`, etc.) so your container doesn't carry around stuff it doesn't need.
 
-* upstream sample: `179s`
-* this fork sample: `14s`
-* about **12.8x faster** in that test
+Your `run.py` itself is never tracked by git (it's in `.gitignore`), so your personal streamer list and account settings survive updates. Same goes for `settings.json` if you use one for API keys — deliberately ignored, never gets swept into a commit by accident.
 
-Results vary depending on account size, network quality, and Twitch backend health.
-The exact number will vary, but faster startup is a core goal of this fork, not just a side effect.
+## What's actually different from upstream
 
-## Use this fork if...
+The short version: better GQL query resilience, a watch streak system that doesn't quietly lose your streak on day two, drop hunting that can find channels you never added yourself, a dashboard that doesn't look like it's from 2019 and actually works on a phone, and a config file that upgrades itself.
 
-* you care more about **reliability** than staying as close as possible to upstream
-* you use **watch streaks** heavily
-* you want clearer favorite / priority behavior
-* you want the miner to become usable faster after launch
-* you want fewer annoying transient error logs
+Longer version, by area:
 
-## Subscription Notifications
+### GraphQL query maintenance
 
-This fork can send `Events.SUBSCRIPTION` notifications to Discord or other webhook-style integrations.
+Twitch's GQL API uses "persisted query" hashes for most requests — opaque IDs that map to a query defined server-side. Twitch rotates these occasionally without warning, and when they go stale you start seeing things like `PersistedQueryNotFound` or requests that quietly return nothing useful. Upstream has fallen behind on this more than once. This fork tracks hash updates as they're found and reported (the `PlaybackAccessToken` and `ChannelPointsContext` hashes both got refreshed here after upstream users reported the old ones failing), and error handling around GQL responses is generally more defensive — missing/unexpected fields log a warning and get skipped instead of throwing an unhandled exception halfway through a run.
 
-What it does:
+### Watch streaks
 
-* listens for Twitch IRC `USERNOTICE` events
-* formats a cleaner subscription message with the streamer/channel and current points
-* only alerts for subscription events that are about **your own account**
+This got rewritten from a simple timestamp check into a proper session-based cache (`WatchStreakCache.py`) that tracks attempts, claim state, and broadcast identity per streamer, persisted to `logs/watch_streak_cache.<account>.json` so a restart doesn't throw away what it already knows.
 
-What counts as "about your own account":
+One specific bug worth mentioning because it took a while to track down: `streamer.stream.broadcast_id` only gets refreshed once the stream info is actually re-fetched, which happens *after* the streak-priority logic runs. On the day after a stream ends, that meant the streak session lookup could still find yesterday's already-closed session for a split second, and treat today's brand-new broadcast as "already handled" — which could silently miss the window Twitch gives you to keep a streak alive. Fixed now, but it's the kind of bug that only shows up if you're watching streaks across many days, which is exactly the use case this fork cares about.
 
-* you subscribe
-* you renew a subscription
-* you receive a sub gift
-* you upgrade a gift or Prime subscription
+### Drop auto-discovery
 
-What it ignores:
+New, and the one feature I'd flag as "use with reasonable expectations": if you turn on `auto_discover_drops=True`, the miner will look at currently active drop campaigns and try to find a live channel participating in one — even if it's not in your streamer list — and watch it in the shared slot until every drop in that campaign is claimed, then move to the next campaign. It respects the same one-channel-at-a-time rule Twitch applies to drop progress, and it never touches the slot reserved for your own configured streamers/streaks.
 
-* other viewers subscribing
-* other viewers renewing
-* other viewers receiving gifted subs
+For campaigns with a channel whitelist, this is solid — it reuses the same stream-liveness query the rest of the miner already relies on. For open campaigns (any channel playing a given game counts), it uses a directory search query that, like the persisted-query hashes above, isn't something Twitch documents and could stop working if they change it. I've tried to make that fail quietly (logs and skips instead of crashing) rather than pretend it's bulletproof.
 
-Important:
+### Priority and selection
 
-* this depends on IRC chat being enabled for that streamer
-* `chat=ChatPresence.NEVER` disables this feature for that channel
-* `chat=ChatPresence.ONLINE` is enough
+A few things added on top of upstream's priority system:
 
-See [example.py](example.py) for a basic Discord webhook configuration example.
+- `Priority.FAVORITE`, so you can pin specific streamers ahead of the general pool without reordering your whole list.
+- `Priority.STREAK_LENGTH_ASCENDING` / `Priority.STREAK_LENGTH_DESCENDING` — sort streamers by how many days into a watch streak they already are. Put `STREAK_LENGTH_DESCENDING` near the top of your priority list and the miner leans toward protecting streaks you've already built up over ones that just started.
+- Per-streamer `points_limit`, so a channel you've already farmed enough points from gets skipped in favor of ones that still need attention (pending streak claims still bypass this, on purpose).
+
+### Dashboard / analytics
+
+The Flask-based analytics server got a full visual rework — dark theme, a layout that doesn't fall apart on a phone screen, a console/log view that's actually usable on mobile instead of an afterthought. There's also cache-busting on the static assets, because GitHub's CDN caching used to mean you'd update the miner and still see the old dashboard until you force-refreshed five times.
+
+### Everything else worth a mention
+
+- Streamer bootstrap and context initialization are parallelized instead of strictly sequential, so a large streamer list doesn't take forever to become usable at startup.
+- Startup connectivity checks time out instead of hanging forever if Twitch is unreachable.
+- Hermes (Twitch's newer websocket transport) is available alongside the legacy PubSub client, with defensive handling for bad/expired topics so a single failing subscription doesn't spam your logs forever.
+- The streamer export (`.xlsx` report in `logs/`) includes current points, points gained since baseline, watch streak days, sub status, and chat-ban status, styled and sorted automatically.
+
+## What this fork won't promise
+
+It won't promise Twitch will never change something that breaks a query hash — that's genuinely out of anyone's control, and it's happened to upstream, to the Armi1014 fork, and to this one. What it does promise is that when it happens, the failure is visible in the logs instead of silent, and fixes tend to land here reasonably fast because I'm running this on my own account and notice quickly when something's off.
 
 ## Docs
 
-* [Latest Releases](https://github.com/Armi1014/Twitch-Channel-Points-Miner-v2/releases)
-* [Example Config](example.py)
-* [Fork Features](FORK_FEATURES.md)
-* [FAQ](FAQ.md)
-* [Contributing](CONTRIBUTING.md)
+- [FAQ](FAQ.md)
+- [Example config](example.py)
+- [Contributing](CONTRIBUTING.md)
+- [Pterodactyl/Pelican egg](egg-twitch-channel-points-miner)
+
+## Credits
+
+- [rdavydov](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2) for the original project.
+- [Armi1014](https://github.com/Armi1014/Twitch-Channel-Points-Miner-v2) for the reliability-focused fork this one continues from.
 
 ## Disclaimer
 
-This project is not affiliated with Twitch.
-
-Use it at your own risk and make sure you understand the platform rules before using automation tools.
+Not affiliated with Twitch. This automates a public website's normal viewing behavior — understand the platform's rules before running it, and use it at your own risk.
