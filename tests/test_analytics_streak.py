@@ -8,6 +8,7 @@ from flask import Flask
 from TwitchChannelPointsMiner.classes.AnalyticsServer import (
     get_challenge_points,
     get_watch_streak_days,
+    streamers,
 )
 from TwitchChannelPointsMiner.classes.Settings import Settings
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer
@@ -69,6 +70,27 @@ class PersistentStreakDaysTest(unittest.TestCase):
 
         with self.app.test_request_context("/streamers"):
             self.assertIsNone(get_watch_streak_days(streamer.username))
+
+    def test_streamer_with_only_streak_data_does_not_crash_streamers_endpoint(self):
+        # Regression test: a streamer whose analytics file only has "streak" (no
+        # "series" yet, e.g. streak recorded before any points-earned event ever
+        # fired) used to crash the whole /streamers response with KeyError('series')
+        # for EVERY streamer, not just this one.
+        streamer = Streamer("teststreamer5")
+        streamer.persistent_streak_days(2)
+
+        with open(self._file_path(streamer), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertNotIn("series", data)
+        self.assertIn("streak", data)
+
+        with self.app.test_request_context("/streamers"):
+            self.assertEqual(get_challenge_points(streamer.username), 0)
+            self.assertEqual(get_watch_streak_days(streamer.username), 2)
+            response = streamers()
+            payload = json.loads(response.get_data(as_text=True))
+        names = [entry["name"] for entry in payload]
+        self.assertIn(f"{streamer.username}.json", names)
 
 
 if __name__ == "__main__":

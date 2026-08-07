@@ -53,7 +53,11 @@ def filter_datas(start_date, end_date, datas):
         else datetime.now()
     ).replace(hour=23, minute=59, second=59).timestamp() * 1000
 
-    original_series = datas["series"]
+    # .get(), not datas["series"]: a streamer file can legitimately exist without a
+    # "series" key yet (e.g. one that only has streak data so far, no points-earned
+    # events recorded), and this used to crash the whole /streamers response for
+    # every streamer over one missing key.
+    original_series = datas.get("series", [])
 
     if "series" in datas:
         df = pd.DataFrame(datas["series"])
@@ -70,8 +74,10 @@ def filter_datas(start_date, end_date, datas):
         datas["series"] = []
 
     # If no data is found within the timeframe, that usually means the streamer hasn't streamed within that timeframe
-    # We create a series that shows up as a straight line on the dashboard, with 'No Stream' as labels
-    if len(datas["series"]) == 0:
+    # We create a series that shows up as a straight line on the dashboard, with 'No Stream' as labels.
+    # Only when there WAS some series history to fall back on - if the streamer has none
+    # at all yet (original_series empty), leave series as [] instead of crashing below.
+    if len(datas["series"]) == 0 and original_series:
         new_end_date = start_date
         new_start_date = 0
         df = pd.DataFrame(original_series)
