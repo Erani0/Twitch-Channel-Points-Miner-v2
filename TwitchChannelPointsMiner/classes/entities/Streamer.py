@@ -375,17 +375,23 @@ class Streamer(object):
     def persistent_series(self, event_type="Watch"):
         self.__save_json("series", event_type=event_type)
 
-    def persistent_streak_days(self, days):
+    def persistent_streak_days(self, days, at_timestamp=None):
         # Stored in the same per-streamer analytics JSON as points/last-activity
         # (one file, no separate cache to keep in sync) as its own timestamped
         # series, so the dashboard can show both the current value and history.
+        # at_timestamp (unix seconds) lets a caller backdate an entry - used for
+        # one-time reconstruction from historical WATCH_STREAK claim annotations.
         if days is None:
             return
-        self.__save_json("streak", data={"y": days})
+        self.__save_json("streak", data={"y": days}, at_timestamp=at_timestamp)
 
-    def __save_json(self, key, data={}, event_type="Watch"):
+    def __save_json(self, key, data={}, event_type="Watch", at_timestamp=None):
         # https://stackoverflow.com/questions/4676195/why-do-i-need-to-multiply-unix-timestamps-by-1000-in-javascript
-        now = datetime.now().replace(microsecond=0)
+        now = (
+            datetime.fromtimestamp(at_timestamp).replace(microsecond=0)
+            if at_timestamp is not None
+            else datetime.now().replace(microsecond=0)
+        )
         data.update({"x": round(datetime.timestamp(now) * 1000)})
 
         if key == "series":

@@ -12,6 +12,8 @@ from TwitchChannelPointsMiner.classes.AnalyticsServer import (
 )
 from TwitchChannelPointsMiner.classes.Settings import Settings
 from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer
+from TwitchChannelPointsMiner.TwitchChannelPointsMiner import TwitchChannelPointsMiner
+from TwitchChannelPointsMiner.WatchStreakCache import WatchStreakCache
 
 
 class PersistentStreakDaysTest(unittest.TestCase):
@@ -91,6 +93,83 @@ class PersistentStreakDaysTest(unittest.TestCase):
             payload = json.loads(response.get_data(as_text=True))
         names = [entry["name"] for entry in payload]
         self.assertIn(f"{streamer.username}.json", names)
+
+
+class BackfillStreakHistoryTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp_dir.cleanup)
+        self._previous_analytics_path = getattr(Settings, "analytics_path", None)
+        Settings.analytics_path = self._tmp_dir.name
+        self.addCleanup(
+            lambda: setattr(Settings, "analytics_path", self._previous_analytics_path)
+        )
+        self._previous_enable_analytics = getattr(Settings, "enable_analytics", False)
+        Settings.enable_analytics = True
+        self.addCleanup(
+            lambda: setattr(Settings, "enable_analytics", self._previous_enable_analytics)
+        )
+
+    def _file_path(self, streamer):
+        return os.path.join(self._tmp_dir.name, f"{streamer.username}.json")
+
+    def _build_miner(self, streamers, current_days):
+        miner = object.__new__(TwitchChannelPointsMiner)
+        miner.streamers = streamers
+        miner.username = "testaccount"
+        miner.watch_streak_cache = WatchStreakCache(default_account_name="testaccount")
+        for streamer in streamers:
+            miner.watch_streak_cache.set_streamer_status(
+                streamer.username,
+                watch_streak_detected=True,
+                is_online=True,
+                watch_streak_days=current_days,
+                account_name="testaccount",
+            )
+        return miner
+
+    def test_reconstructs_days_backwards_from_watch_streak_claims(self):
+        streamer = Streamer("claimedstreamer")
+        streamer.channel_points = 100
+        streamer.persistent_series(event_type="Watch")
+        # Three historical WATCH_STREAK claims, oldest first.
+        streamer.persistent_annotations("WATCH_STREAK", "+250 - WATCH_STREAK")
+        streamer.persistent_annotations("WATCH_STREAK", "+250 - WATCH_STREAK")
+        streamer.persistent_annotations("WATCH_STREAK", "+250 - WATCH_STREAK")
+
+        miner = self._build_miner([streamer], current_days=10)
+        miner._backfill_streak_history_from_claims()
+
+        with open(self._file_path(streamer), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertEqual([entry["y"] for entry in data["streak"]], [8, 9, 10])
+
+    def test_does_not_touch_streamer_with_existing_streak_history(self):
+        streamer = Streamer("alreadytracked")
+        streamer.channel_points = 100
+        streamer.persistent_series(event_type="Watch")
+        streamer.persistent_annotations("WATCH_STREAK", "+250 - WATCH_STREAK")
+        streamer.persistent_streak_days(5)  # real, go-forward tracked value
+
+        miner = self._build_miner([streamer], current_days=99)
+        miner._backfill_streak_history_from_claims()
+
+        with open(self._file_path(streamer), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Must be untouched - still just the one real value, not overwritten/appended to.
+        self.assertEqual([entry["y"] for entry in data["streak"]], [5])
+
+    def test_no_claims_means_no_backfill(self):
+        streamer = Streamer("noclaims")
+        streamer.channel_points = 100
+        streamer.persistent_series(event_type="Watch")
+
+        miner = self._build_miner([streamer], current_days=7)
+        miner._backfill_streak_history_from_claims()
+
+        with open(self._file_path(streamer), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertNotIn("streak", data)
 
 
 if __name__ == "__main__":
