@@ -1680,6 +1680,29 @@ class Twitch(object):
             streamer.username, account_name=self.account_username
         )
 
+        # streamer.stream.broadcast_id is only refreshed by Twitch.update_stream(), which may
+        # not have run yet for a stream that just came online. If that stale id still matches
+        # an already-closed session from the previous broadcast, treat it as unknown (synthetic)
+        # instead of reusing the closed session, otherwise today's stream is wrongly marked
+        # ineligible for a new watch streak until the id catches up.
+        if (
+            not synthetic
+            and latest_session is not None
+            and latest_session.broadcast_id == broadcast_id
+            and latest_session.ended_at is not None
+            and streamer.online_at
+            and latest_session.started_at < streamer.online_at
+        ):
+            synthetic = True
+            started_at = streamer.online_at or now
+            started_iso = datetime.fromtimestamp(started_at, tz=timezone.utc).isoformat()
+            broadcast_id = f"{streamer.username}:{started_iso}"
+            logger.debug(
+                "[streak] %s stale broadcast id %s from a closed session, treating as new broadcast",
+                streamer.username,
+                latest_session.broadcast_id,
+            )
+
         if (
             synthetic
             and offline_gap is not None
