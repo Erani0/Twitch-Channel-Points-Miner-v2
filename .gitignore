@@ -144,6 +144,7 @@ cython_debug/
 run.py
 chromedriver*
 pycache_clear.sh
+settings.json
 
 # Folders
 cookies/*
