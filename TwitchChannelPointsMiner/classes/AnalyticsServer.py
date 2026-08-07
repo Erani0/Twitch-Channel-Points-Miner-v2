@@ -178,11 +178,17 @@ def json_all():
 
 def index(refresh=5, days_ago=7):
     server_name = os.environ.get("SERVER_NAME", "Twitch Miner")
+    # Cache-buster for the static assets (script.js/style.css/dark-theme.css) tied to
+    # the app version, so a hardcoded query string doesn't leave browsers stuck on a
+    # stale cached copy after an update - it changes automatically every release.
+    from TwitchChannelPointsMiner import __version__ as asset_version
+
     return render_template(
         "charts.html",
         refresh=(refresh * 60 * 1000),
         daysAgo=days_ago,
         server_name=server_name,
+        asset_version=asset_version,
     )
 
 
