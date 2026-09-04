@@ -84,6 +84,16 @@ RETRYABLE_CONNECTION_SETUP_MARKERS = (
     "getaddrinfo failed",
     "name resolution",
 )
+REWARD_LIST_SERVICE_TIMEOUT_RETRY_ATTEMPTS = 3
+REWARD_LIST_SERVICE_TIMEOUT_RETRY_DELAY_SECONDS = 2
+# A single suppressed "service timeout" is noise, but Twitch's backend can degrade for
+# a sustained period (seen: 3+ hours straight on RewardList, which silently starved
+# watch-streak detection since it's suppressed below). If timeouts for the same
+# operation keep recurring without a gap this long, treat it as one ongoing incident...
+SUSTAINED_SERVICE_TIMEOUT_GAP_SECONDS = 3 * 60
+# ...and once an ongoing incident has lasted this long, escalate it to a visible
+# WARNING (rate-limited) instead of leaving it invisible at DEBUG forever.
+SUSTAINED_SERVICE_TIMEOUT_ESCALATION_SECONDS = 5 * 60
 SUPPRESSED_GQL_SERVICE_TIMEOUT_OPERATIONS = {
     "VideoPlayerStreamInfoOverlayChannel",
     "ChannelFollows",
@@ -121,6 +131,7 @@ class Twitch(object):
         "_last_gql_error_log",
         "_last_watch_issue_log",
         "_drop_progress_log",
+        "_suppressed_service_timeout_incidents",
         "watch_streak_max_parallel",
         "max_watch_amount",
         "_last_selection_was_streak",
@@ -164,6 +175,9 @@ class Twitch(object):
         self._last_gql_error_log = {}
         self._last_watch_issue_log = {}
         self._drop_progress_log: Dict[str, int] = {}
+        # operation_name -> {"since": first timeout of the current unbroken run,
+        # "last": most recent timeout, "escalated": already warned about this run}
+        self._suppressed_service_timeout_incidents: Dict[str, dict] = {}
         self.watch_streak_max_parallel = (
             max(1, int(watch_streak_max_parallel))
             if watch_streak_max_parallel is not None
@@ -502,8 +516,20 @@ class Twitch(object):
             return None
         reward_list_request = copy.deepcopy(GQLOperations.RewardList)
         reward_list_request["variables"]["channelID"] = streamer.channel_id
-        reward_response = self.post_gql_request(reward_list_request)
-        self._log_gql_errors(reward_list_request.get("operationName"), reward_response)
+        operation_name = reward_list_request.get("operationName")
+
+        # RewardList feeds the fast watch-streak confirmation path. A single service
+        # timeout is usually a transient blip, so retry a couple of times before
+        # falling back to the slow "wait for 2 WATCH events" path for this cycle.
+        reward_response = None
+        for attempt in range(REWARD_LIST_SERVICE_TIMEOUT_RETRY_ATTEMPTS):
+            reward_response = self.post_gql_request(reward_list_request)
+            if not self._has_service_timeout(reward_response):
+                break
+            if attempt < REWARD_LIST_SERVICE_TIMEOUT_RETRY_ATTEMPTS - 1:
+                time.sleep(REWARD_LIST_SERVICE_TIMEOUT_RETRY_DELAY_SECONDS)
+
+        self._log_gql_errors(operation_name, reward_response)
         return reward_response
 
     def get_watch_streak_days(self, streamer):
@@ -964,6 +990,9 @@ class Twitch(object):
             return False
         errors = response.get("errors") or []
         if errors in [[], None]:
+            # A clean response ends whatever suppressed-timeout incident was tracked
+            # for this operation, so the next run of timeouts starts a fresh clock.
+            self._suppressed_service_timeout_incidents.pop(operation_name, None)
             return False
         messages = []
         for error in errors:
@@ -982,6 +1011,7 @@ class Twitch(object):
                 operation_name,
                 message,
             )
+            self._track_suppressed_service_timeout(operation_name)
             return True
         now = time.time()
         key = (operation_name, message)
@@ -992,6 +1022,35 @@ class Twitch(object):
             )
             self._last_gql_error_log[key] = now
         return True
+
+    def _track_suppressed_service_timeout(self, operation_name: str) -> None:
+        """Suppressed service-timeout errors are normally invisible (DEBUG only) to
+        avoid log spam from occasional blips. But a real Twitch-side degradation can
+        last hours, silently starving whatever depends on that operation (e.g.
+        RewardList feeding fast watch-streak confirmation) the whole time. This keeps
+        a per-operation clock: a gap of SUSTAINED_SERVICE_TIMEOUT_GAP_SECONDS with no
+        timeout resets it (new incident); once an unbroken run has lasted
+        SUSTAINED_SERVICE_TIMEOUT_ESCALATION_SECONDS, escalate to a rate-limited
+        WARNING so it's actually visible instead of silent forever.
+        """
+        now = time.time()
+        incident = self._suppressed_service_timeout_incidents.get(operation_name)
+        if incident is None or now - incident["last"] > SUSTAINED_SERVICE_TIMEOUT_GAP_SECONDS:
+            incident = {"since": now, "last": now, "escalated": False}
+        else:
+            incident["last"] = now
+        self._suppressed_service_timeout_incidents[operation_name] = incident
+
+        duration = now - incident["since"]
+        if not incident["escalated"] and duration >= SUSTAINED_SERVICE_TIMEOUT_ESCALATION_SECONDS:
+            incident["escalated"] = True
+            logger.warning(
+                "GQL operation %s has been returning service timeout continuously "
+                "for over %d minutes - this looks like a Twitch-side backend issue, "
+                "not something this miner can fix on its own.",
+                operation_name,
+                int(duration // 60),
+            )
 
     def _log_request_exception(self, operation_name, error_message):
         now = time.time()
