@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 WATCH_STREAK_CACHE_VERSION = 4
 MIN_OFFLINE_FOR_NEW_STREAK = 30 * 60  # 30 minutes
-MAX_STREAK_ATTEMPTS_PER_BROADCAST = 2
+MAX_STREAK_ATTEMPTS_PER_BROADCAST = 5
 STALE_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60  # drop ended sessions after a week
 
 

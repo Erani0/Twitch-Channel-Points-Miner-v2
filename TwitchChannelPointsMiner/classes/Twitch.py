@@ -1052,6 +1052,15 @@ class Twitch(object):
                 int(duration // 60),
             )
 
+    def _reward_list_outage_active(self, now: float) -> bool:
+        """True while RewardList is in the middle of an unbroken run of suppressed
+        service-timeout errors (tracked by _track_suppressed_service_timeout) - i.e.
+        the outage is ongoing right now, not just something that happened earlier."""
+        incident = self._suppressed_service_timeout_incidents.get("RewardList")
+        if incident is None:
+            return False
+        return now - incident["last"] <= SUSTAINED_SERVICE_TIMEOUT_GAP_SECONDS
+
     def _log_request_exception(self, operation_name, error_message):
         now = time.time()
         key = (operation_name, error_message)
@@ -1991,6 +2000,20 @@ class Twitch(object):
             elapsed = now - attempt.started_at
             if elapsed < self.streak_attempt_timeout_seconds:
                 remaining[session_key] = attempt
+                continue
+
+            if self._reward_list_outage_active(now):
+                # RewardList (the fast confirmation path) is known to be actively
+                # failing right now - burning through attempts while we already know
+                # we can't get confirmation would just waste the streamer's shot at
+                # the streak. Extend this attempt instead of consuming it, and keep
+                # trying for as long as the streamer stays online.
+                attempt.started_at = now
+                remaining[session_key] = attempt
+                logger.debug(
+                    "[streak] %s attempt extended - RewardList outage still ongoing",
+                    attempt.streamer,
+                )
                 continue
 
             session = self.watch_streak_cache.mark_attempt(
