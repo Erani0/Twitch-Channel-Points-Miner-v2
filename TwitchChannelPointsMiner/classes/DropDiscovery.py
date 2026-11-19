@@ -1,5 +1,6 @@
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Optional
 
 from TwitchChannelPointsMiner.classes.Chat import ChatPresence
@@ -65,11 +66,33 @@ class DropDiscovery:
     def stop(self) -> None:
         self.running = False
 
+    @staticmethod
+    def _day_key() -> tuple:
+        utc = datetime.now(timezone.utc)
+        try:
+            from zoneinfo import ZoneInfo
+
+            local = utc.astimezone(ZoneInfo("Europe/Berlin"))
+        except Exception:
+            local = utc.astimezone()
+        return (utc.date(), local.date())
+
+    def _on_new_day(self) -> None:
+        logger.info("[drop-discovery] New day, lifting pauses and checking every campaign again")
+        self._paused.clear()
+        self._stalls.clear()
+        self._bad_channels.clear()
+
     def run(self) -> None:
         last_scan = 0.0
+        day = self._day_key()
         while self.running and self.miner.running:
             try:
                 now = time.time()
+                if self._day_key() != day:
+                    day = self._day_key()
+                    self._on_new_day()
+                    last_scan = 0.0
                 if now - last_scan >= self.scan_interval:
                     self._refresh_queue()
                     last_scan = now
@@ -150,6 +173,8 @@ class DropDiscovery:
                 state = "pausiert, kein Fortschritt beim Zuschauen"
             elif not DropCampaignFile.is_active(campaign, self._settings):
                 state = "aus (aktiv: false)"
+            elif remaining is None and getattr(campaign, "next_start", None):
+                state = f"heute erledigt, naechster Drop ab {campaign.next_start.strftime('%d.%m. %H:%M')} UTC"
             elif remaining is None:
                 state = "nichts per Zuschauen machbar"
             elif campaign.id in self._eligible:

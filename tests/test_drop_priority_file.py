@@ -248,6 +248,54 @@ class CollectorTest(unittest.TestCase):
         self.assertEqual([d.name for d in result.campaigns[0].drops], ["Gengar"])
         self.assertEqual([c.id for c in result.finished], ["alt"])
 
+    def test_daily_chest_done_today_stays_open_until_the_next_day(self):
+        twitch = FakeTwitch()
+        game = {"displayName": "Grand Theft Auto VI", "slug": "grand-theft-auto-vi"}
+        twitch.directory["grand-theft-auto-vi"] = [("c1", "shlorox", 10, game)]
+        now = datetime.utcnow()
+        raw = raw_channel_campaign("chest", drops=(("Purple Chain", 60, "purple"),))
+        tomorrow = raw_channel_campaign("x", drops=(("Bronze Chain", 60, "bronze"),))["timeBasedDrops"][0]
+        tomorrow["startAt"] = (now + timedelta(hours=10)).strftime(FMT)
+        tomorrow["id"] = "chest-bronze"
+        raw["timeBasedDrops"].append(tomorrow)
+        twitch.channel_campaigns = {"c1": [raw]}
+        twitch.inventory = {"in_progress": [], "claimed": {"purple"}}
+        result = DropCampaignCollector(twitch).collect([], ["grand-theft-auto-vi"])
+        self.assertEqual([c.id for c in result.finished], [])
+        chest = result.campaigns[0]
+        self.assertFalse(chest.is_earnable())
+        self.assertIsNotNone(chest.next_start)
+
+        path = os.path.join(tempfile.mkdtemp(), "drop_campaigns.json")
+        f = DropCampaignFile(path)
+        f.write(result.campaigns, f.read_settings(), live_ids=set(result.channels))
+        with open(path, encoding="utf-8") as handle:
+            entry = json.load(handle)["kampagnen"][0]
+        self.assertTrue(entry["status"].startswith("heute erledigt, nächster Drop ab"))
+
+    def test_last_chest_claimed_means_really_finished(self):
+        twitch = FakeTwitch()
+        game = {"displayName": "Grand Theft Auto VI", "slug": "grand-theft-auto-vi"}
+        twitch.directory["grand-theft-auto-vi"] = [("c1", "shlorox", 10, game)]
+        twitch.channel_campaigns = {"c1": [raw_channel_campaign("chest", drops=(("Miami Chain", 60, "miami"),))]}
+        twitch.inventory = {"in_progress": [], "claimed": {"miami"}}
+        result = DropCampaignCollector(twitch).collect([], ["grand-theft-auto-vi"])
+        self.assertEqual([c.id for c in result.finished], ["chest"])
+
+    def test_live_followed_channel_without_drop_tag_is_still_asked(self):
+        twitch = FakeTwitch()
+        twitch.channel_campaigns = {"c9": [raw_channel_campaign("chest", drops=(("Bronze Chain", 60, "bronze"),))]}
+        shlorox = make_streamer("shlorox")
+        shlorox.channel_id = "c9"
+        shlorox.stream.drops_tags = False
+        shlorox.stream.game = {"displayName": "Grand Theft Auto VI", "slug": "grand-theft-auto-vi"}
+        offline = make_streamer("schlaeft", online=False)
+        offline.channel_id = "c8"
+        result = DropCampaignCollector(twitch).collect([shlorox, offline], [])
+        self.assertEqual([c.id for c in result.campaigns], ["chest"])
+        self.assertEqual(result.campaigns[0].game["slug"], "grand-theft-auto-vi")
+        self.assertEqual([x[0] for x in result.channels["chest"]], ["shlorox"])
+
     def test_inventory_campaigns_bring_their_own_game(self):
         twitch = FakeTwitch()
         raw = raw_channel_campaign("anno", drops=(("Skarabäus", 120, "s1"),))
@@ -391,6 +439,15 @@ class DiscoveryTest(unittest.TestCase):
         self.assertIn("wird geschaut auf shadowkekw", text)
         self.assertIn("gerade kein Live-Kanal", text)
         self.assertIn("Drops fertig: Pokémon GO | Campaign alt", text)
+
+    def test_new_day_lifts_pauses_and_bad_channels(self):
+        self.discovery._paused["gta"] = time.time() + 9999
+        self.discovery._bad_channels["gta"] = {"zarbex"}
+        self.discovery._stalls["gta"] = 1
+        self.discovery._on_new_day()
+        self.assertEqual(self.discovery._paused, {})
+        self.assertEqual(self.discovery._bad_channels, {})
+        self.assertEqual(self.discovery._stalls, {})
 
     def test_progress_keeps_the_channel(self):
         self.collector.campaigns = [campaign("gta", watched=10)]

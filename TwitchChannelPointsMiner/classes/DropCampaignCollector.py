@@ -5,7 +5,8 @@ from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
 
 logger = logging.getLogger(__name__)
 
-MAX_CHANNEL_LOOKUPS = 40
+MAX_STREAMER_LOOKUPS = 30
+MAX_GAME_LOOKUPS = 40
 CHANNELS_PER_GAME = 8
 
 
@@ -48,25 +49,36 @@ class DropCampaignCollector:
     def collect(self, streamers, known_slugs) -> CollectResult:
         sources = []
         seen_channels = set()
+        counts = {"streamer": 0, "game": 0}
+        limits = {"streamer": MAX_STREAMER_LOOKUPS, "game": MAX_GAME_LOOKUPS}
 
-        def add_source(channel_id, login, viewers, game):
+        def add_source(channel_id, login, viewers, game, kind):
             if not channel_id or not login or channel_id in seen_channels:
                 return
-            if len(sources) >= MAX_CHANNEL_LOOKUPS:
+            if counts[kind] >= limits[kind]:
                 return
+            counts[kind] += 1
             seen_channels.add(channel_id)
             sources.append((channel_id, login, viewers, _game(game)))
 
+        live = []
         for streamer in list(streamers or []):
             stream = getattr(streamer, "stream", None)
-            if getattr(streamer, "is_online", False) and stream is not None and getattr(stream, "drops_tags", False):
-                add_source(str(getattr(streamer, "channel_id", "") or ""), streamer.username, getattr(stream, "viewers_count", 0) or 0, getattr(stream, "game", {}))
+            if getattr(streamer, "is_online", False) and stream is not None and getattr(streamer, "channel_id", None):
+                live.append((0 if getattr(stream, "drops_tags", False) else 1, -(getattr(stream, "viewers_count", 0) or 0), streamer))
+        live.sort(key=lambda x: (x[0], x[1]))
+        for _, _, streamer in live:
+            stream = streamer.stream
+            add_source(str(streamer.channel_id), streamer.username, getattr(stream, "viewers_count", 0) or 0, getattr(stream, "game", {}) or {}, "streamer")
 
         inventory = {"in_progress": [], "claimed": set()}
-        try:
-            inventory = self.twitch.get_drop_inventory()
-        except Exception:
-            logger.debug("[drop-discovery] Inventory lookup failed", exc_info=True)
+        for _ in range(2):
+            try:
+                inventory = self.twitch.get_drop_inventory()
+            except Exception:
+                logger.debug("[drop-discovery] Inventory lookup failed", exc_info=True)
+            if inventory["in_progress"] or inventory["claimed"]:
+                break
 
         slugs = []
         for slug in list(known_slugs or []) + [_game(c.get("game")).get("slug") for c in inventory["in_progress"]]:
@@ -75,7 +87,7 @@ class DropCampaignCollector:
         for slug in slugs:
             try:
                 for channel_id, login, viewers, game in self.twitch.find_drop_channels_for_game(slug, CHANNELS_PER_GAME):
-                    add_source(channel_id, login, viewers, game)
+                    add_source(channel_id, login, viewers, game, "game")
             except Exception:
                 logger.debug("[drop-discovery] Directory lookup failed for %s", slug, exc_info=True)
 
@@ -117,8 +129,10 @@ class DropCampaignCollector:
 
         active = []
         for campaign in campaigns:
+            upcoming = [d.start_at for d in campaign.drops if not d.is_claimed and d.start_at > datetime.utcnow()]
+            campaign.next_start = min(upcoming) if upcoming else None
             campaign.clear_drops()
-            (active if campaign.drops else finished).append(campaign)
+            (active if campaign.drops or campaign.next_start else finished).append(campaign)
         for cid in channels:
             channels[cid].sort(key=lambda x: x[1], reverse=True)
         return CollectResult(active, finished, channels)

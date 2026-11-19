@@ -30,6 +30,7 @@ class Campaign(object):
         "channel_logins",
         "total_drops",
         "account_connected",
+        "next_start",
     ]
 
     def __init__(self, dict):
@@ -54,6 +55,8 @@ class Campaign(object):
 
         self.drops = list(map(lambda x: Drop(x), dict["timeBasedDrops"]))
         self.total_drops = len(self.drops)
+        upcoming = [d.start_at for d in self.drops if d.start_at > datetime.now()]
+        self.next_start = min(upcoming) if upcoming else None
         account = dict.get("self") if isinstance(dict.get("self"), type(dict)) else {}
         connected = account.get("isAccountConnected") if account else None
         self.account_connected = connected if isinstance(connected, bool) else None

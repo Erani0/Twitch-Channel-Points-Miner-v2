@@ -13,7 +13,7 @@ RETENTION_DAYS = 14
 
 HINT = [
     "Diese Datei pflegt der Miner selbst. Er erkennt laufende Drop-Kampagnen bei deinen Kanälen, in deinem Inventar und bei Spielen, die er schon kennt, und trägt sie hier ein (neue unter die letzte Kampagne desselben Spiels, sonst ans Ende).",
-    "status zeigt den Stand: läuft, gerade kein Live-Kanal, pausiert (kein Fortschritt beim Zuschauen, zum Beispiel nur mit Abo; neuer Versuch nach 6 Stunden), alles abgeholt oder abgelaufen. Abgelaufene und fertige Einträge löscht der Miner 14 Tage nach Kampagnenende von selbst.",
+    "status zeigt den Stand: läuft, gerade kein Live-Kanal, heute erledigt (nächster Drop ab ...), pausiert (kein Fortschritt beim Zuschauen, zum Beispiel nur mit Abo; neuer Versuch nach 6 Stunden), alles abgeholt oder abgelaufen. Abgelaufene und fertige Einträge löscht der Miner 14 Tage nach Kampagnenende von selbst.",
     "Die Reihenfolge in 'kampagnen' ist die Arbeitsreihenfolge: was oben steht, wird zuerst abgearbeitet. Zum Umsortieren einen Eintrag einfach nach oben oder unten verschieben.",
     "aktiv: false = wird ausgelassen, bei einer Kampagne oder unter 'spiele' für ein ganzes Spiel.",
     "Die Datei wird jede Minute gelesen, Änderungen gelten ohne Neustart. Speicherst du sie fehlerhaft ab, repariert der Miner sie selbst und legt die fehlerhafte Fassung als drop_campaigns.fehlerhaft.json daneben.",
@@ -271,6 +271,8 @@ class DropCampaignFile:
                 status = "läuft" if live_ids is None or campaign.id in live_ids else "gerade kein Live-Kanal"
                 if campaign.id in paused_ids:
                     status = "pausiert, kein Fortschritt beim Zuschauen"
+                if not campaign.is_earnable() and getattr(campaign, "next_start", None):
+                    status = f"heute erledigt, nächster Drop ab {_local(campaign.next_start)}"
                 entries[campaign.id] = self._campaign_entry(campaign, settings, status)
                 items.append((campaign.id, game_name(campaign), self._auto_key(campaign)))
             for campaign in finished:
