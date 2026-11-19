@@ -127,6 +127,47 @@ class DropDiscovery:
 
         self._apply_order(look_upwards=True)
         self._write_file()
+        self._log_status()
+
+    def _log_status(self) -> None:
+        paused = self._paused_ids()
+        ordered = DropCampaignFile.ordered(self._campaigns, self._settings)
+        if not ordered and not self._finished:
+            logger.info("Drops: zurzeit keine laufende Kampagne gefunden", extra={"emoji": ":package:"})
+            return
+        logger.info("Drops: %d Kampagnen in Arbeitsreihenfolge", len(ordered), extra={"emoji": ":package:"})
+        for position, campaign in enumerate(ordered, start=1):
+            open_drops = [d for d in campaign.drops if not d.is_claimed]
+            remaining = campaign.remaining_minutes()
+            nxt = None
+            if remaining is not None:
+                candidates = [d for d in open_drops if d.minutes_required > 0 and not d.requires_subscription and d.has_preconditions_met is not False]
+                closest = min(candidates, key=lambda d: d.minutes_required - d.current_minutes_watched)
+                nxt = f"{closest.current_minutes_watched}/{closest.minutes_required} Min. ({closest.name or closest.benefit or 'Drop'})"
+            if self._active_campaign is not None and campaign.id == self._active_campaign.id:
+                state = f"wird geschaut auf {self._active_streamer.username if self._active_streamer else '-'}"
+            elif campaign.id in paused:
+                state = "pausiert, kein Fortschritt beim Zuschauen"
+            elif not DropCampaignFile.is_active(campaign, self._settings):
+                state = "aus (aktiv: false)"
+            elif remaining is None:
+                state = "nichts per Zuschauen machbar"
+            elif campaign.id in self._eligible:
+                state = "wartet, Live-Kanal vorhanden"
+            else:
+                state = "gerade kein Live-Kanal"
+            logger.info(
+                "Drops %d. %s | %s | %d von %d offen | naechster: %s | %s",
+                position,
+                (campaign.game or {}).get("displayName") if isinstance(campaign.game, dict) else "",
+                campaign.name,
+                len(open_drops),
+                campaign.total_drops,
+                nxt or "-",
+                state,
+            )
+        for campaign in self._finished:
+            logger.info("Drops fertig: %s | %s | alles abgeholt", (campaign.game or {}).get("displayName") if isinstance(campaign.game, dict) else "", campaign.name)
 
     def _paused_ids(self) -> set:
         now = time.time()

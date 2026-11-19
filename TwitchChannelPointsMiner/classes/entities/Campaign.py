@@ -60,7 +60,14 @@ class Campaign(object):
 
     def remaining_minutes(self):
         """Minutes still needed for the closest drop that can be earned by watching."""
-        open_drops = [d for d in self.drops if not d.is_claimed and not d.requires_subscription and d.minutes_required > 0]
+        open_drops = [
+            d
+            for d in self.drops
+            if not d.is_claimed
+            and not d.requires_subscription
+            and d.minutes_required > 0
+            and d.has_preconditions_met is not False
+        ]
         if not open_drops:
             return None
         return min(max(0, d.minutes_required - d.current_minutes_watched) for d in open_drops)

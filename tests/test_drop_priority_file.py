@@ -372,6 +372,26 @@ class DiscoveryTest(unittest.TestCase):
         self.assertIsNone(c.remaining_minutes())
         self.assertFalse(c.is_earnable())
 
+    def test_drop_with_missing_precondition_is_not_counted(self):
+        c = campaign("locked", minutes=60)
+        c.drops[0].has_preconditions_met = False
+        self.assertFalse(c.is_earnable())
+
+    def test_status_overview_is_written_to_the_log(self):
+        self.collector.campaigns = [campaign("gta", game="Grand Theft Auto VI", watched=10), campaign("pogo", game="Pokémon GO")]
+        self.collector.channels = {"gta": [("shadowkekw", 5)]}
+        self.collector.finished = [campaign("alt", game="Pokémon GO")]
+        with patch.object(Twitch, "find_drop_channels_for_game", return_value=[]):
+            self.discovery._refresh_queue()
+            self.discovery._start_next()
+            with self.assertLogs("TwitchChannelPointsMiner.classes.DropDiscovery", level="INFO") as logs:
+                self.discovery._log_status()
+        text = " || ".join(logs.output)
+        self.assertIn("Grand Theft Auto VI | Campaign gta | 1 von 1 offen | naechster: 10/60 Min.", text)
+        self.assertIn("wird geschaut auf shadowkekw", text)
+        self.assertIn("gerade kein Live-Kanal", text)
+        self.assertIn("Drops fertig: Pokémon GO | Campaign alt", text)
+
     def test_progress_keeps_the_channel(self):
         self.collector.campaigns = [campaign("gta", watched=10)]
         self.collector.channels = {"gta": [("kanal_a", 1)]}
