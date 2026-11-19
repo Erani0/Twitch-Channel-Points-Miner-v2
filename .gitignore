@@ -168,3 +168,7 @@ replit.nix
 *.js
 *.pyc
 __pycache__/
+
+# Drop priorities, maintained by the miner and edited by the user
+drop_campaigns.json
+drop_campaigns.json.tmp

@@ -1135,9 +1135,12 @@ class TwitchChannelPointsMiner:
                 self.sync_campaigns_thread.start()
 
             if self.auto_discover_drops is True:
+                from TwitchChannelPointsMiner.classes.DropCampaignFile import DropCampaignFile
                 from TwitchChannelPointsMiner.classes.DropDiscovery import DropDiscovery
 
-                self.drop_discovery = DropDiscovery(self.twitch, self)
+                self.drop_discovery = DropDiscovery(
+                    self.twitch, self, campaign_file=DropCampaignFile()
+                )
                 self.drop_discovery_thread = threading.Thread(
                     target=self.drop_discovery.run
                 )

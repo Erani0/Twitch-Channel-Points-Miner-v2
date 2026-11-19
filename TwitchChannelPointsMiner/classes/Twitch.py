@@ -2593,17 +2593,21 @@ class Twitch(object):
                 campaign.clear_drops()
                 if campaign.drops != []:
                     campaigns.append(campaign)
-        return campaigns
+        # Merge the real progress from the inventory (and claim what is ready), so
+        # fully claimed campaigns drop out instead of looking active until they end.
+        campaigns = self.__sync_campaigns(campaigns)
+        return [c for c in campaigns if c.drops != []]
 
-    def _find_live_channel_for_campaign(self, campaign):
+    def _find_live_channel_for_campaign(self, campaign, exclude=None):
         """Return the login of a live, drops-eligible channel for this campaign, or
         None. Whitelist campaigns (campaign.channels) are checked directly; open
         campaigns fall back to a directory search filtered by the drops tag."""
+        exclude = {str(x).lower() for x in (exclude or ())}
         if campaign.channels:
-            return self.__find_live_whitelisted_channel(campaign)
-        return self.__find_live_channel_in_directory(campaign)
+            return self.__find_live_whitelisted_channel(campaign, exclude)
+        return self.__find_live_channel_in_directory(campaign, exclude)
 
-    def __find_live_whitelisted_channel(self, campaign):
+    def __find_live_whitelisted_channel(self, campaign, exclude=frozenset()):
         best_login = None
         best_viewers = -1
         for chunk in create_chunks(campaign.channels, 20):
@@ -2627,7 +2631,7 @@ class Twitch(object):
                 if not isinstance(stream, dict) or stream.get("id") is None:
                     continue
                 login = campaign.channel_logins.get(channel_id)
-                if not login:
+                if not login or login.lower() in exclude:
                     continue
                 # viewersCount may not be part of this persisted query's response shape;
                 # default to 0 so we still pick a channel instead of finding none.
@@ -2637,7 +2641,7 @@ class Twitch(object):
                     best_login = login
         return best_login
 
-    def __find_live_channel_in_directory(self, campaign):
+    def __find_live_channel_in_directory(self, campaign, exclude=frozenset()):
         game = campaign.game if isinstance(campaign.game, dict) else {}
         slug = game.get("slug")
         if not slug:
@@ -2674,7 +2678,7 @@ class Twitch(object):
                 continue
             broadcaster = node.get("broadcaster") or {}
             login = broadcaster.get("login")
-            if not login:
+            if not login or login.lower() in exclude:
                 continue
             viewers = node.get("viewersCount") or 0
             if viewers > best_viewers:

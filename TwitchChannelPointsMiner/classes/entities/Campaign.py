@@ -28,6 +28,8 @@ class Campaign(object):
         "drops",
         "channels",
         "channel_logins",
+        "total_drops",
+        "account_connected",
     ]
 
     def __init__(self, dict):
@@ -51,6 +53,26 @@ class Campaign(object):
         self.dt_match = self.start_at < datetime.now() < self.end_at
 
         self.drops = list(map(lambda x: Drop(x), dict["timeBasedDrops"]))
+        self.total_drops = len(self.drops)
+        account = dict.get("self") if isinstance(dict.get("self"), type(dict)) else {}
+        connected = account.get("isAccountConnected") if account else None
+        self.account_connected = connected if isinstance(connected, bool) else None
+
+    def remaining_minutes(self):
+        """Minutes still needed for the closest drop that can be earned by watching."""
+        open_drops = [d for d in self.drops if not d.is_claimed and not d.requires_subscription]
+        if not open_drops:
+            return None
+        return min(max(0, d.minutes_required - d.current_minutes_watched) for d in open_drops)
+
+    def watched_minutes(self):
+        return sum(d.current_minutes_watched for d in self.drops)
+
+    def has_progress(self):
+        return any(d.current_minutes_watched > 0 for d in self.drops if not d.is_claimed)
+
+    def is_earnable(self):
+        return self.remaining_minutes() is not None
 
     def __repr__(self):
         return f"Campaign(id={self.id}, name={self.name}, game={self.game}, in_inventory={self.in_inventory})"

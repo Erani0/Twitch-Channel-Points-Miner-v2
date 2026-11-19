@@ -160,10 +160,10 @@ class DropDiscoveryRotationTest(unittest.TestCase):
             self.assertEqual(miner.added, ["login1"])
             self.assertEqual(discovery._active_campaign.id, "A")
 
-            # Campaign A is now complete (no longer reported as active) -> should
-            # release the slot and immediately move on to campaign B.
+            # Campaign A is now complete (no longer reported as active) -> the next
+            # scan releases the slot and the next cycle moves on to campaign B.
             with patch.object(Twitch, "get_active_campaigns", return_value=[campaign_b]):
-                discovery._monitor_active()
+                discovery._refresh_queue()
             self.assertEqual(miner.removed, ["login1"])
             self.assertIsNone(discovery._active_streamer)
 

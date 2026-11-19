@@ -75,6 +75,18 @@ Relevant tests:
 - `tests/test_watch_streak_fallback.py`
 - `tests/test_websocket_badtopic.py`
 
+## 5b) Drops always get their own slot (drop_campaigns.json)
+
+- With `auto_discover_drops=True` one of the two watch slots belongs to drops permanently; watch streaks use the other one and can no longer push drops out.
+- Campaigns are loaded together with the real inventory progress, so fully claimed campaigns are recognised right away (before, a campaign looked active until it ended).
+- Order without any configuration: your own order from the file, then campaigns already started, then the one closest to its next drop, then the one ending first. Campaigns that need a subscription are skipped, campaigns whose game account is not linked go last.
+- The miner keeps `drop_campaigns.json` next to `run.py` up to date: every active campaign with game, end, open drops, progress towards the next drop, allowed channels and whether the game account is linked. Only `reihenfolge` (1 = first, 0 = automatic) and `aktiv` (false = ignore) are meant to be edited, per game or per campaign. Changes apply within 5 minutes without a restart; a file broken while editing is never overwritten and the last valid settings stay in effect.
+- The drop channel is replaced when it goes offline or shows no progress for 20 minutes (another live channel for the same campaign is picked); a channel from your own streamer list is reused instead of being added twice.
+
+Relevant tests:
+- `tests/test_drop_priority_file.py`
+- `tests/test_drop_discovery.py`
+
 ## 6) Compatibility note
 
 - Package metadata in this fork currently targets Python `>=3.10`.
