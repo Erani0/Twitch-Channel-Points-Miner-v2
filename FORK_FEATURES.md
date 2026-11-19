@@ -78,10 +78,12 @@ Relevant tests:
 ## 5b) Drops always get their own slot (drop_campaigns.json)
 
 - With `auto_discover_drops=True` one of the two watch slots belongs to drops permanently; watch streaks use the other one and can no longer push drops out.
-- Campaigns are loaded together with the real inventory progress, so fully claimed campaigns are recognised right away (before, a campaign looked active until it ended).
-- Order without any configuration: your own order from the file, then campaigns already started, then the one closest to its next drop, then the one ending first. Campaigns that need a subscription are skipped, campaigns whose game account is not linked go last.
-- The miner keeps `drop_campaigns.json` next to `run.py` up to date: every active campaign with game, end, open drops, progress towards the next drop, allowed channels and whether the game account is linked. Only `reihenfolge` (1 = first, 0 = automatic) and `aktiv` (false = ignore) are meant to be edited, per game or per campaign. Changes apply within 5 minutes without a restart; a file broken while editing is never overwritten and the last valid settings stay in effect.
-- The drop channel is replaced when it goes offline or shows no progress for 20 minutes (another live channel for the same campaign is picked); a channel from your own streamer list is reused instead of being added twice.
+- Campaigns are loaded together with the real inventory progress every 15 minutes, so fully claimed or ended campaigns are recognised and dropped right away.
+- `drop_campaigns.json` next to `run.py` is kept up to date by the miner: every active campaign with game, end, open drops, progress towards the next drop, allowed channels and whether the game account is linked. Its order is the working order: the highest listed campaign that has a live channel is watched, and a campaign moved higher takes over as soon as it has a live channel. New campaigns are placed below the last campaign of the same game, otherwise at the end; finished ones are removed, nothing else is touched. `aktiv: false` skips a campaign or (under `spiele`) a whole game.
+- The file is read every minute, edits apply without a restart. A file saved with mistakes repairs itself: small slips are fixed, otherwise order and `aktiv` values are recovered from the text, and only if nothing is recognisable the last valid state is written back. The broken text is kept as `drop_campaigns.fehlerhaft.json`.
+- The drop channel is replaced when it goes offline or shows no progress for 25 minutes (another live channel for the same campaign is picked); a channel from your own streamer list is reused instead of being added twice.
+- The `safe.directory` line that `run.py` adds to `~/.gitconfig` on every start is de-duplicated automatically.
+- Existing installations update as usual; `run.py` is never overwritten and the new behaviour only starts once `auto_discover_drops=True` is set.
 
 Relevant tests:
 - `tests/test_drop_priority_file.py`

@@ -275,3 +275,39 @@ def check_versions():
     except Exception:
         github_version = "0.0.0"
     return current_version, github_version
+
+
+def dedupe_git_safe_directories(path=None):
+    """run.py adds 'safe.directory' to ~/.gitconfig on every start, which piles up
+    the same line over and over. Keep every distinct entry once, drop repeats."""
+    import os
+
+    path = path or os.path.join(os.path.expanduser("~"), ".gitconfig")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except OSError:
+        return False
+    seen = set()
+    section = None
+    result = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped.lower()
+        if section == "[safe]" and stripped.replace(" ", "").startswith("directory="):
+            key = stripped.replace(" ", "")
+            if key in seen:
+                continue
+            seen.add(key)
+        result.append(line)
+    if len(result) == len(lines):
+        return False
+    tmp = f"{path}.tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.writelines(result)
+        os.replace(tmp, path)
+    except OSError:
+        return False
+    return True

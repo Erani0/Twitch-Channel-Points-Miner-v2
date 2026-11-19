@@ -149,6 +149,13 @@ class TwitchChannelPointsMiner:
             logger.error("No username, exiting...")
             sys.exit(0)
 
+        try:
+            from TwitchChannelPointsMiner.utils import dedupe_git_safe_directories
+
+            dedupe_git_safe_directories()
+        except Exception:
+            pass
+
         # This disables certificate verification and allows the connection to proceed, but also makes it vulnerable to man-in-the-middle (MITM) attacks.
         Settings.disable_ssl_cert_verification = disable_ssl_cert_verification
 
