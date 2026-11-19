@@ -115,6 +115,13 @@ class SlotReservationTest(unittest.TestCase):
         self.assertEqual(len(selection), 2)
 
 
+class EmptyCollector:
+    def collect(self, streamers, known_slugs):
+        from TwitchChannelPointsMiner.classes.DropCampaignCollector import CollectResult
+
+        return CollectResult([], [], {})
+
+
 class FakeMiner:
     def __init__(self):
         self.running = True
@@ -136,7 +143,7 @@ class DropDiscoveryRotationTest(unittest.TestCase):
     def test_rotates_to_next_campaign_once_current_completes(self):
         twitch = Twitch("test", "ua")
         miner = FakeMiner()
-        discovery = DropDiscovery(twitch, miner, scan_interval=9999, monitor_interval=0)
+        discovery = DropDiscovery(twitch, miner, scan_interval=9999, monitor_interval=0, collector=EmptyCollector())
 
         campaign_a = Campaign(make_campaign_dict("A", channels=[("id1", "login1")]))
         campaign_b = Campaign(make_campaign_dict("B", channels=[("id2", "login2")]))

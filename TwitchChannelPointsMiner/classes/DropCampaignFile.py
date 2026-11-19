@@ -3,14 +3,17 @@ import logging
 import os
 import re
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_PATH = "drop_campaigns.json"
 
+RETENTION_DAYS = 14
+
 HINT = [
-    "Diese Datei pflegt der Miner selbst. Abgelaufene oder komplett abgeholte Kampagnen fallen raus, neue kommen dazu (unter die letzte Kampagne desselben Spiels, sonst ans Ende).",
+    "Diese Datei pflegt der Miner selbst. Er erkennt laufende Drop-Kampagnen bei deinen Kanälen, in deinem Inventar und bei Spielen, die er schon kennt, und trägt sie hier ein (neue unter die letzte Kampagne desselben Spiels, sonst ans Ende).",
+    "status zeigt den Stand: läuft, gerade kein Live-Kanal, pausiert (kein Fortschritt beim Zuschauen, zum Beispiel nur mit Abo; neuer Versuch nach 6 Stunden), alles abgeholt oder abgelaufen. Abgelaufene und fertige Einträge löscht der Miner 14 Tage nach Kampagnenende von selbst.",
     "Die Reihenfolge in 'kampagnen' ist die Arbeitsreihenfolge: was oben steht, wird zuerst abgearbeitet. Zum Umsortieren einen Eintrag einfach nach oben oder unten verschieben.",
     "aktiv: false = wird ausgelassen, bei einer Kampagne oder unter 'spiele' für ein ganzes Spiel.",
     "Die Datei wird jede Minute gelesen, Änderungen gelten ohne Neustart. Speicherst du sie fehlerhaft ab, repariert der Miner sie selbst und legt die fehlerhafte Fassung als drop_campaigns.fehlerhaft.json daneben.",
@@ -105,6 +108,11 @@ class DropCampaignFile:
             self._keep_broken_copy(text)
             salvaged = self._salvage(text)
             if salvaged is not None:
+                for cid, info in salvaged["campaigns"].items():
+                    previous = self._settings["campaigns"].get(cid, {})
+                    info.setdefault("game", previous.get("game", ""))
+                    if previous.get("entry"):
+                        info["entry"] = previous["entry"]
                 logger.warning("drop_campaigns.json war fehlerhaft und wurde repariert, Reihenfolge und aktiv-Werte wurden übernommen.")
                 self._settings = salvaged
             else:
@@ -124,7 +132,7 @@ class DropCampaignFile:
                 cid = str(entry["id"])
                 if cid in campaigns:
                     continue
-                campaigns[cid] = {"active": _as_bool(entry.get("aktiv"))}
+                campaigns[cid] = {"active": _as_bool(entry.get("aktiv")), "game": str(entry.get("spiel") or ""), "entry": entry}
                 order.append(cid)
         return {"games": games, "campaigns": campaigns, "order": order}
 
@@ -210,41 +218,88 @@ class DropCampaignFile:
             campaign.end_at,
         )
 
-    @classmethod
-    def ordered(cls, campaigns, settings) -> list:
-        """All campaigns in working order: the user's order from the file, with new
-        campaigns placed below the last listed campaign of the same game, or at the
-        end (new ones among themselves sorted automatically)."""
-        by_id = {c.id: c for c in campaigns}
-        result = [by_id[cid] for cid in settings.get("order", []) if cid in by_id]
-        known = {c.id for c in result}
-        for new in sorted((c for c in campaigns if c.id not in known), key=cls._auto_key):
-            name = game_name(new)
+    @staticmethod
+    def merge_order(order, items) -> list:
+        """items: list of (id, game, sortkey or None). Ids already in the user's order
+        keep their place; new ones go below the last entry of the same game, or to
+        the end, sorted by sortkey among themselves."""
+        by_id = {i[0]: i for i in items}
+        result = [cid for cid in order if cid in by_id]
+        known = set(result)
+        new = [i for i in items if i[0] not in known]
+        new.sort(key=lambda i: (i[2] is None, i[2] if i[2] is not None else 0))
+        for cid, game, _ in new:
             position = None
             for index, existing in enumerate(result):
-                if game_name(existing) == name:
+                if by_id[existing][1] == game:
                     position = index + 1
             if position is None:
-                result.append(new)
+                result.append(cid)
             else:
-                result.insert(position, new)
+                result.insert(position, cid)
+            known.add(cid)
         return result
+
+    @classmethod
+    def _items(cls, campaigns, settings):
+        items = [(c.id, game_name(c), cls._auto_key(c)) for c in campaigns]
+        present = {c.id for c in campaigns}
+        for cid in settings.get("order", []):
+            if cid not in present:
+                items.append((cid, settings["campaigns"].get(cid, {}).get("game", ""), None))
+        return items
+
+    @classmethod
+    def ordered(cls, campaigns, settings) -> list:
+        by_id = {c.id: c for c in campaigns}
+        return [by_id[cid] for cid in cls.merge_order(settings.get("order", []), cls._items(campaigns, settings)) if cid in by_id]
 
     @classmethod
     def rank(cls, campaigns, settings) -> list:
         """Campaigns the miner should work on, best first."""
-        return [
-            c
-            for c in cls.ordered(campaigns, settings)
-            if cls.is_active(c, settings) and c.is_earnable()
-        ]
+        return [c for c in cls.ordered(campaigns, settings) if cls.is_active(c, settings) and c.is_earnable()]
 
-    def write(self, campaigns, settings, active_campaign=None, active_login=None) -> bool:
+    def write(self, campaigns, settings, active_campaign=None, active_login=None, finished=None, live_ids=None, paused_ids=None) -> bool:
         with self._lock:
-            ordered = self.ordered(campaigns, settings)
+            finished = list(finished or [])
+            paused_ids = set(paused_ids or ())
+            live_ids = set(live_ids) if live_ids is not None else None
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            entries = {}
+            items = []
+            for campaign in campaigns:
+                status = "läuft" if live_ids is None or campaign.id in live_ids else "gerade kein Live-Kanal"
+                if campaign.id in paused_ids:
+                    status = "pausiert, kein Fortschritt beim Zuschauen"
+                entries[campaign.id] = self._campaign_entry(campaign, settings, status)
+                items.append((campaign.id, game_name(campaign), self._auto_key(campaign)))
+            for campaign in finished:
+                if campaign.id in entries:
+                    continue
+                entries[campaign.id] = self._campaign_entry(campaign, settings, "alles abgeholt")
+                items.append((campaign.id, game_name(campaign), None))
+            for cid in settings.get("order", []):
+                if cid in entries:
+                    continue
+                old = settings["campaigns"].get(cid, {}).get("entry")
+                if not isinstance(old, dict):
+                    continue
+                end = self._parse_end(old.get("ende_utc"))
+                if end is not None and now > end + timedelta(days=RETENTION_DAYS):
+                    continue
+                carried = dict(old)
+                carried["aktiv"] = settings["campaigns"].get(cid, {}).get("active", True)
+                if end is not None and now > end:
+                    carried["status"] = "abgelaufen"
+                elif carried.get("status") != "alles abgeholt":
+                    carried["status"] = "gerade kein Live-Kanal"
+                entries[cid] = carried
+                items.append((cid, str(carried.get("spiel") or ""), None))
+
+            order = self.merge_order(settings.get("order", []), items)
             games_seen = []
-            for campaign in ordered:
-                name = game_name(campaign)
+            for cid in order:
+                name = entries[cid].get("spiel") or "Unbekannt"
                 if name not in games_seen:
                     games_seen.append(name)
             for name in settings["games"]:
@@ -253,13 +308,9 @@ class DropCampaignFile:
 
             data = {
                 "hinweis": HINT,
-                "aktualisiert": _local(datetime.now(timezone.utc).replace(tzinfo=None)),
+                "aktualisiert": _local(now),
                 "jetzt": (
-                    {
-                        "kanal": active_login,
-                        "spiel": game_name(active_campaign),
-                        "kampagne": active_campaign.name,
-                    }
+                    {"kanal": active_login, "spiel": game_name(active_campaign), "kampagne": active_campaign.name}
                     if active_campaign is not None and active_login
                     else None
                 ),
@@ -267,7 +318,7 @@ class DropCampaignFile:
                     {"spiel": name, "aktiv": settings["games"].get(name, {}).get("active", True)}
                     for name in games_seen
                 ],
-                "kampagnen": [self._campaign_entry(c, settings) for c in ordered],
+                "kampagnen": [entries[cid] for cid in order],
             }
 
             tmp = f"{self.path}.tmp"
@@ -280,31 +331,52 @@ class DropCampaignFile:
                 return False
             self._seen_mtime = self._mtime()
             self.broken = False
-            self._settings = {
-                "games": {n: {"active": settings["games"].get(n, {}).get("active", True)} for n in games_seen},
-                "campaigns": {c.id: {"active": settings["campaigns"].get(c.id, {}).get("active", True)} for c in ordered},
-                "order": [c.id for c in ordered],
-            }
+            self._settings = self._from_data(data)
             return True
 
     @staticmethod
-    def _campaign_entry(campaign, settings) -> dict:
+    def _parse_end(value):
+        if not value:
+            return None
+        try:
+            return datetime.strptime(str(value), "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            return None
+
+    def known_slugs(self) -> list:
+        slugs = []
+        for info in self._settings["campaigns"].values():
+            entry = info.get("entry") if isinstance(info, dict) else None
+            slug = entry.get("slug") if isinstance(entry, dict) else None
+            if slug and slug not in slugs and entry.get("status") != "abgelaufen":
+                slugs.append(slug)
+        return slugs
+
+    @staticmethod
+    def _campaign_entry(campaign, settings, status) -> dict:
         own = settings["campaigns"].get(campaign.id, {})
+        game = campaign.game if isinstance(campaign.game, dict) else {}
         open_drops = [d for d in campaign.drops if not d.is_claimed]
-        next_drop = "nur mit Abo oder schon alles abgeholt"
-        candidates = [d for d in open_drops if not d.requires_subscription]
+        next_drop = "nichts mehr offen"
+        candidates = [d for d in open_drops if not d.requires_subscription and d.minutes_required > 0]
         if candidates:
             closest = min(candidates, key=lambda d: d.minutes_required - d.current_minutes_watched)
-            next_drop = f"{closest.current_minutes_watched} von {closest.minutes_required} Minuten ({closest.name})"
+            label = closest.name or closest.benefit or "Drop"
+            next_drop = f"{closest.current_minutes_watched} von {closest.minutes_required} Minuten ({label})"
+        elif open_drops:
+            next_drop = "nur mit Abo"
         connected = {True: "ja", False: "nein", None: "unbekannt"}[campaign.account_connected]
         return {
             "spiel": game_name(campaign),
             "kampagne": campaign.name,
             "aktiv": own.get("active", True),
+            "status": status,
             "endet": _local(campaign.end_at),
             "offen": f"{len(open_drops)} von {campaign.total_drops} Drops",
             "naechster_drop": next_drop,
             "kanaele": "nur bestimmte Kanäle" if campaign.channels else "alle Kanäle mit Drops für dieses Spiel",
             "konto_verbunden": connected,
             "id": campaign.id,
+            "slug": game.get("slug"),
+            "ende_utc": campaign.end_at.strftime("%Y-%m-%dT%H:%M:%SZ") if campaign.end_at else None,
         }

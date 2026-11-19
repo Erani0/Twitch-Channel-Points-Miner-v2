@@ -2598,6 +2598,63 @@ class Twitch(object):
         campaigns = self.__sync_campaigns(campaigns)
         return [c for c in campaigns if c.drops != []]
 
+    def get_channel_drop_campaigns(self, channel_id):
+        """Drop campaigns a viewer can currently earn on this channel. Works with the
+        TV login even though the drops dashboard returns no campaigns for it."""
+        json_data = copy.deepcopy(GQLOperations.DropsHighlightService_AvailableDrops)
+        json_data["variables"] = {"channelID": str(channel_id)}
+        response = self.post_gql_request(json_data)
+        if self._log_gql_errors(json_data.get("operationName"), response):
+            return []
+        if not isinstance(response, dict):
+            return []
+        channel = (response.get("data") or {}).get("channel") or {}
+        campaigns = channel.get("viewerDropCampaigns") or []
+        return [c for c in campaigns if isinstance(c, dict) and c.get("id")]
+
+    def get_drop_inventory(self):
+        """Campaigns in progress (full details) and the ids of every reward already
+        claimed, used to tell finished drops apart without the drops dashboard."""
+        inventory = self.__get_inventory()
+        if not isinstance(inventory, dict):
+            return {"in_progress": [], "claimed": set()}
+        claimed = set()
+        for reward in inventory.get("gameEventDrops") or []:
+            if isinstance(reward, dict) and reward.get("id"):
+                claimed.add(str(reward["id"]).split("_CUSTOM_ID_")[0])
+        in_progress = [c for c in inventory.get("dropCampaignsInProgress") or [] if isinstance(c, dict) and c.get("id")]
+        return {"in_progress": in_progress, "claimed": claimed}
+
+    def sync_campaign_progress(self, campaigns):
+        """Public wrapper: merges inventory progress into the campaigns and claims
+        whatever is ready."""
+        return self.__sync_campaigns(campaigns)
+
+    def find_drop_channels_for_game(self, slug, limit=8):
+        """Live channels of a game that carry the drops tag: list of (id, login, viewers, game)."""
+        if not slug:
+            return []
+        json_data = copy.deepcopy(GQLOperations.DirectoryPage_Game)
+        json_data["variables"]["slug"] = slug
+        json_data["variables"]["limit"] = limit
+        json_data["variables"]["options"]["tags"] = [DROP_ID]
+        response = self.post_gql_request(json_data)
+        if self._log_gql_errors(json_data.get("operationName"), response):
+            return []
+        try:
+            edges = response["data"]["game"]["streams"]["edges"] or []
+        except (KeyError, TypeError):
+            return []
+        result = []
+        for edge in edges:
+            node = edge.get("node") if isinstance(edge, dict) else None
+            if not isinstance(node, dict):
+                continue
+            broadcaster = node.get("broadcaster") or {}
+            if broadcaster.get("id") and broadcaster.get("login"):
+                result.append((str(broadcaster["id"]), broadcaster["login"], node.get("viewersCount") or 0, node.get("game") or {}))
+        return result
+
     def _find_live_channel_for_campaign(self, campaign, exclude=None):
         """Return the login of a live, drops-eligible channel for this campaign, or
         None. Whitelist campaigns (campaign.channels) are checked directly; open
