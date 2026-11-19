@@ -97,7 +97,11 @@ class DropDiscovery:
                     self._refresh_queue()
                     last_scan = now
                 elif self.campaign_file is not None and self.campaign_file.changed():
+                    games_before = set(self.campaign_file.known_slugs())
                     self._settings = self.campaign_file.read_settings()
+                    if set(self.campaign_file.known_slugs()) - games_before:
+                        last_scan = 0.0
+                        continue
                     self._apply_order()
                     self._write_file()
 

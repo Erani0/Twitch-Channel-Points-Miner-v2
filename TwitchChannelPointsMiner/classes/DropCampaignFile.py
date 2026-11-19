@@ -15,7 +15,7 @@ HINT = [
     "Diese Datei pflegt der Miner selbst. Er erkennt laufende Drop-Kampagnen bei deinen Kanälen, in deinem Inventar und bei Spielen, die er schon kennt, und trägt sie hier ein (neue unter die letzte Kampagne desselben Spiels, sonst ans Ende).",
     "status zeigt den Stand: läuft, gerade kein Live-Kanal, heute erledigt (nächster Drop ab ...), pausiert (kein Fortschritt beim Zuschauen, zum Beispiel nur mit Abo; neuer Versuch nach 6 Stunden), alles abgeholt oder abgelaufen. Abgelaufene und fertige Einträge löscht der Miner 14 Tage nach Kampagnenende von selbst.",
     "Die Reihenfolge in 'kampagnen' ist die Arbeitsreihenfolge: was oben steht, wird zuerst abgearbeitet. Zum Umsortieren einen Eintrag einfach nach oben oder unten verschieben.",
-    "aktiv: false = wird ausgelassen, bei einer Kampagne oder unter 'spiele' für ein ganzes Spiel.",
+    "aktiv: false = wird ausgelassen, bei einer Kampagne oder unter 'spiele' für ein ganzes Spiel. Ein Spiel unter 'spiele' mit 'slug' (der Teil der Twitch-Adresse, z. B. grand-theft-auto-vi) wird bei jedem Durchlauf gezielt nach Drop-Kanälen durchsucht.",
     "Die Datei wird jede Minute gelesen, Änderungen gelten ohne Neustart. Speicherst du sie fehlerhaft ab, repariert der Miner sie selbst und legt die fehlerhafte Fassung als drop_campaigns.fehlerhaft.json daneben.",
 ]
 
@@ -124,7 +124,7 @@ class DropCampaignFile:
         games = {}
         for entry in data.get("spiele") or []:
             if isinstance(entry, dict) and entry.get("spiel"):
-                games[str(entry["spiel"])] = {"active": _as_bool(entry.get("aktiv"))}
+                games[str(entry["spiel"])] = {"active": _as_bool(entry.get("aktiv")), "slug": entry.get("slug") or None}
         campaigns = {}
         order = []
         for entry in data.get("kampagnen") or []:
@@ -316,10 +316,7 @@ class DropCampaignFile:
                     if active_campaign is not None and active_login
                     else None
                 ),
-                "spiele": [
-                    {"spiel": name, "aktiv": settings["games"].get(name, {}).get("active", True)}
-                    for name in games_seen
-                ],
+                "spiele": [self._game_entry(name, settings, entries) for name in games_seen],
                 "kampagnen": [entries[cid] for cid in order],
             }
 
@@ -337,6 +334,17 @@ class DropCampaignFile:
             return True
 
     @staticmethod
+    def _game_entry(name, settings, entries) -> dict:
+        info = settings["games"].get(name, {})
+        slug = info.get("slug")
+        if not slug:
+            slug = next((e.get("slug") for e in entries.values() if e.get("spiel") == name and e.get("slug")), None)
+        entry = {"spiel": name, "aktiv": info.get("active", True)}
+        if slug:
+            entry["slug"] = slug
+        return entry
+
+    @staticmethod
     def _parse_end(value):
         if not value:
             return None
@@ -347,6 +355,10 @@ class DropCampaignFile:
 
     def known_slugs(self) -> list:
         slugs = []
+        for info in self._settings["games"].values():
+            slug = info.get("slug") if isinstance(info, dict) else None
+            if slug and info.get("active", True) and slug not in slugs:
+                slugs.append(slug)
         for info in self._settings["campaigns"].values():
             entry = info.get("entry") if isinstance(info, dict) else None
             slug = entry.get("slug") if isinstance(entry, dict) else None

@@ -1,4 +1,6 @@
 import logging
+import re
+import unicodedata
 from datetime import datetime, timezone
 
 from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
@@ -8,12 +10,18 @@ logger = logging.getLogger(__name__)
 MAX_STREAMER_LOOKUPS = 30
 MAX_GAME_LOOKUPS = 40
 CHANNELS_PER_GAME = 8
+MAX_LIVE_GAMES = 6
+
+
+def _slugify(name) -> str:
+    plain = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode("ascii").lower()
+    return re.sub(r"[^a-z0-9]+", "-", plain).strip("-")
 
 
 def _game(game) -> dict:
     game = game if isinstance(game, dict) else {}
     name = game.get("displayName") or game.get("name") or ""
-    return {"id": game.get("id"), "name": game.get("name") or name, "displayName": name, "slug": game.get("slug")}
+    return {"id": game.get("id"), "name": game.get("name") or name, "displayName": name, "slug": game.get("slug") or (_slugify(name) if name else None)}
 
 
 def _first_start(starts) -> str:
@@ -80,8 +88,14 @@ class DropCampaignCollector:
             if inventory["in_progress"] or inventory["claimed"]:
                 break
 
+        live_games = {}
+        for _, _, streamer in live:
+            slug = _game(getattr(streamer.stream, "game", {}) or {}).get("slug")
+            if slug:
+                live_games[slug] = live_games.get(slug, 0) + 1
+        top_live = [s for s, _ in sorted(live_games.items(), key=lambda x: -x[1])][:MAX_LIVE_GAMES]
         slugs = []
-        for slug in list(known_slugs or []) + [_game(c.get("game")).get("slug") for c in inventory["in_progress"]]:
+        for slug in list(known_slugs or []) + [_game(c.get("game")).get("slug") for c in inventory["in_progress"]] + top_live:
             if slug and slug not in slugs:
                 slugs.append(slug)
         for slug in slugs:
@@ -105,6 +119,10 @@ class DropCampaignCollector:
                 raw.setdefault(cid, campaign)
                 if game.get("displayName"):
                     games.setdefault(cid, game)
+                elif cid not in games:
+                    fallback = _game(campaign.get("game"))
+                    if fallback.get("displayName") and fallback.get("displayName") != "Special Events":
+                        games[cid] = fallback
                 channels.setdefault(cid, [])
                 if login not in [x[0] for x in channels[cid]]:
                     channels[cid].append((login, viewers))

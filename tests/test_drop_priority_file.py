@@ -142,6 +142,13 @@ class FileTest(unittest.TestCase):
         self.file.write([campaign("p", game="Pokémon GO")], self.file.read_settings())
         self.assertEqual(self.file.known_slugs(), ["pokemon-go"])
 
+    def test_game_with_slug_is_searched_and_kept(self):
+        self.save({"spiele": [{"spiel": "Grand Theft Auto VI", "slug": "grand-theft-auto-vi", "aktiv": True}], "kampagnen": []})
+        settings = self.file.read_settings()
+        self.assertEqual(self.file.known_slugs(), ["grand-theft-auto-vi"])
+        self.file.write([], settings)
+        self.assertEqual(self.read()["spiele"], [{"spiel": "Grand Theft Auto VI", "aktiv": True, "slug": "grand-theft-auto-vi"}])
+
     def test_small_slip_is_fixed_and_rewritten_clean(self):
         with open(self.path, "w", encoding="utf-8") as f:
             f.write('{"kampagnen": [{"id": "b", "aktiv": false,}, {"id": "a"},]')
@@ -295,6 +302,18 @@ class CollectorTest(unittest.TestCase):
         self.assertEqual([c.id for c in result.campaigns], ["chest"])
         self.assertEqual(result.campaigns[0].game["slug"], "grand-theft-auto-vi")
         self.assertEqual([x[0] for x in result.channels["chest"]], ["shlorox"])
+
+    def test_games_of_live_channels_are_searched_and_names_get_a_slug(self):
+        twitch = FakeTwitch()
+        found = {"displayName": "Pokémon GO"}
+        twitch.directory["pokemon-go"] = [("c5", "j0beats", 10, found)]
+        twitch.channel_campaigns = {"c5": [raw_channel_campaign("evo")]}
+        player = make_streamer("spielt_pogo")
+        player.channel_id = "c4"
+        player.stream.game = {"displayName": "Pokémon GO"}
+        result = DropCampaignCollector(twitch).collect([player], [])
+        self.assertEqual([c.id for c in result.campaigns], ["evo"])
+        self.assertEqual(result.campaigns[0].game["slug"], "pokemon-go")
 
     def test_inventory_campaigns_bring_their_own_game(self):
         twitch = FakeTwitch()
