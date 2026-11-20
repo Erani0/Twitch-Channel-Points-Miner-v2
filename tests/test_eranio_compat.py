@@ -70,7 +70,9 @@ def workdir(tmp_path, monkeypatch):
         if value is missing:
             if name in Settings.__dict__ and name not in Settings.__slots__:
                 delattr(Settings, name)
-            elif name in Settings.__slots__ and not hasattr(Settings.__dict__.get(name), "__get__"):
+            elif name in Settings.__slots__ and not hasattr(
+                Settings.__dict__.get(name), "__get__"
+            ):
                 pass
         else:
             setattr(Settings, name, value)
@@ -240,7 +242,9 @@ def test_minimal_construction_and_v3_options(workdir):
 
 
 def test_old_constructor_parameter_names_and_order_are_kept():
-    parameters = list(inspect.signature(compat.TwitchChannelPointsMiner.__init__).parameters)
+    parameters = list(
+        inspect.signature(compat.TwitchChannelPointsMiner.__init__).parameters
+    )
     old = [
         "username",
         "password",
@@ -329,9 +333,7 @@ def test_existing_pickle_cookie_file_is_read_without_new_login(workdir, monkeypa
     flows = []
     from TwitchChannelPointsMiner.classes.TwitchLogin import TwitchLogin
 
-    monkeypatch.setattr(
-        TwitchLogin, "login_flow", lambda self: flows.append(1) or True
-    )
+    monkeypatch.setattr(TwitchLogin, "login_flow", lambda self: flows.append(1) or True)
     monkeypatch.setattr(Twitch, "update_client_version", lambda self: None)
     miner.twitch.login()
 
@@ -531,21 +533,28 @@ def test_dashboard_is_reachable_from_outside_through_the_egg_call(
     body = page.get_data(as_text=True)
     assets = re.findall(r'(?:href|src)="(/assets/[^"]+)"', body)
     assert len(assets) >= 4
-    for path in ["/"] + assets + [
-        "/streamers",
-        "/json/alpha",
-        "/json_all",
-        "/drops",
-        "/watching",
-        "/update_info",
-        "/drops_by_category",
-        "/now_watching",
-        "/log?lastIndex=0&tailBytes=65536",
-    ]:
+    for path in (
+        ["/"]
+        + assets
+        + [
+            "/streamers",
+            "/json/alpha",
+            "/json_all",
+            "/drops",
+            "/watching",
+            "/update_info",
+            "/drops_by_category",
+            "/now_watching",
+            "/log?lastIndex=0&tailBytes=65536",
+        ]
+    ):
         assert get(path).status_code == 200, (host, path)
 
     prefs = client.post(
-        "/dashboard_prefs", json={"key": "dark-mode", "value": "true"}, base_url=origin, headers=headers
+        "/dashboard_prefs",
+        json={"key": "dark-mode", "value": "true"},
+        base_url=origin,
+        headers=headers,
     )
     assert prefs.status_code == 200
     deleted = client.delete("/streamers/beta", base_url=origin, headers=headers)
@@ -556,7 +565,9 @@ def test_loopback_dashboard_through_the_compat_call_still_answers_other_hosts(
     workdir, monkeypatch
 ):
     server = started_dashboard(workdir, monkeypatch, host="127.0.0.1")
-    response = server.app.test_client().get("/streamers", base_url="http://185.228.178.24:5000")
+    response = server.app.test_client().get(
+        "/streamers", base_url="http://185.228.178.24:5000"
+    )
     assert response.status_code == 403
 
 
@@ -589,7 +600,8 @@ def test_the_dashboard_really_listens_on_all_interfaces(workdir, monkeypatch):
         local = socket.gethostbyname(socket.gethostname())
         for address in ("127.0.0.1", local):
             request = urllib.request.Request(
-                f"http://{address}:{port}/streamers", headers={"Host": "185.228.178.24:5000"}
+                f"http://{address}:{port}/streamers",
+                headers={"Host": "185.228.178.24:5000"},
             )
             with urllib.request.urlopen(request, timeout=5) as response:
                 assert response.status == 200

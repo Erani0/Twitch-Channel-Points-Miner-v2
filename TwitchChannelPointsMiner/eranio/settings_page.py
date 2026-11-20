@@ -173,7 +173,9 @@ def install(app, server, password, miner_info=None):
         token, locked = auth.check(client(), body.get("password"))
         if locked:
             return json_response(
-                {"error": f"Zu viele Fehlversuche. Bitte in {locked // 60 + 1} Minuten erneut versuchen."},
+                {
+                    "error": f"Zu viele Fehlversuche. Bitte in {locked // 60 + 1} Minuten erneut versuchen."
+                },
                 429,
             )
         if token is None:
@@ -246,9 +248,11 @@ def install(app, server, password, miner_info=None):
             409: "Anbieter zuerst einrichten und aktivieren.",
         }
         return json_response(
-            {"message": messages.get(status, "Das Senden ist fehlgeschlagen.")}
-            if status == 200
-            else {"error": messages.get(status, "Das Senden ist fehlgeschlagen.")},
+            (
+                {"message": messages.get(status, "Das Senden ist fehlgeschlagen.")}
+                if status == 200
+                else {"error": messages.get(status, "Das Senden ist fehlgeschlagen.")}
+            ),
             status if status in (200, 409) else 502,
         )
 
@@ -265,7 +269,10 @@ def install(app, server, password, miner_info=None):
 
     app.add_url_rule("/settings", "eranio_settings", page, methods=["GET"])
     app.add_url_rule(
-        "/settings/api/session", "eranio_settings_session", session_view, methods=["GET"]
+        "/settings/api/session",
+        "eranio_settings_session",
+        session_view,
+        methods=["GET"],
     )
     app.add_url_rule(
         "/settings/api/login", "eranio_settings_login", login, methods=["POST"]
@@ -286,6 +293,9 @@ def install(app, server, password, miner_info=None):
         methods=["POST"],
     )
     app.add_url_rule(
-        "/settings/api/android", "eranio_settings_android", android_submit, methods=["POST"]
+        "/settings/api/android",
+        "eranio_settings_android",
+        android_submit,
+        methods=["POST"],
     )
     return auth

@@ -25,10 +25,22 @@ from TwitchChannelPointsMiner.config_editor import (
 )
 
 ENUMS = {
-    "Priority": (Priority, "from TwitchChannelPointsMiner.classes.Settings import Priority"),
-    "Strategy": (Strategy, "from TwitchChannelPointsMiner.classes.entities.Bet import Strategy"),
-    "DelayMode": (DelayMode, "from TwitchChannelPointsMiner.classes.entities.Bet import DelayMode"),
-    "ChatPresence": (ChatPresence, "from TwitchChannelPointsMiner.classes.Chat import ChatPresence"),
+    "Priority": (
+        Priority,
+        "from TwitchChannelPointsMiner.classes.Settings import Priority",
+    ),
+    "Strategy": (
+        Strategy,
+        "from TwitchChannelPointsMiner.classes.entities.Bet import Strategy",
+    ),
+    "DelayMode": (
+        DelayMode,
+        "from TwitchChannelPointsMiner.classes.entities.Bet import DelayMode",
+    ),
+    "ChatPresence": (
+        ChatPresence,
+        "from TwitchChannelPointsMiner.classes.Chat import ChatPresence",
+    ),
 }
 CLASS_IMPORTS = {
     "StreamerSettings": "from TwitchChannelPointsMiner.classes.entities.Streamer import StreamerSettings",
@@ -119,7 +131,9 @@ def spec_for_ui():
             entry = {"type": definition[0]}
             kind = definition[0]
             if kind in ("int", "float"):
-                entry.update(min=definition[1], max=definition[2], default=definition[3])
+                entry.update(
+                    min=definition[1], max=definition[2], default=definition[3]
+                )
             elif kind == "choice":
                 entry.update(choices=list(definition[1]), default=definition[2])
             elif kind in ("enum", "enumlist"):
@@ -171,7 +185,10 @@ def render_value(name, definition, value):
             or len(set(value)) != len(value)
         ):
             raise ConfigEditError(f"{name} hat einen ungültigen Wert.")
-        return "[" + ", ".join(f"{definition[1]}.{item}" for item in value) + "]", statement
+        return (
+            "[" + ", ".join(f"{definition[1]}.{item}" for item in value) + "]",
+            statement,
+        )
     raise ConfigEditError(f"{name} wird nicht unterstützt.")
 
 
@@ -180,7 +197,9 @@ def validate_values(spec, values):
         raise ConfigEditError("Keine Werte übergeben.")
     unknown = set(values) - set(spec)
     if unknown:
-        raise ConfigEditError("Nicht unterstützte Einstellung: " + ", ".join(sorted(unknown)))
+        raise ConfigEditError(
+            "Nicht unterstützte Einstellung: " + ", ".join(sorted(unknown))
+        )
     rendered = {}
     imports = []
     for name, value in values.items():
@@ -197,7 +216,9 @@ def imported_names(tree):
         if isinstance(node, ast.ImportFrom):
             names.update(alias.asname or alias.name for alias in node.names)
         elif isinstance(node, ast.Import):
-            names.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+            names.update(
+                alias.asname or alias.name.split(".")[0] for alias in node.names
+            )
     return names
 
 
@@ -220,14 +241,18 @@ def write_keywords(config_path, locate, values):
         encoded = path.read_text(encoding="utf-8").encode("utf-8")
         call = locate(ast.parse(encoded.decode("utf-8")))
         if not isinstance(call, ast.Call):
-            raise ConfigEditError("Diese Einstellungsgruppe hat in der Datei nicht die erwartete Form.")
+            raise ConfigEditError(
+                "Diese Einstellungsgruppe hat in der Datei nicht die erwartete Form."
+            )
         keyword = _call_keyword(call, name)
         if keyword is not None:
             lines = encoded.splitlines(keepends=True)
             start, end = _node_span(lines, keyword.value)
             updated = encoded[:start] + rendered.encode("utf-8") + encoded[end:]
         else:
-            updated = _insert_item_bytes(encoded, call, f"{name}={rendered}", inline=True)
+            updated = _insert_item_bytes(
+                encoded, call, f"{name}={rendered}", inline=True
+            )
         _require_parses(updated)
         _replace_config_bytes(path, updated, stat.S_IMODE(path.stat().st_mode))
 
@@ -308,7 +333,9 @@ def write_eranio_block(config_path, rendered):
     if not isinstance(_assignment(tree, ERANIO_BLOCK), ast.Dict):
         text = path.read_text(encoding="utf-8")
         newline = chr(10)
-        updated = (text.rstrip(newline) + newline + newline + ERANIO_BLOCK + " = {}" + newline).encode("utf-8")
+        updated = (
+            text.rstrip(newline) + newline + newline + ERANIO_BLOCK + " = {}" + newline
+        ).encode("utf-8")
         _require_parses(updated)
         _replace_config_bytes(path, updated, stat.S_IMODE(path.stat().st_mode))
     _set_dict_items(config_path, ERANIO_BLOCK, rendered)
@@ -331,12 +358,16 @@ def apply_extra(config_path, payload):
         write_keywords(config_path, locate_logger, rendered)
     elif action == "update_defaults":
         rendered, imports = validate_values(DEFAULTS_SPEC, values)
-        ensure_call(config_path, locate_defaults, "streamer_settings", "StreamerSettings", True)
+        ensure_call(
+            config_path, locate_defaults, "streamer_settings", "StreamerSettings", True
+        )
         ensure_imports(config_path, imports)
         write_keywords(config_path, locate_defaults, rendered)
     elif action == "update_bet":
         rendered, imports = validate_values(BET_SPEC, values)
-        ensure_call(config_path, locate_defaults, "streamer_settings", "StreamerSettings", True)
+        ensure_call(
+            config_path, locate_defaults, "streamer_settings", "StreamerSettings", True
+        )
         ensure_call(config_path, locate_bet, "bet", "BetSettings", False)
         ensure_imports(config_path, imports)
         write_keywords(config_path, locate_bet, rendered)
@@ -348,11 +379,15 @@ def apply_extra(config_path, payload):
         rendered, imports = validate_values(STREAMER_EXTRA_SPEC, values)
         tree = ast.parse(Path(config_path).read_text(encoding="utf-8"))
         if not isinstance(locate_streamer(username)(tree), ast.Call):
-            raise ConfigEditError("Dieser Streamer ist nicht in der Liste oder nicht änderbar.")
+            raise ConfigEditError(
+                "Dieser Streamer ist nicht in der Liste oder nicht änderbar."
+            )
         if not isinstance(locate_streamer_settings(username)(tree), ast.Call):
             ensure_imports(config_path, [CLASS_IMPORTS["StreamerSettings"]])
             write_keywords(
-                config_path, locate_streamer(username), {"settings": "StreamerSettings()"}
+                config_path,
+                locate_streamer(username),
+                {"settings": "StreamerSettings()"},
             )
         write_keywords(config_path, locate_streamer_settings(username), rendered)
     else:
@@ -398,8 +433,10 @@ def read_extras(config_path):
         settings = None
         if isinstance(node, ast.Call):
             keyword = _call_keyword(node, "settings")
-            settings = keyword.value if keyword is not None else (
-                node.args[1] if len(node.args) > 1 else None
+            settings = (
+                keyword.value
+                if keyword is not None
+                else (node.args[1] if len(node.args) > 1 else None)
             )
         parsed = _simple_value(settings) if settings is not None else None
         value = parsed.get("watch_streak") if isinstance(parsed, dict) else None

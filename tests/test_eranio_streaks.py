@@ -28,7 +28,8 @@ class FakeClient:
         if self.on_call is not None:
             self.on_call()
         return self.milestones.get(
-            channel_id, Milestone(state="NONE", value=0, achievement_at=None, expires_at=None)
+            channel_id,
+            Milestone(state="NONE", value=0, achievement_at=None, expires_at=None),
         )
 
     def stream_created_at(self, channel_id):
@@ -73,9 +74,7 @@ def run(streamers, now, watching=None, streams_watched=2, is_drop=None, priority
 
 
 def done_milestone(at, value=1, expires=None):
-    return Milestone(
-        state="ACTIVE", value=value, achievement_at=at, expires_at=expires
-    )
+    return Milestone(state="ACTIVE", value=value, achievement_at=at, expires_at=expires)
 
 
 def test_none_channel_is_pending_and_watched(client):
@@ -244,7 +243,9 @@ def test_suspended_missed_stream_logged_once_and_rescued_first(client, caplog):
     assert run([normal, rescue], T0, watching=[], streams_watched=1) == [1]
     run([normal, rescue], T0 + 400, watching=[], streams_watched=1)
     run([normal, rescue], T0 + 800, watching=[], streams_watched=1)
-    warnings = [r.getMessage() for r in caplog.records if "ausgesetzt" in r.getMessage()]
+    warnings = [
+        r.getMessage() for r in caplog.records if "ausgesetzt" in r.getMessage()
+    ]
     assert len(warnings) == 1
     assert "Streak bei rescue (40) ausgesetzt, verpasster Stream" in warnings[0]
     assert "retten bis" in warnings[0]
@@ -319,7 +320,11 @@ def test_old_cache_file_is_migrated(tmp_path):
                     },
                 ],
                 "streamer_statuses": [
-                    {"account_name": "acc", "streamer_login": "x", "watch_streak_days": 12}
+                    {
+                        "account_name": "acc",
+                        "streamer_login": "x",
+                        "watch_streak_days": 12,
+                    }
                 ],
             }
         ),
@@ -346,9 +351,13 @@ def test_loan_lends_drop_slot_briefly_and_returns_it(client):
     assert first == [1, 2]
     info = streak.loan_info()
     assert info.active and info.login == "b" and info.max_seconds == 900
-    later = run(streamers, T0 + 800, watching=[0, 1], streams_watched=2, is_drop=is_drop)
+    later = run(
+        streamers, T0 + 800, watching=[0, 1], streams_watched=2, is_drop=is_drop
+    )
     assert 0 not in later
-    after = run(streamers, T0 + 901, watching=[0, 1], streams_watched=2, is_drop=is_drop)
+    after = run(
+        streamers, T0 + 901, watching=[0, 1], streams_watched=2, is_drop=is_drop
+    )
     assert 0 in after
     assert streak.loan_info().active is False
 
@@ -360,7 +369,9 @@ def test_loan_ends_immediately_when_streak_confirmed(client):
     run(streamers, T0, watching=[0, 1], streams_watched=2, is_drop=is_drop)
     assert streak.loan_info().active
     b.stream.watch_streak_missing = False
-    result = run(streamers, T0 + 20, watching=[0, 1], streams_watched=2, is_drop=is_drop)
+    result = run(
+        streamers, T0 + 20, watching=[0, 1], streams_watched=2, is_drop=is_drop
+    )
     assert 0 in result
     assert streak.loan_info().active is False
 
@@ -372,11 +383,15 @@ def test_only_one_loan_at_a_time_with_cooldown(client):
     is_drop = lambda i: i == 0
     run(streamers, T0, watching=[0, 1], streams_watched=2, is_drop=is_drop)
     assert streak.loan_info().login == "p1"
-    result = run(streamers, T0 + 100, watching=[0, 1], streams_watched=2, is_drop=is_drop)
+    result = run(
+        streamers, T0 + 100, watching=[0, 1], streams_watched=2, is_drop=is_drop
+    )
     assert len(result) == 2 and 0 not in result
     run(streamers, T0 + 901, watching=[0, 1], streams_watched=2, is_drop=is_drop)
     assert streak.loan_info().active is False
-    second = run(streamers, T0 + 1000, watching=[0, 1], streams_watched=2, is_drop=is_drop)
+    second = run(
+        streamers, T0 + 1000, watching=[0, 1], streams_watched=2, is_drop=is_drop
+    )
     assert 0 in second
     assert streak.loan_info().active is False
     run(streamers, T0 + 1600, watching=[0, 1], streams_watched=2, is_drop=is_drop)
@@ -392,7 +407,9 @@ def test_loan_never_blocks_drop_slot_for_unconfirmable_streak(client):
         now = T0 + step * 60
         for channel in streamers[1:]:
             channel.stream.minute_watched = step
-        result = run(streamers, now, watching=[0, 1], streams_watched=2, is_drop=is_drop)
+        result = run(
+            streamers, now, watching=[0, 1], streams_watched=2, is_drop=is_drop
+        )
         if 0 not in result:
             blocked_for += 1
     assert blocked_for <= 15 + 15
@@ -404,10 +421,9 @@ def test_unconfigured_state_keeps_base_behaviour():
     streamer.offline_at = -60
     streamer.stream.minute_watched = 0
     assert Twitch._has_pending_watch_streak(streamer, now=0) is False
-    assert (
-        streak.apply(SimpleNamespace(), [streamer], [0], [0], PRIORITY, 2, lambda i: False)
-        == [0]
-    )
+    assert streak.apply(
+        SimpleNamespace(), [streamer], [0], [0], PRIORITY, 2, lambda i: False
+    ) == [0]
 
 
 def test_minute_watcher_uses_streak_selection_with_fan_out(monkeypatch):

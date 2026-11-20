@@ -44,7 +44,9 @@ USER_AGENTS = {
 }
 
 GITHUB_REPOSITORY_URL = "https://github.com/Erani0/Twitch-Channel-Points-Miner-v2"
-GITHUB_LATEST_RELEASE_API = "https://api.github.com/repos/Erani0/Twitch-Channel-Points-Miner-v2/releases/latest"
+GITHUB_LATEST_RELEASE_API = (
+    "https://api.github.com/repos/Erani0/Twitch-Channel-Points-Miner-v2/releases/latest"
+)
 
 
 class GQLOperations:

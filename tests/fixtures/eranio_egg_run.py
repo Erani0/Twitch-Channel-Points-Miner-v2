@@ -8,14 +8,25 @@ from TwitchChannelPointsMiner.classes.Chat import ChatPresence
 from TwitchChannelPointsMiner.classes.Discord import Discord
 from TwitchChannelPointsMiner.classes.Telegram import Telegram
 from TwitchChannelPointsMiner.classes.Settings import Priority, Events, FollowersOrder
-from TwitchChannelPointsMiner.classes.entities.Bet import Strategy, BetSettings, Condition, OutcomeKeys, FilterCondition, DelayMode
-from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings
+from TwitchChannelPointsMiner.classes.entities.Bet import (
+    Strategy,
+    BetSettings,
+    Condition,
+    OutcomeKeys,
+    FilterCondition,
+    DelayMode,
+)
+from TwitchChannelPointsMiner.classes.entities.Streamer import (
+    Streamer,
+    StreamerSettings,
+)
 
 try:
     from TwitchChannelPointsMiner.run_config_migration import (
         discover_new_constructor_kwargs,
         ensure_constructor_kwargs,
     )
+
     ensure_constructor_kwargs(
         os.path.abspath(__file__),
         "TwitchChannelPointsMiner",
@@ -58,10 +69,8 @@ try:
             less=False,
             colored=True,
             color_palette=ColorPalette(
-                STREAMER_online="GREEN",
-                streamer_offline="red",
-                BET_wiN=Fore.MAGENTA
-            )
+                STREAMER_online="GREEN", streamer_offline="red", BET_wiN=Fore.MAGENTA
+            ),
         ),
         streamer_settings=StreamerSettings(
             make_predictions=False,
@@ -80,35 +89,248 @@ try:
                 delay=6,
                 minimum_points=20000,
                 filter_condition=FilterCondition(
-                    by=OutcomeKeys.TOTAL_USERS,
-                    where=Condition.LTE,
-                    value=800
-                )
-            )
-        )
+                    by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800
+                ),
+            ),
+        ),
     )
 
     twitch_miner.analytics(host="0.0.0.0", port=SERVER_PORT, refresh=5, days_ago=360)
 
     twitch_miner.mine(
         [
-            Streamer("Zicke8", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=True, watch_streak=True, bet=BetSettings(strategy=Strategy.SMART, percentage=5, stealth_mode=True, percentage_gap=20, max_points=234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800)))),
-            Streamer("shlorox", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=True, watch_streak=True, bet=BetSettings(strategy=Strategy.SMART, percentage=5, stealth_mode=True, percentage_gap=20, max_points=234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800)))),
-            Streamer("Vanessa_Lopez_Official", settings=StreamerSettings(make_predictions=False, follow_raid=False, watch_streak=True, bet=BetSettings(strategy=Strategy.SMART, percentage=5, stealth_mode=False, percentage_gap=30, max_points=50000, filter_condition=FilterCondition(by=OutcomeKeys.ODDS, where=Condition.LT, value=300)))),
-            Streamer("PYKA", settings=StreamerSettings(make_predictions=False, follow_raid=False, claim_drops=True, watch_streak=True, bet=BetSettings(strategy=Strategy.SMART, percentage=5, stealth_mode=True, percentage_gap=20, max_points=234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800)))),
-            Streamer("Z1ppo", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
-            Streamer("Sintica", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
-            Streamer("Colaway", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
-            Streamer("ColawayTV", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
-            Streamer("Shady_Devil_x", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
-            Streamer("Halbsteiv", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
-            Streamer("DirkNeuenfels", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=False, bet=BetSettings(strategy=Strategy.PERCENTAGE, percentage=5, stealth_mode=False, percentage_gap=20, max_points=1234, filter_condition=FilterCondition(by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250)))),
-            Streamer("sickEmoAngel", settings=StreamerSettings(make_predictions=False, follow_raid=True, watch_streak=True)),
-            Streamer("Sherpa", settings=StreamerSettings(make_predictions=False, follow_raid=True, claim_drops=True, watch_streak=True, bet=BetSettings(strategy=Strategy.HIGH_ODDS, percentage=7, stealth_mode=True, percentage_gap=20, max_points=90, filter_condition=FilterCondition(by=OutcomeKeys.PERCENTAGE_USERS, where=Condition.GTE, value=300)))),
-            Streamer("eranio")
+            Streamer(
+                "Zicke8",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=True,
+                    watch_streak=True,
+                    bet=BetSettings(
+                        strategy=Strategy.SMART,
+                        percentage=5,
+                        stealth_mode=True,
+                        percentage_gap=20,
+                        max_points=234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "shlorox",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=True,
+                    watch_streak=True,
+                    bet=BetSettings(
+                        strategy=Strategy.SMART,
+                        percentage=5,
+                        stealth_mode=True,
+                        percentage_gap=20,
+                        max_points=234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "Vanessa_Lopez_Official",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=False,
+                    watch_streak=True,
+                    bet=BetSettings(
+                        strategy=Strategy.SMART,
+                        percentage=5,
+                        stealth_mode=False,
+                        percentage_gap=30,
+                        max_points=50000,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.ODDS, where=Condition.LT, value=300
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "PYKA",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=False,
+                    claim_drops=True,
+                    watch_streak=True,
+                    bet=BetSettings(
+                        strategy=Strategy.SMART,
+                        percentage=5,
+                        stealth_mode=True,
+                        percentage_gap=20,
+                        max_points=234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_USERS, where=Condition.LTE, value=800
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "Z1ppo",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=False,
+                    bet=BetSettings(
+                        strategy=Strategy.PERCENTAGE,
+                        percentage=5,
+                        stealth_mode=False,
+                        percentage_gap=20,
+                        max_points=1234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "Sintica",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=False,
+                    bet=BetSettings(
+                        strategy=Strategy.PERCENTAGE,
+                        percentage=5,
+                        stealth_mode=False,
+                        percentage_gap=20,
+                        max_points=1234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "Colaway",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=False,
+                    bet=BetSettings(
+                        strategy=Strategy.PERCENTAGE,
+                        percentage=5,
+                        stealth_mode=False,
+                        percentage_gap=20,
+                        max_points=1234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "ColawayTV",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=False,
+                    bet=BetSettings(
+                        strategy=Strategy.PERCENTAGE,
+                        percentage=5,
+                        stealth_mode=False,
+                        percentage_gap=20,
+                        max_points=1234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "Shady_Devil_x",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=False,
+                    bet=BetSettings(
+                        strategy=Strategy.PERCENTAGE,
+                        percentage=5,
+                        stealth_mode=False,
+                        percentage_gap=20,
+                        max_points=1234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "Halbsteiv",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=False,
+                    bet=BetSettings(
+                        strategy=Strategy.PERCENTAGE,
+                        percentage=5,
+                        stealth_mode=False,
+                        percentage_gap=20,
+                        max_points=1234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "DirkNeuenfels",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=False,
+                    bet=BetSettings(
+                        strategy=Strategy.PERCENTAGE,
+                        percentage=5,
+                        stealth_mode=False,
+                        percentage_gap=20,
+                        max_points=1234,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.TOTAL_POINTS, where=Condition.GTE, value=250
+                        ),
+                    ),
+                ),
+            ),
+            Streamer(
+                "sickEmoAngel",
+                settings=StreamerSettings(
+                    make_predictions=False, follow_raid=True, watch_streak=True
+                ),
+            ),
+            Streamer(
+                "Sherpa",
+                settings=StreamerSettings(
+                    make_predictions=False,
+                    follow_raid=True,
+                    claim_drops=True,
+                    watch_streak=True,
+                    bet=BetSettings(
+                        strategy=Strategy.HIGH_ODDS,
+                        percentage=7,
+                        stealth_mode=True,
+                        percentage_gap=20,
+                        max_points=90,
+                        filter_condition=FilterCondition(
+                            by=OutcomeKeys.PERCENTAGE_USERS,
+                            where=Condition.GTE,
+                            value=300,
+                        ),
+                    ),
+                ),
+            ),
+            Streamer("eranio"),
         ],
         followers=True,
-        followers_order=FollowersOrder.ASC
+        followers_order=FollowersOrder.ASC,
     )
 except KeyboardInterrupt:
     print("Miner durch Benutzer gestoppt (KeyboardInterrupt). Beende...")
@@ -119,6 +341,6 @@ except Exception as e:
     print("Miner wird in 15 Sekunden komplett neu gestartet...")
     print("=========================================================================")
     import time
+
     time.sleep(15)
     os.execv(sys.executable, [sys.executable] + sys.argv)
-

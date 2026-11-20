@@ -63,7 +63,9 @@ def egg(tmp_path):
     config_dir = tmp_path / "config"
     config_file.STATE.config_dir = config_dir
     config_file.convert(run_py, config_dir / "config.py")
-    return SimpleNamespace(run_py=run_py, dir=config_dir, config=config_dir / "config.py", root=tmp_path)
+    return SimpleNamespace(
+        run_py=run_py, dir=config_dir, config=config_dir / "config.py", root=tmp_path
+    )
 
 
 def digest(path):
@@ -87,13 +89,17 @@ def make_server(tmp_path, monkeypatch, password="geheim"):
     monkeypatch.setattr(Settings, "enable_analytics", True, raising=False)
     server = AnalyticsServer(password=None)
     if password:
-        settings_page.install(server.app, server, password, lambda: {"username": "someone"})
+        settings_page.install(
+            server.app, server, password, lambda: {"username": "someone"}
+        )
     server_module.response_cache.clear()
     return server
 
 
 def login(client, password="geheim"):
-    return client.post("/settings/api/login", json={"password": password}, headers=HEADERS)
+    return client.post(
+        "/settings/api/login", json={"password": password}, headers=HEADERS
+    )
 
 
 def save(client, payload):
@@ -127,7 +133,9 @@ def test_the_dashboard_stays_open_and_links_to_the_settings(tmp_path, monkeypatc
     assert client.get("/settings", headers=HEADERS).status_code == 200
 
 
-def test_wrong_password_is_refused_and_five_failures_lock_the_client(tmp_path, monkeypatch):
+def test_wrong_password_is_refused_and_five_failures_lock_the_client(
+    tmp_path, monkeypatch
+):
     server = make_server(tmp_path, monkeypatch)
     client = server.app.test_client()
     for _ in range(5):
@@ -138,7 +146,9 @@ def test_wrong_password_is_refused_and_five_failures_lock_the_client(tmp_path, m
     assert client.get("/settings/api/state", headers=HEADERS).status_code == 401
 
 
-def test_correct_password_opens_a_session_and_logout_closes_it(tmp_path, monkeypatch, egg):
+def test_correct_password_opens_a_session_and_logout_closes_it(
+    tmp_path, monkeypatch, egg
+):
     server = make_server(tmp_path, monkeypatch)
     client = server.app.test_client()
     assert client.get("/settings/api/state", headers=HEADERS).status_code == 401
@@ -188,13 +198,18 @@ def test_settings_are_read_only_without_config_py(tmp_path, monkeypatch):
     login(client)
     state = client.get("/settings/api/state", headers=HEADERS).get_json()
     assert state["editable"] is False and state["readonly_reason"]
-    assert save(client, {"action": "add", "kind": "streamers", "value": "x"}).status_code == 409
+    assert (
+        save(client, {"action": "add", "kind": "streamers", "value": "x"}).status_code
+        == 409
+    )
 
 
 def test_unreadable_config_py_is_shown_read_only(tmp_path, monkeypatch):
     folder = tmp_path / "config"
     folder.mkdir()
-    (folder / "config.py").write_text("MINER_CONFIG = {'username': 'x'}\n", encoding="utf-8")
+    (folder / "config.py").write_text(
+        "MINER_CONFIG = {'username': 'x'}\n", encoding="utf-8"
+    )
     config_file.STATE.config_dir = folder
     server = make_server(tmp_path, monkeypatch)
     client = server.app.test_client()
@@ -210,8 +225,16 @@ def test_conversion_keeps_run_py_and_moves_our_options_into_the_block(egg):
     assigned = {
         node.targets[0].id for node in tree.body if isinstance(node, ast.Assign)
     }
-    assert {"MINER_CONFIG", "STREAMERS", "MINE_CONFIG", "ANALYTICS_CONFIG", "ERANIO_CONFIG"} <= assigned
-    assert [n.targets[0].id for n in tree.body if isinstance(n, ast.Assign)][-1] == "ERANIO_CONFIG"
+    assert {
+        "MINER_CONFIG",
+        "STREAMERS",
+        "MINE_CONFIG",
+        "ANALYTICS_CONFIG",
+        "ERANIO_CONFIG",
+    } <= assigned
+    assert [n.targets[0].id for n in tree.body if isinstance(n, ast.Assign)][
+        -1
+    ] == "ERANIO_CONFIG"
     namespace = {}
     exec(compile(text, "config.py", "exec"), namespace)
     miner = namespace["MINER_CONFIG"]
@@ -225,7 +248,11 @@ def test_conversion_keeps_run_py_and_moves_our_options_into_the_block(egg):
     assert len(namespace["STREAMERS"]) == 14
     assert "config_password" not in text
     assert (egg.dir / ".converted-from-run-py").exists()
-    assert oct(egg.config.stat().st_mode & 0o777) in (oct(0o600), oct(0o666), oct(0o644))
+    assert oct(egg.config.stat().st_mode & 0o777) in (
+        oct(0o600),
+        oct(0o666),
+        oct(0o644),
+    )
 
 
 def test_block_reader_maps_priorities_and_ignores_unknown_keys(tmp_path):
@@ -246,7 +273,9 @@ def test_block_reader_maps_priorities_and_ignores_unknown_keys(tmp_path):
 def test_miner_reads_our_block_from_the_runtime_config_directory(workdir, egg):
     _, created = workdir
     text = egg.config.read_text(encoding="utf-8")
-    text = text.replace("'watch_streak_max_parallel': 2", "'watch_streak_max_parallel': 7")
+    text = text.replace(
+        "'watch_streak_max_parallel': 2", "'watch_streak_max_parallel': 7"
+    )
     egg.config.write_text(text, encoding="utf-8")
     Settings.config_path = str(egg.dir)
     options = owner_options()
@@ -255,7 +284,11 @@ def test_miner_reads_our_block_from_the_runtime_config_directory(workdir, egg):
     miner = package.TwitchChannelPointsMiner(**options)
     created.append(miner)
     assert miner.watch_streak_max_parallel == 7
-    assert miner.requested_priority[:3] == [Priority.STREAK, Priority.DROPS, Priority.ORDER]
+    assert miner.requested_priority[:3] == [
+        Priority.STREAK,
+        Priority.DROPS,
+        Priority.ORDER,
+    ]
 
 
 def test_miner_without_runtime_config_uses_its_arguments(workdir):
@@ -310,14 +343,20 @@ def test_compat_analytics_takes_port_host_and_password_from_the_environment(
 
 def record_runner(monkeypatch):
     calls = []
-    monkeypatch.setattr(runner, "run_config", lambda config, path, ready=None: calls.append((config, path)))
+    monkeypatch.setattr(
+        runner,
+        "run_config",
+        lambda config, path, ready=None: calls.append((config, path)),
+    )
     return calls
 
 
 def test_launcher_uses_an_existing_config_through_the_base_runner(egg, monkeypatch):
     calls = record_runner(monkeypatch)
     monkeypatch.delenv(config_file.ENV_PORT, raising=False)
-    result = launcher.run(port=6333, config_password="pw", config_dir=egg.dir, legacy_run_py=egg.run_py)
+    result = launcher.run(
+        port=6333, config_password="pw", config_dir=egg.dir, legacy_run_py=egg.run_py
+    )
     assert result == 0
     config, path = calls[0]
     assert path == egg.config
@@ -329,7 +368,9 @@ def test_launcher_uses_an_existing_config_through_the_base_runner(egg, monkeypat
         os.environ.pop(name, None)
 
 
-def test_launcher_converts_the_egg_run_py_when_there_is_no_config(tmp_path, monkeypatch):
+def test_launcher_converts_the_egg_run_py_when_there_is_no_config(
+    tmp_path, monkeypatch
+):
     run_py = tmp_path / "run.py.old"
     run_py.write_bytes(FIXTURE.read_bytes())
     calls = record_runner(monkeypatch)
@@ -344,7 +385,9 @@ def test_launcher_converts_the_egg_run_py_when_there_is_no_config(tmp_path, monk
         os.environ.pop(name, None)
 
 
-def test_launcher_falls_back_to_the_old_run_py_when_conversion_fails(tmp_path, monkeypatch, capsys):
+def test_launcher_falls_back_to_the_old_run_py_when_conversion_fails(
+    tmp_path, monkeypatch, capsys
+):
     run_py = tmp_path / "run.py.old"
     run_py.write_text("print('alt')\n", encoding="utf-8")
     executed = []
@@ -367,17 +410,42 @@ def test_launcher_reports_a_missing_configuration(tmp_path, capsys):
 
 def test_editor_changes_keep_comments_and_the_run_py_untouched(egg):
     before = egg.config.read_text(encoding="utf-8")
-    comment_lines = [line for line in before.splitlines() if line.strip().startswith("#")]
-    settings_model.update(egg.config, {"action": "add", "kind": "streamers", "value": "neuer"})
-    settings_model.update(egg.config, {"action": "remove", "kind": "streamers", "value": "Halbsteiv"})
+    comment_lines = [
+        line for line in before.splitlines() if line.strip().startswith("#")
+    ]
+    settings_model.update(
+        egg.config, {"action": "add", "kind": "streamers", "value": "neuer"}
+    )
+    settings_model.update(
+        egg.config, {"action": "remove", "kind": "streamers", "value": "Halbsteiv"}
+    )
     state = settings_model.update(
         egg.config,
-        {"action": "update_eranio", "values": {"auto_discover_drops": True, "priority": ["STREAK_LENGTH_DESCENDING", "DROPS"]}},
+        {
+            "action": "update_eranio",
+            "values": {
+                "auto_discover_drops": True,
+                "priority": ["STREAK_LENGTH_DESCENDING", "DROPS"],
+            },
+        },
     )
-    settings_model.update(egg.config, {"action": "update_miner", "values": {"claim_drops_startup": False}})
-    settings_model.update(egg.config, {"action": "update_defaults", "values": {"chat": "ALWAYS"}})
-    settings_model.update(egg.config, {"action": "update_bet", "values": {"percentage": 9}})
-    settings_model.update(egg.config, {"action": "update_streamer_extra", "username": "eranio", "values": {"watch_streak": True}})
+    settings_model.update(
+        egg.config, {"action": "update_miner", "values": {"claim_drops_startup": False}}
+    )
+    settings_model.update(
+        egg.config, {"action": "update_defaults", "values": {"chat": "ALWAYS"}}
+    )
+    settings_model.update(
+        egg.config, {"action": "update_bet", "values": {"percentage": 9}}
+    )
+    settings_model.update(
+        egg.config,
+        {
+            "action": "update_streamer_extra",
+            "username": "eranio",
+            "values": {"watch_streak": True},
+        },
+    )
     after = egg.config.read_text(encoding="utf-8")
     ast.parse(after)
     for line in comment_lines:
@@ -385,10 +453,16 @@ def test_editor_changes_keep_comments_and_the_run_py_untouched(egg):
     names = [item["username"] for item in state["streamers"]]
     assert "neuer" in names and "Halbsteiv" not in names
     assert state["extras"]["eranio"]["auto_discover_drops"] is True
-    assert state["extras"]["eranio"]["priority"] == ["STREAK_LENGTH_DESCENDING", "DROPS"]
+    assert state["extras"]["eranio"]["priority"] == [
+        "STREAK_LENGTH_DESCENDING",
+        "DROPS",
+    ]
     namespace = {}
     exec(compile(after, "config.py", "exec"), namespace)
-    assert namespace["ERANIO_CONFIG"]["priority"] == [Priority.STREAK_LENGTH_DESCENDING, Priority.DROPS]
+    assert namespace["ERANIO_CONFIG"]["priority"] == [
+        Priority.STREAK_LENGTH_DESCENDING,
+        Priority.DROPS,
+    ]
     assert namespace["MINER_CONFIG"]["claim_drops_startup"] is False
     assert (egg.dir / "config.py.eranio.bak").is_file()
     assert digest(egg.run_py) == digest(FIXTURE)
@@ -396,39 +470,70 @@ def test_editor_changes_keep_comments_and_the_run_py_untouched(egg):
 
 def test_editor_rejects_invalid_values(egg):
     with pytest.raises(Exception):
-        settings_model.update(egg.config, {"action": "update_eranio", "values": {"priority": ["GIBT_ES_NICHT"]}})
+        settings_model.update(
+            egg.config,
+            {"action": "update_eranio", "values": {"priority": ["GIBT_ES_NICHT"]}},
+        )
     with pytest.raises(Exception):
-        settings_model.update(egg.config, {"action": "update_eranio", "values": {"watch_streak_max_parallel": 0}})
+        settings_model.update(
+            egg.config,
+            {"action": "update_eranio", "values": {"watch_streak_max_parallel": 0}},
+        )
     with pytest.raises(Exception):
-        settings_model.update(egg.config, {"action": "update_eranio", "values": {"os": 1}})
+        settings_model.update(
+            egg.config, {"action": "update_eranio", "values": {"os": 1}}
+        )
 
 
 def test_the_block_is_created_when_it_is_missing(egg):
     text = egg.config.read_text(encoding="utf-8")
     start = text.index("ERANIO_CONFIG")
     egg.config.write_text(text[:start].rstrip() + "\n", encoding="utf-8")
-    settings_model.update(egg.config, {"action": "update_eranio", "values": {"auto_discover_drops": True}})
+    settings_model.update(
+        egg.config, {"action": "update_eranio", "values": {"auto_discover_drops": True}}
+    )
     assert config_file.read_eranio_block(egg.config) == {"auto_discover_drops": True}
 
 
 def test_save_through_the_page_and_notification_state(tmp_path, monkeypatch, egg):
     server = make_server(tmp_path, monkeypatch)
     client = server.app.test_client()
-    assert save(client, {"action": "add", "kind": "streamers", "value": "x"}).status_code == 401
+    assert (
+        save(client, {"action": "add", "kind": "streamers", "value": "x"}).status_code
+        == 401
+    )
     login(client)
-    response = save(client, {"action": "add", "kind": "streamers", "value": "pagestreamer"})
+    response = save(
+        client, {"action": "add", "kind": "streamers", "value": "pagestreamer"}
+    )
     assert response.status_code == 200
-    assert any(s["username"] == "pagestreamer" for s in response.get_json()["settings"]["streamers"])
+    assert any(
+        s["username"] == "pagestreamer"
+        for s in response.get_json()["settings"]["streamers"]
+    )
     bad = save(client, {"action": "update_eranio", "values": {"priority": []}})
     assert bad.status_code == 400
     note = save(
         client,
-        {"action": "update_notification", "provider": "ntfy", "values": {"enabled": True, "topic": "geheimes-thema", "events": ["STREAMER_ONLINE"]}},
+        {
+            "action": "update_notification",
+            "provider": "ntfy",
+            "values": {
+                "enabled": True,
+                "topic": "geheimes-thema",
+                "events": ["STREAMER_ONLINE"],
+            },
+        },
     )
     assert note.status_code == 200
     body = note.get_data(as_text=True)
     assert "geheimes-thema" not in body
-    assert client.post("/settings/api/notifications/unbekannt/test", headers=HEADERS).status_code == 404
+    assert (
+        client.post(
+            "/settings/api/notifications/unbekannt/test", headers=HEADERS
+        ).status_code
+        == 404
+    )
 
 
 GUARD_OLD = """\
@@ -492,7 +597,13 @@ def test_guard_web_config_migration_keeps_the_block(egg):
         "categories": ["Just Chatting"],
         "category": {"limit": 12},
         "logging": {"console_level": "WARNING"},
-        "notifications": {"ntfy": {"enabled": True, "fields": {"events": ["STREAMER_ONLINE"]}, "secrets": {"topic": "t"}}},
+        "notifications": {
+            "ntfy": {
+                "enabled": True,
+                "fields": {"events": ["STREAMER_ONLINE"]},
+                "secrets": {"topic": "t"},
+            }
+        },
     }
     (egg.dir / "web-config.json").write_text(json.dumps(overrides), encoding="utf-8")
     assert migrate_web_config(egg.config) is True
@@ -506,23 +617,52 @@ def test_guard_base_editor_paths_keep_the_block(egg):
     original = block_source(egg.config)
     actions = [
         {"action": "add", "kind": "streamers", "value": "guard_one"},
-        {"action": "update_streamer", "username": "guard_one", "settings": {"claim_drops": False, "chat": "NEVER"}},
+        {
+            "action": "update_streamer",
+            "username": "guard_one",
+            "settings": {"claim_drops": False, "chat": "NEVER"},
+        },
         {"action": "reorder_streamers", "usernames": None},
         {"action": "remove", "kind": "streamers", "value": "guard_one"},
         {"action": "add", "kind": "categories", "value": "Chess"},
         {"action": "update_category", "values": {"limit": 5, "sort": "RANDOM"}},
         {"action": "update_sources", "values": {"badges": True}},
-        {"action": "update_logging", "values": {"console_level": "ERROR", "daily_report": True}},
+        {
+            "action": "update_logging",
+            "values": {"console_level": "ERROR", "daily_report": True},
+        },
         {"action": "update_updates", "values": {"enabled": False}},
         {"action": "update_login", "values": {"android": True}},
-        {"action": "update_notification", "provider": "telegram", "values": {"enabled": True, "chat_id": 5, "token": "abc", "events": ["STREAMER_ONLINE"]}},
-        {"action": "update_notification", "provider": "telegram", "values": {"enabled": False}},
-        {"action": "update_notification", "provider": "discord", "values": {"enabled": True, "webhook_api": "https://discord.com/api/webhooks/1/x", "events": []}},
+        {
+            "action": "update_notification",
+            "provider": "telegram",
+            "values": {
+                "enabled": True,
+                "chat_id": 5,
+                "token": "abc",
+                "events": ["STREAMER_ONLINE"],
+            },
+        },
+        {
+            "action": "update_notification",
+            "provider": "telegram",
+            "values": {"enabled": False},
+        },
+        {
+            "action": "update_notification",
+            "provider": "discord",
+            "values": {
+                "enabled": True,
+                "webhook_api": "https://discord.com/api/webhooks/1/x",
+                "events": [],
+            },
+        },
     ]
     for payload in actions:
         if payload.get("usernames", 0) is None:
             payload["usernames"] = [
-                s["username"] for s in reversed(read_managed_web_config(egg.config)["streamers"])
+                s["username"]
+                for s in reversed(read_managed_web_config(egg.config)["streamers"])
             ]
         update_managed_web_config(egg.config, payload)
         assert block_source(egg.config) == original, payload["action"]
@@ -534,11 +674,20 @@ def test_guard_base_editor_paths_keep_the_block(egg):
 def test_guard_our_editor_does_not_disturb_the_base_blocks(egg):
     namespace_before = {}
     exec(compile(egg.config.read_text(encoding="utf-8"), "c", "exec"), namespace_before)
-    settings_model.update(egg.config, {"action": "update_eranio", "values": {"watch_streak_min_offline_seconds": 600}})
+    settings_model.update(
+        egg.config,
+        {
+            "action": "update_eranio",
+            "values": {"watch_streak_min_offline_seconds": 600},
+        },
+    )
     namespace_after = {}
     exec(compile(egg.config.read_text(encoding="utf-8"), "c", "exec"), namespace_after)
     for name in ("STREAMERS", "MINE_CONFIG", "ANALYTICS_CONFIG"):
-        assert repr(namespace_before[name]) == repr(namespace_after[name]) or name == "STREAMERS"
+        assert (
+            repr(namespace_before[name]) == repr(namespace_after[name])
+            or name == "STREAMERS"
+        )
     assert len(namespace_before["STREAMERS"]) == len(namespace_after["STREAMERS"])
     assert namespace_after["ERANIO_CONFIG"]["watch_streak_min_offline_seconds"] == 600
 
@@ -569,8 +718,12 @@ def test_the_base_watcher_picks_up_changes_made_by_the_settings_editor(egg):
     )
     thread.start()
     time.sleep(0.2)
-    settings_model.update(egg.config, {"action": "add", "kind": "streamers", "value": "livestreamer"})
-    settings_model.update(egg.config, {"action": "remove", "kind": "streamers", "value": "Halbsteiv"})
+    settings_model.update(
+        egg.config, {"action": "add", "kind": "streamers", "value": "livestreamer"}
+    )
+    settings_model.update(
+        egg.config, {"action": "remove", "kind": "streamers", "value": "Halbsteiv"}
+    )
     deadline = time.time() + 5
     while time.time() < deadline and not (miner.added and miner.removed):
         time.sleep(0.05)
@@ -602,7 +755,9 @@ def fake_accept(monkeypatch, valid=True, user="someone"):
     monkeypatch.setattr(TwitchLogin, "_TwitchLogin__accept_android_token", accept)
 
 
-def test_android_paste_stores_the_cookie_and_never_logs_the_token(tmp_path, monkeypatch, caplog):
+def test_android_paste_stores_the_cookie_and_never_logs_the_token(
+    tmp_path, monkeypatch, caplog
+):
     fake_accept(monkeypatch)
     android.configure("someone", False, cookies_dir=str(tmp_path / "cookies"))
     with caplog.at_level(logging.DEBUG):
@@ -635,11 +790,18 @@ def test_android_page_endpoint(tmp_path, monkeypatch, egg):
     android.configure("someone", False, cookies_dir=str(tmp_path / "cookies"))
     server = make_server(tmp_path, monkeypatch)
     client = server.app.test_client()
-    assert client.post("/settings/api/android", json={"value": URL}, headers=HEADERS).status_code == 401
+    assert (
+        client.post(
+            "/settings/api/android", json={"value": URL}, headers=HEADERS
+        ).status_code
+        == 401
+    )
     login(client)
     ok = client.post("/settings/api/android", json={"value": URL}, headers=HEADERS)
     assert ok.status_code == 200 and TOKEN not in ok.get_data(as_text=True)
-    bad = client.post("/settings/api/android", json={"value": "nichts"}, headers=HEADERS)
+    bad = client.post(
+        "/settings/api/android", json={"value": "nichts"}, headers=HEADERS
+    )
     assert bad.status_code == 400
 
 
@@ -671,7 +833,9 @@ def test_android_console_thread_survives_closed_or_missing_input(tmp_path):
     assert not broken.is_alive()
 
 
-def test_android_offer_logs_the_instruction_once_and_never_blocks(tmp_path, monkeypatch, caplog):
+def test_android_offer_logs_the_instruction_once_and_never_blocks(
+    tmp_path, monkeypatch, caplog
+):
     android.configure("someone", False, cookies_dir=str(tmp_path / "cookies"))
     monkeypatch.delenv(android.ANDROID_LOGIN_ENV_VAR, raising=False)
     with caplog.at_level(logging.INFO):

@@ -19,7 +19,15 @@ FMT = "%Y-%m-%dT%H:%M:%SZ"
 T0 = 1_800_000_000.0
 
 
-def raw_campaign(cid, game="Test Game", minutes=60, end_in=3600, channels=None, subscription=False, extra_drops=()):
+def raw_campaign(
+    cid,
+    game="Test Game",
+    minutes=60,
+    end_in=3600,
+    channels=None,
+    subscription=False,
+    extra_drops=(),
+):
     now = utc_now()
     drop = {
         "id": f"{cid}-d1",
@@ -28,7 +36,15 @@ def raw_campaign(cid, game="Test Game", minutes=60, end_in=3600, channels=None, 
         "endAt": (now + timedelta(seconds=end_in)).strftime(FMT),
         "requiredMinutesWatched": minutes,
         "requiredSubs": 1 if subscription else 0,
-        "benefitEdges": [{"benefit": {"id": "b", "name": "Prize", "imageAssetURL": "http://img/p.png"}}],
+        "benefitEdges": [
+            {
+                "benefit": {
+                    "id": "b",
+                    "name": "Prize",
+                    "imageAssetURL": "http://img/p.png",
+                }
+            }
+        ],
     }
     drops_list = [drop]
     for name, start_in in extra_drops:
@@ -41,7 +57,12 @@ def raw_campaign(cid, game="Test Game", minutes=60, end_in=3600, channels=None, 
         "id": cid,
         "name": f"Kampagne {cid}",
         "status": "ACTIVE",
-        "game": {"id": game, "displayName": game, "slug": drops.slugify(game), "boxArtURL": "http://img/box.png"},
+        "game": {
+            "id": game,
+            "displayName": game,
+            "slug": drops.slugify(game),
+            "boxArtURL": "http://img/box.png",
+        },
         "startAt": (now - timedelta(days=2)).strftime(FMT),
         "endAt": (now + timedelta(seconds=end_in)).strftime(FMT),
         "allow": {"channels": [{"id": c} for c in channels] if channels else None},
@@ -122,8 +143,16 @@ def publish(layer, campaigns, streamers=(), now=T0):
 
 class TestOrder:
     def test_without_file_started_and_closest_drops_come_first(self):
-        views = [view("long", minutes=120), view("fresh", minutes=10), view("started", minutes=60, watched=20)]
-        assert ids(DropFile.rank(views, empty_settings())) == ["started", "fresh", "long"]
+        views = [
+            view("long", minutes=120),
+            view("fresh", minutes=10),
+            view("started", minutes=60, watched=20),
+        ]
+        assert ids(DropFile.rank(views, empty_settings())) == [
+            "started",
+            "fresh",
+            "long",
+        ]
 
     def test_file_position_is_the_working_order(self):
         views = [view("a"), view("b"), view("c")]
@@ -131,15 +160,37 @@ class TestOrder:
         assert ids(DropFile.rank(views, settings)) == ["c", "b", "a"]
 
     def test_new_campaign_lands_below_its_game_or_at_the_end(self):
-        views = [view("gta1", game="Grand Theft Auto VI"), view("pogo1", game="Pokemon GO"), view("pogo2", game="Pokemon GO"), view("other", game="Anderes")]
+        views = [
+            view("gta1", game="Grand Theft Auto VI"),
+            view("pogo1", game="Pokemon GO"),
+            view("pogo2", game="Pokemon GO"),
+            view("other", game="Anderes"),
+        ]
         settings = {"games": {}, "campaigns": {}, "order": ["pogo1", "gta1"]}
-        assert ids(DropFile.ordered(views, settings)) == ["pogo1", "pogo2", "gta1", "other"]
+        assert ids(DropFile.ordered(views, settings)) == [
+            "pogo1",
+            "pogo2",
+            "gta1",
+            "other",
+        ]
 
     def test_switched_off_subscription_only_and_unlinked_are_skipped(self):
-        off, sub, ok, game_off, unlinked = view("off"), view("sub", subscription=True), view("ok"), view("g", game="Langweilig"), view("u")
+        off, sub, ok, game_off, unlinked = (
+            view("off"),
+            view("sub", subscription=True),
+            view("ok"),
+            view("g", game="Langweilig"),
+            view("u"),
+        )
         unlinked.account_connected = False
-        settings = {"games": {"Langweilig": {"active": False}}, "campaigns": {"off": {"active": False}}, "order": ["off", "sub", "ok", "g", "u"]}
-        assert ids(DropFile.rank([off, sub, ok, game_off, unlinked], settings)) == ["ok"]
+        settings = {
+            "games": {"Langweilig": {"active": False}},
+            "campaigns": {"off": {"active": False}},
+            "order": ["off", "sub", "ok", "g", "u"],
+        }
+        assert ids(DropFile.rank([off, sub, ok, game_off, unlinked], settings)) == [
+            "ok"
+        ]
 
     def test_zero_minute_drops_and_missing_precondition_do_not_count(self):
         zero = view("zero", minutes=0)
@@ -151,13 +202,21 @@ class TestOrder:
 class TestFile:
     def test_user_order_survives_and_new_ones_are_added(self, path):
         file = DropFile(path)
-        a, b, c = view("a", game="Grand Theft Auto VI", watched=25), view("b", game="Pokemon GO"), view("c", game="Anderes")
+        a, b, c = (
+            view("a", game="Grand Theft Auto VI", watched=25),
+            view("b", game="Pokemon GO"),
+            view("c", game="Anderes"),
+        )
         file.write([a, b, c], file.read_settings(), {"a": "läuft"})
         data = read(path)
         assert data["kampagnen"][0]["naechster_drop"] == "25 von 60 Minuten (Test Drop)"
         assert data["kampagnen"][0]["status"] == "läuft"
         assert data["kampagnen"][0]["slug"] == "grand-theft-auto-vi"
-        data["kampagnen"] = [data["kampagnen"][2], data["kampagnen"][1], data["kampagnen"][0]]
+        data["kampagnen"] = [
+            data["kampagnen"][2],
+            data["kampagnen"][1],
+            data["kampagnen"][0],
+        ]
         data["kampagnen"][1]["aktiv"] = False
         save(path, data)
         assert file.changed()
@@ -184,7 +243,9 @@ class TestFile:
         file.write([view("quiet"), view("done")], file.read_settings())
         entries = read(path)["kampagnen"]
         for entry in entries:
-            entry["ende_utc"] = (utc_now() - timedelta(days=3 if entry["id"] == "quiet" else 15)).strftime(FMT)
+            entry["ende_utc"] = (
+                utc_now() - timedelta(days=3 if entry["id"] == "quiet" else 15)
+            ).strftime(FMT)
         save(path, {"kampagnen": entries})
         file.write([view("running")], file.read_settings())
         data = {k["id"]: k for k in read(path)["kampagnen"]}
@@ -193,11 +254,29 @@ class TestFile:
 
     def test_game_with_slug_is_kept_and_known(self, path):
         file = DropFile(path)
-        save(path, {"spiele": [{"spiel": "Grand Theft Auto VI", "slug": "grand-theft-auto-vi", "aktiv": True}], "kampagnen": []})
+        save(
+            path,
+            {
+                "spiele": [
+                    {
+                        "spiel": "Grand Theft Auto VI",
+                        "slug": "grand-theft-auto-vi",
+                        "aktiv": True,
+                    }
+                ],
+                "kampagnen": [],
+            },
+        )
         settings = file.read_settings()
         assert file.known_slugs() == ["grand-theft-auto-vi"]
         file.write([], settings)
-        assert read(path)["spiele"] == [{"spiel": "Grand Theft Auto VI", "aktiv": True, "slug": "grand-theft-auto-vi"}]
+        assert read(path)["spiele"] == [
+            {
+                "spiel": "Grand Theft Auto VI",
+                "aktiv": True,
+                "slug": "grand-theft-auto-vi",
+            }
+        ]
 
     def test_small_slip_is_fixed_and_rewritten_clean(self, path):
         file = DropFile(path)
@@ -216,7 +295,9 @@ class TestFile:
     def test_badly_broken_file_keeps_order_and_active_values(self, path):
         file = DropFile(path)
         with open(path, "w", encoding="utf-8") as handle:
-            handle.write('{"spiele": [{"spiel": "Pokemon GO", "aktiv": false}], "kampagnen": [ {"spiel": "x" "aktiv": false, "id": "c"} {"aktiv": true "id": "a"} kaputt ::: ')
+            handle.write(
+                '{"spiele": [{"spiel": "Pokemon GO", "aktiv": false}], "kampagnen": [ {"spiel": "x" "aktiv": false, "id": "c"} {"aktiv": true "id": "a"} kaputt ::: '
+            )
         settings = file.read_settings()
         assert settings["order"] == ["c", "a"]
         assert settings["campaigns"]["c"]["active"] is False
@@ -230,12 +311,24 @@ class TestFile:
             handle.write("völlig kaputt")
         settings = file.read_settings()
         assert settings["order"] == ["x", "y"]
-        assert open(path.replace(".json", ".fehlerhaft.json"), encoding="utf-8").read() == "völlig kaputt"
+        assert (
+            open(path.replace(".json", ".fehlerhaft.json"), encoding="utf-8").read()
+            == "völlig kaputt"
+        )
 
     def test_editor_bom_and_friendly_values(self, path):
         file = DropFile(path)
         with open(path, "w", encoding="utf-8-sig") as handle:
-            json.dump({"spiele": [{"spiel": "A", "aktiv": "nein"}], "kampagnen": [{"id": "z", "aktiv": "ja"}, {"id": "z", "aktiv": False}]}, handle)
+            json.dump(
+                {
+                    "spiele": [{"spiel": "A", "aktiv": "nein"}],
+                    "kampagnen": [
+                        {"id": "z", "aktiv": "ja"},
+                        {"id": "z", "aktiv": False},
+                    ],
+                },
+                handle,
+            )
         settings = file.read_settings()
         assert not file.broken
         assert settings["order"] == ["z"]
@@ -249,8 +342,24 @@ class TestFile:
             "jetzt": None,
             "spiele": [{"spiel": "Alt Spiel", "aktiv": False, "slug": "alt-spiel"}],
             "kampagnen": [
-                {"spiel": "Test Game", "kampagne": "Kampagne b", "aktiv": False, "status": "läuft", "id": "b", "slug": "test-game", "ende_utc": None},
-                {"spiel": "Test Game", "kampagne": "Kampagne a", "aktiv": True, "status": "läuft", "id": "a", "slug": "test-game", "ende_utc": None},
+                {
+                    "spiel": "Test Game",
+                    "kampagne": "Kampagne b",
+                    "aktiv": False,
+                    "status": "läuft",
+                    "id": "b",
+                    "slug": "test-game",
+                    "ende_utc": None,
+                },
+                {
+                    "spiel": "Test Game",
+                    "kampagne": "Kampagne a",
+                    "aktiv": True,
+                    "status": "läuft",
+                    "id": "a",
+                    "slug": "test-game",
+                    "ende_utc": None,
+                },
             ],
         }
         save(layer.path, old)
@@ -258,14 +367,25 @@ class TestFile:
         data = read(layer.path)
         assert [k["id"] for k in data["kampagnen"]] == ["b", "a", "c"]
         assert data["kampagnen"][0]["aktiv"] is False
-        assert {"spiel": "Alt Spiel", "aktiv": False, "slug": "alt-spiel"} in data["spiele"]
+        assert {"spiel": "Alt Spiel", "aktiv": False, "slug": "alt-spiel"} in data[
+            "spiele"
+        ]
 
 
 class TestLayer:
     def test_status_texts(self, layer):
         layer.twitch.report = [{"campaign_id": "unl", "linked": False}]
         live = streamer("live", [campaign("run")])
-        publish(layer, [campaign("run"), campaign("quiet"), campaign("sub", subscription=True), campaign("unl")], [live])
+        publish(
+            layer,
+            [
+                campaign("run"),
+                campaign("quiet"),
+                campaign("sub", subscription=True),
+                campaign("unl"),
+            ],
+            [live],
+        )
         data = {k["id"]: k for k in read(layer.path)["kampagnen"]}
         assert data["run"]["status"] == "läuft"
         assert data["quiet"]["status"] == "gerade kein Live-Kanal"
@@ -275,7 +395,9 @@ class TestLayer:
         assert data["unl"]["konto_verbunden"] == "nein"
 
     def test_paused_when_v3_blocks_the_game(self, layer):
-        layer.twitch.drop_watch_health = {"test-game": {"blocked_until": {"live": time.time() + 600}}}
+        layer.twitch.drop_watch_health = {
+            "test-game": {"blocked_until": {"live": time.time() + 600}}
+        }
         live = streamer("live", [campaign("run")])
         publish(layer, [campaign("run")], [live], now=time.time())
         assert read(layer.path)["kampagnen"][0]["status"].startswith("pausiert")
@@ -293,7 +415,10 @@ class TestLayer:
             publish(layer, [campaign("other")], now=T0 + step * 900)
             data = {k["id"]: k for k in read(layer.path)["kampagnen"]}
             assert data["done"]["status"] == "heute erledigt, wird täglich neu geprüft"
-            assert not drops.STATE.file._settings["campaigns"]["done"]["entry"]["status"] == "alles abgeholt"
+            assert (
+                not drops.STATE.file._settings["campaigns"]["done"]["entry"]["status"]
+                == "alles abgeholt"
+            )
 
     def test_same_drop_id_resets_next_day_and_is_mined_again(self, layer):
         item = campaign("daily", game="Spiel D")
@@ -321,7 +446,9 @@ class TestLayer:
         assert read(layer.path)["kampagnen"][0]["status"] == "alles abgeholt"
         drops.STATE.memo["old"].view.end_at = utc_now() - timedelta(days=15)
         data = read(layer.path)
-        data["kampagnen"][0]["ende_utc"] = (utc_now() - timedelta(days=15)).strftime(FMT)
+        data["kampagnen"][0]["ende_utc"] = (utc_now() - timedelta(days=15)).strftime(
+            FMT
+        )
         save(layer.path, data)
         publish(layer, [], now=T0 + 1800)
         assert [k["id"] for k in read(layer.path)["kampagnen"]] == []
@@ -337,7 +464,9 @@ class TestLayer:
     def test_day_change_rechecks_daily_campaign(self, layer):
         drops.remember(Campaign(raw_campaign("chest", extra_drops=(("Bronze", 10),))))
         publish(layer, [])
-        layer.twitch.drop_watch_health = {"x": {"blocked_until": {"a": time.time() + 999}}}
+        layer.twitch.drop_watch_health = {
+            "x": {"blocked_until": {"a": time.time() + 999}}
+        }
         drops.STATE.day = ("alt", "alt")
         publish(layer, [], now=T0 + 100)
         assert layer.twitch.drop_watch_health["x"]["blocked_until"] == {}
@@ -346,7 +475,9 @@ class TestLayer:
 
     def test_quest_type_is_reported(self, layer):
         quest = campaign("q")
-        quest.reward_categories = [{"id": "1", "displayName": "Quest Game", "name": "q"}]
+        quest.reward_categories = [
+            {"id": "1", "displayName": "Quest Game", "name": "q"}
+        ]
         publish(layer, [quest])
         assert read(layer.path)["kampagnen"][0]["art"] == "Quest"
 
@@ -355,7 +486,10 @@ class TestLayer:
             publish(layer, [campaign("a"), campaign("b", subscription=True)])
         text = "\n".join(r.getMessage() for r in caplog.records)
         assert "Drops: 2 Kampagnen in Arbeitsreihenfolge" in text
-        assert "Drops 1. Test Game | Kampagne a | 1 von 1 offen | naechster: 0/60 Min. (Test Drop) | gerade kein Live-Kanal" in text
+        assert (
+            "Drops 1. Test Game | Kampagne a | 1 von 1 offen | naechster: 0/60 Min. (Test Drop) | gerade kein Live-Kanal"
+            in text
+        )
 
     def test_list_order_decides_the_drop_pick(self, layer):
         a, b = campaign("a", game="Spiel A"), campaign("b", game="Spiel B")
@@ -411,7 +545,20 @@ class TestLayer:
         assert drops.streamer_rank(other) is None
 
     def test_game_slug_search_hook(self, layer):
-        save(layer.path, {"spiele": [{"spiel": "Grand Theft Auto VI", "slug": "grand-theft-auto-vi", "aktiv": True}, {"spiel": "Aus", "slug": "aus", "aktiv": False}], "kampagnen": []})
+        save(
+            layer.path,
+            {
+                "spiele": [
+                    {
+                        "spiel": "Grand Theft Auto VI",
+                        "slug": "grand-theft-auto-vi",
+                        "aktiv": True,
+                    },
+                    {"spiel": "Aus", "slug": "aus", "aktiv": False},
+                ],
+                "kampagnen": [],
+            },
+        )
         publish(layer, [campaign("a", game="Spiel A")])
         assert layer.categories[0] == "base-game"
         assert "grand-theft-auto-vi" in layer.categories
@@ -447,28 +594,38 @@ class TestSlot:
         for name in names:
             item = campaign(name, game=f"Spiel {name}")
             views.append(item)
-            streamers.append(streamer(name, [item], game=f"Spiel {name}", discovered=True))
+            streamers.append(
+                streamer(name, [item], game=f"Spiel {name}", discovered=True)
+            )
         save(layer.path, {"kampagnen": [{"id": n} for n in names]})
         publish(layer, views, streamers)
         return streamers
 
     def test_top_campaign_gets_the_fixed_slot_even_when_slots_are_full(self, layer):
         streamers = self.prepare(layer) + [streamer("p1"), streamer("p2")]
-        result = drops.reserve(layer.twitch, streamers, [2, 3], [0, 1, 2, 3], 2, lambda i: i < 2)
+        result = drops.reserve(
+            layer.twitch, streamers, [2, 3], [0, 1, 2, 3], 2, lambda i: i < 2
+        )
         assert result[0] == 0 and len(result) == 2
 
     def test_lower_drop_stream_gives_way_to_the_listed_top(self, layer):
         streamers = self.prepare(layer)
-        assert drops.reserve(layer.twitch, streamers, [1], [0, 1], 2, lambda i: True) == [0]
+        assert drops.reserve(
+            layer.twitch, streamers, [1], [0, 1], 2, lambda i: True
+        ) == [0]
 
     def test_slot_kept_when_top_already_watched(self, layer):
         streamers = self.prepare(layer)
-        assert drops.reserve(layer.twitch, streamers, [0, 1], [0, 1], 2, lambda i: True) == [0]
+        assert drops.reserve(
+            layer.twitch, streamers, [0, 1], [0, 1], 2, lambda i: True
+        ) == [0]
 
     def test_slot_is_lent_at_most_fifteen_minutes_then_returned(self, layer):
         streak.configure()
         streak.STATE.client = SimpleNamespace(
-            reward_list=lambda cid: streak.Milestone(state="NONE", value=0, achievement_at=None, expires_at=None),
+            reward_list=lambda cid: streak.Milestone(
+                state="NONE", value=0, achievement_at=None, expires_at=None
+            ),
             stream_created_at=lambda cid: None,
         )
         streamers = self.prepare(layer, names=("top",))
@@ -477,8 +634,19 @@ class TestSlot:
         priority = [Priority.STREAK, Priority.DROPS]
 
         def step(now):
-            watching = drops.reserve(layer.twitch, snapshot, [0, 1], index, 2, lambda i: i == 0, now)
-            return streak.apply(SimpleNamespace(), snapshot, watching, index, priority, 2, lambda i: i == 0, now)
+            watching = drops.reserve(
+                layer.twitch, snapshot, [0, 1], index, 2, lambda i: i == 0, now
+            )
+            return streak.apply(
+                SimpleNamespace(),
+                snapshot,
+                watching,
+                index,
+                priority,
+                2,
+                lambda i: i == 0,
+                now,
+            )
 
         assert 0 not in step(T0)
         assert streak.loan_info().active
@@ -497,7 +665,9 @@ class TestCompat:
         monkeypatch.setattr(miner, "run", lambda **kwargs: seen.update(kwargs))
         return miner, seen
 
-    def test_auto_discovery_shares_the_category_list_and_enables_discovery(self, workdir, monkeypatch):
+    def test_auto_discovery_shares_the_category_list_and_enables_discovery(
+        self, workdir, monkeypatch
+    ):
         miner, seen = self.run_mine(workdir, monkeypatch)
         miner.mine(["a"])
         assert seen["categories"] is drops.STATE.categories
@@ -508,13 +678,21 @@ class TestCompat:
 
     def test_explicit_options_are_respected(self, workdir, monkeypatch):
         miner, seen = self.run_mine(workdir, monkeypatch)
-        miner.mine(["a"], categories=["x"], wildcard_categories=False, drop_pick_stickiness_minutes=7, category_refresh_interval_hours=0.1)
+        miner.mine(
+            ["a"],
+            categories=["x"],
+            wildcard_categories=False,
+            drop_pick_stickiness_minutes=7,
+            category_refresh_interval_hours=0.1,
+        )
         assert seen["categories"] == ["x"]
         assert seen["wildcard_categories"] is False
         assert seen["drop_pick_stickiness_minutes"] == 7
         assert seen["category_refresh_interval_hours"] == 0.1
 
-    def test_without_auto_discovery_the_base_options_stay_untouched(self, workdir, monkeypatch):
+    def test_without_auto_discovery_the_base_options_stay_untouched(
+        self, workdir, monkeypatch
+    ):
         miner, seen = self.run_mine(workdir, monkeypatch, auto_discover_drops=False)
         miner.mine(["a"])
         assert seen["wildcard_categories"] is False

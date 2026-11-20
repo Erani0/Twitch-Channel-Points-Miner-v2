@@ -101,7 +101,10 @@ def test_rows_are_sorted_and_formatted(miner):
 
 
 def test_follow_date_accepts_datetime_values():
-    assert export.format_followdate(datetime(2025, 7, 21, tzinfo=timezone.utc)) == "21.07.2025"
+    assert (
+        export.format_followdate(datetime(2025, 7, 21, tzinfo=timezone.utc))
+        == "21.07.2025"
+    )
     assert export.format_followdate(None) == "..."
     assert export.format_followdate("broken") == "..."
 
@@ -158,7 +161,9 @@ def test_points_gained_ignores_legacy_baseline_payload(miner, tmp_path):
 
 
 def test_points_gained_resets_on_day_change(miner):
-    miner.streamers = [make_streamer("demo", history={"WATCH": {"counter": 1, "amount": 120}})]
+    miner.streamers = [
+        make_streamer("demo", history={"WATCH": {"counter": 1, "amount": 120}})
+    ]
     export.STATE.day_key = "2000-01-01"
     export.STATE.baseline = {"demo": 0}
     assert export.build_rows(miner)[0]["Points gained"] == 0
@@ -247,7 +252,9 @@ def test_follow_dates_are_read_from_the_follow_pages(miner):
     node = SimpleNamespace(
         login="Demo",
         self=SimpleNamespace(
-            follower=SimpleNamespace(followed_at=datetime(2025, 7, 21, tzinfo=timezone.utc))
+            follower=SimpleNamespace(
+                followed_at=datetime(2025, 7, 21, tzinfo=timezone.utc)
+            )
         ),
     )
     page = SimpleNamespace(
@@ -319,7 +326,9 @@ def test_workbook_formatting(miner):
     assert sheet["D2"].value.strftime("%d.%m.%Y") == "04.03.2026"
     assert (sheet["G2"].fill.fgColor.rgb or "").endswith("E8F5E9")
     assert (sheet["H2"].fill.fgColor.rgb or "").endswith("F1F8E9")
-    assert any(str(entry.sqref).startswith("H2") for entry in sheet.conditional_formatting)
+    assert any(
+        str(entry.sqref).startswith("H2") for entry in sheet.conditional_formatting
+    )
     widths = [sheet.column_dimensions[letter].width for letter in "ABCDEFGH"]
     assert widths == [20, 10, 13, 13, 8, 10, 14, 15]
 
@@ -376,5 +385,7 @@ def test_finish_writes_a_last_export(miner):
 
 def test_export_failure_does_not_raise(miner, monkeypatch):
     miner.streamers = [make_streamer("demo")]
-    monkeypatch.setattr(export, "write_xlsx", lambda *args: (_ for _ in ()).throw(OSError("full")))
+    monkeypatch.setattr(
+        export, "write_xlsx", lambda *args: (_ for _ in ()).throw(OSError("full"))
+    )
     export.export_snapshot(miner)

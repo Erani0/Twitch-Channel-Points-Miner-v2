@@ -132,9 +132,7 @@ class TwitchChannelPointsMiner(BaseMiner):
         state_dir = os.path.join(Path().absolute(), "logs")
         _, known_length = migrate_old_cache(
             self.watch_streak_cache,
-            os.path.join(
-                state_dir, f"watch_streak_cache.{self.username.lower()}.json"
-            ),
+            os.path.join(state_dir, f"watch_streak_cache.{self.username.lower()}.json"),
             self.watch_streak_min_offline_seconds,
         )
         export.configure(self.username)
@@ -144,7 +142,9 @@ class TwitchChannelPointsMiner(BaseMiner):
             requested_priority=self._as_list(priority),
             cache=self.watch_streak_cache,
             missed_path=os.path.join(
-                state_dir, ".state", f"eranio_streak_missed.{self.username.lower()}.json"
+                state_dir,
+                ".state",
+                f"eranio_streak_missed.{self.username.lower()}.json",
             ),
             known_length=known_length,
         )
@@ -235,9 +235,7 @@ class TwitchChannelPointsMiner(BaseMiner):
         if watch_only_drops is not None:
             self.watch_only_drops = bool(watch_only_drops)
         if stop_watch_when_drops_completed is not None:
-            self.stop_watch_when_drops_completed = bool(
-                stop_watch_when_drops_completed
-            )
+            self.stop_watch_when_drops_completed = bool(stop_watch_when_drops_completed)
         android.offer()
         streak_history.start(self)
         export.STATE.follow_order = followers_order

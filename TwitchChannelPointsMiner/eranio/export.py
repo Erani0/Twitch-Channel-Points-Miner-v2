@@ -34,6 +34,7 @@ COLUMNS = [
 INTERVAL_SECONDS = 10 * 60
 START_POLL_SECONDS = 5
 
+
 def style_sheet(sheet) -> None:
     header_fill = PatternFill("solid", fgColor="1F4E78")
     success_fill = PatternFill("solid", fgColor="E8F5E9")
@@ -85,9 +86,7 @@ def style_sheet(sheet) -> None:
             )
         if gained_idx is not None:
             gained_cell = sheet.cell(row=row_idx, column=gained_idx)
-            gained_cell.alignment = Alignment(
-                horizontal="right", vertical="center"
-            )
+            gained_cell.alignment = Alignment(horizontal="right", vertical="center")
             if isinstance(gained_cell.value, (int, float)):
                 max_points_gained = max(max_points_gained, int(gained_cell.value))
             if isinstance(gained_cell.value, (int, float)) and gained_cell.value > 0:
@@ -103,19 +102,13 @@ def style_sheet(sheet) -> None:
             )
         if sub_idx is not None:
             sub_cell = sheet.cell(row=row_idx, column=sub_idx)
-            sub_cell.alignment = Alignment(
-                horizontal="center", vertical="center"
-            )
+            sub_cell.alignment = Alignment(horizontal="center", vertical="center")
         if banned_idx is not None:
             banned_cell = sheet.cell(row=row_idx, column=banned_idx)
-            banned_cell.alignment = Alignment(
-                horizontal="center", vertical="center"
-            )
+            banned_cell.alignment = Alignment(horizontal="center", vertical="center")
         if watch_idx is not None:
             watch_cell = sheet.cell(row=row_idx, column=watch_idx)
-            watch_cell.alignment = Alignment(
-                horizontal="center", vertical="center"
-            )
+            watch_cell.alignment = Alignment(horizontal="center", vertical="center")
             if isinstance(watch_cell.value, (int, float)) and watch_cell.value >= 3:
                 watch_cell.font = Font(color="2E7D32", bold=True)
                 watch_cell.fill = success_fill
@@ -137,7 +130,9 @@ def style_sheet(sheet) -> None:
 
         if gained_idx is not None and max_points_gained > 0:
             gained_column_letter = get_column_letter(gained_idx)
-            gained_range = f"{gained_column_letter}2:{gained_column_letter}{sheet.max_row}"
+            gained_range = (
+                f"{gained_column_letter}2:{gained_column_letter}{sheet.max_row}"
+            )
             sheet.conditional_formatting.add(
                 gained_range,
                 DataBarRule(
@@ -224,7 +219,9 @@ def refresh_path(username):
         STATE.path = current
 
 
-def configure(username, followers_order=None, interval=INTERVAL_SECONDS, directory="logs"):
+def configure(
+    username, followers_order=None, interval=INTERVAL_SECONDS, directory="logs"
+):
     STATE.reset()
     STATE.interval = interval
     STATE.follow_order = followers_order
@@ -433,9 +430,7 @@ def load_follow_dates(miner):
     STATE.follow_loaded = True
     try:
         order = (
-            STATE.follow_order
-            if STATE.follow_order is not None
-            else FollowersOrder.ASC
+            STATE.follow_order if STATE.follow_order is not None else FollowersOrder.ASC
         )
         STATE.follow_dates = fetch_follow_dates(miner.twitch.gql, order)
     except Exception as error:

@@ -128,7 +128,9 @@ class DropView:
         open_drops = self.watchable()
         if not open_drops:
             return None
-        return min(max(0, d.minutes_required - d.current_minutes_watched) for d in open_drops)
+        return min(
+            max(0, d.minutes_required - d.current_minutes_watched) for d in open_drops
+        )
 
     def has_progress(self):
         return any(d.current_minutes_watched > 0 for d in self.open_drops())
@@ -176,14 +178,18 @@ class DropFile:
                 with open(self.path, "r", encoding="utf-8-sig") as handle:
                     text = handle.read()
             except OSError as error:
-                logger.warning("drop_campaigns.json kann nicht gelesen werden: %s", error)
+                logger.warning(
+                    "drop_campaigns.json kann nicht gelesen werden: %s", error
+                )
                 return self._settings
             data, fixed = self._parse(text)
             if data is not None:
                 self.broken = fixed
                 if fixed:
                     self._keep_broken_copy(text)
-                    logger.warning("drop_campaigns.json hatte einen kleinen Fehler und wurde repariert, deine Reihenfolge bleibt.")
+                    logger.warning(
+                        "drop_campaigns.json hatte einen kleinen Fehler und wurde repariert, deine Reihenfolge bleibt."
+                    )
                 self._settings = self._from_data(data)
                 return self._settings
             self.broken = True
@@ -195,10 +201,14 @@ class DropFile:
                     info.setdefault("game", previous.get("game", ""))
                     if previous.get("entry"):
                         info["entry"] = previous["entry"]
-                logger.warning("drop_campaigns.json war fehlerhaft und wurde repariert, Reihenfolge und aktiv-Werte wurden übernommen.")
+                logger.warning(
+                    "drop_campaigns.json war fehlerhaft und wurde repariert, Reihenfolge und aktiv-Werte wurden übernommen."
+                )
                 self._settings = salvaged
             else:
-                logger.warning("drop_campaigns.json war nicht lesbar und wird mit dem letzten gültigen Stand neu geschrieben.")
+                logger.warning(
+                    "drop_campaigns.json war nicht lesbar und wird mit dem letzten gültigen Stand neu geschrieben."
+                )
             return self._settings
 
     @staticmethod
@@ -206,7 +216,10 @@ class DropFile:
         games = {}
         for entry in data.get("spiele") or []:
             if isinstance(entry, dict) and entry.get("spiel"):
-                games[str(entry["spiel"])] = {"active": as_bool(entry.get("aktiv")), "slug": entry.get("slug") or None}
+                games[str(entry["spiel"])] = {
+                    "active": as_bool(entry.get("aktiv")),
+                    "slug": entry.get("slug") or None,
+                }
         campaigns = {}
         order = []
         for entry in data.get("kampagnen") or []:
@@ -214,7 +227,11 @@ class DropFile:
                 cid = str(entry["id"])
                 if cid in campaigns:
                     continue
-                campaigns[cid] = {"active": as_bool(entry.get("aktiv")), "game": str(entry.get("spiel") or ""), "entry": entry}
+                campaigns[cid] = {
+                    "active": as_bool(entry.get("aktiv")),
+                    "game": str(entry.get("spiel") or ""),
+                    "entry": entry,
+                }
                 order.append(cid)
         return {"games": games, "campaigns": campaigns, "order": order}
 
@@ -256,9 +273,15 @@ class DropFile:
     def _salvage(text):
         flag = r'"aktiv"\s*:\s*(true|false|"[^"]*")'
         start = text.find('"kampagnen"')
-        games_part = text[text.find('"spiele"'):start] if '"spiele"' in text and start > 0 else ""
+        games_part = (
+            text[text.find('"spiele"') : start]
+            if '"spiele"' in text and start > 0
+            else ""
+        )
         games = {}
-        for name, value in re.findall(r'"spiel"\s*:\s*"([^"]+)"[^{}]*?' + flag, games_part):
+        for name, value in re.findall(
+            r'"spiel"\s*:\s*"([^"]+)"[^{}]*?' + flag, games_part
+        ):
             games[name] = {"active": as_bool(value.strip('"'))}
         part = text[start:] if start >= 0 else text
         campaigns = {}
@@ -266,11 +289,13 @@ class DropFile:
         previous_end = 0
         for match in re.finditer(r'"id"\s*:\s*"([^"]+)"', part):
             cid = match.group(1)
-            values = re.findall(flag, part[previous_end:match.start()])
+            values = re.findall(flag, part[previous_end : match.start()])
             previous_end = match.end()
             if cid in campaigns:
                 continue
-            campaigns[cid] = {"active": as_bool(values[-1].strip('"')) if values else True}
+            campaigns[cid] = {
+                "active": as_bool(values[-1].strip('"')) if values else True
+            }
             order.append(cid)
         if not order and not games:
             return None
@@ -306,7 +331,9 @@ class DropFile:
         result = [cid for cid in order if cid in by_id]
         known = set(result)
         new = [item for item in items if item[0] not in known]
-        new.sort(key=lambda item: (item[2] is None, item[2] if item[2] is not None else 0))
+        new.sort(
+            key=lambda item: (item[2] is None, item[2] if item[2] is not None else 0)
+        )
         for cid, game, _ in new:
             position = None
             for index, existing in enumerate(result):
@@ -325,20 +352,30 @@ class DropFile:
         present = {v.id for v in views}
         for cid in settings.get("order", []):
             if cid not in present:
-                items.append((cid, settings["campaigns"].get(cid, {}).get("game", ""), None))
+                items.append(
+                    (cid, settings["campaigns"].get(cid, {}).get("game", ""), None)
+                )
         return items
 
     @classmethod
     def ordered(cls, views, settings):
         by_id = {v.id: v for v in views}
-        return [by_id[cid] for cid in cls.merge_order(settings.get("order", []), cls._items(views, settings)) if cid in by_id]
+        return [
+            by_id[cid]
+            for cid in cls.merge_order(
+                settings.get("order", []), cls._items(views, settings)
+            )
+            if cid in by_id
+        ]
 
     @classmethod
     def rank(cls, views, settings):
         return [
             v
             for v in cls.ordered(views, settings)
-            if cls.is_active(v, settings) and v.is_earnable() and v.account_connected is not False
+            if cls.is_active(v, settings)
+            and v.is_earnable()
+            and v.account_connected is not False
         ]
 
     def write(self, views, settings, statuses=None, finished=None, active=None):
@@ -348,7 +385,9 @@ class DropFile:
             entries = {}
             items = []
             for view in views:
-                entries[view.id] = self._entry(view, settings, statuses.get(view.id, "gerade kein Live-Kanal"))
+                entries[view.id] = self._entry(
+                    view, settings, statuses.get(view.id, "gerade kein Live-Kanal")
+                )
                 items.append((view.id, view.game_name, self._auto_key(view)))
             for view, status in finished or []:
                 if view.id in entries:
@@ -365,11 +404,15 @@ class DropFile:
                 if end is not None and now > end + timedelta(days=RETENTION_DAYS):
                     continue
                 carried = dict(old)
-                carried["aktiv"] = settings["campaigns"].get(cid, {}).get("active", True)
+                carried["aktiv"] = (
+                    settings["campaigns"].get(cid, {}).get("active", True)
+                )
                 if end is not None and now > end:
                     if carried.get("status") != "alles abgeholt":
                         carried["status"] = "abgelaufen"
-                elif str(carried.get("status") or "").startswith(("heute erledigt", "alles abgeholt")):
+                elif str(carried.get("status") or "").startswith(
+                    ("heute erledigt", "alles abgeholt")
+                ):
                     carried["status"] = DAILY_STATUS
                 else:
                     carried["status"] = "gerade kein Live-Kanal"
@@ -388,7 +431,9 @@ class DropFile:
                 "hinweis": HINT,
                 "aktualisiert": local_text(now),
                 "jetzt": active,
-                "spiele": [self._game_entry(name, settings, entries) for name in games_seen],
+                "spiele": [
+                    self._game_entry(name, settings, entries) for name in games_seen
+                ],
                 "kampagnen": [entries[cid] for cid in order],
             }
             tmp = f"{self.path}.tmp"
@@ -397,7 +442,9 @@ class DropFile:
                     json.dump(data, handle, ensure_ascii=False, indent=2)
                 os.replace(tmp, self.path)
             except Exception as error:
-                logger.warning("drop_campaigns.json konnte nicht geschrieben werden: %s", error)
+                logger.warning(
+                    "drop_campaigns.json konnte nicht geschrieben werden: %s", error
+                )
                 return False
             self._seen_mtime = self._mtime()
             self.broken = False
@@ -409,7 +456,14 @@ class DropFile:
         info = settings["games"].get(name, {})
         slug = info.get("slug")
         if not slug:
-            slug = next((e.get("slug") for e in entries.values() if e.get("spiel") == name and e.get("slug")), None)
+            slug = next(
+                (
+                    e.get("slug")
+                    for e in entries.values()
+                    if e.get("spiel") == name and e.get("slug")
+                ),
+                None,
+            )
         entry = {"spiel": name, "aktiv": info.get("active", True)}
         if slug:
             entry["slug"] = slug
@@ -439,14 +493,26 @@ class DropFile:
         next_drop = "nichts mehr offen"
         candidates = view.watchable()
         if candidates:
-            closest = min(candidates, key=lambda d: d.minutes_required - d.current_minutes_watched)
+            closest = min(
+                candidates, key=lambda d: d.minutes_required - d.current_minutes_watched
+            )
             label = closest.name or closest.benefit or "Drop"
             next_drop = f"{closest.current_minutes_watched} von {closest.minutes_required} Minuten ({label})"
         elif open_drops:
-            next_drop = "nur mit Abo" if view.only_subscription() else "nichts per Zuschauen machbar"
+            next_drop = (
+                "nur mit Abo"
+                if view.only_subscription()
+                else "nichts per Zuschauen machbar"
+            )
         elif view.future_drops:
-            next_drop = f"ab {local_text(view.next_start)}" if view.next_start else "nächster Drop folgt"
-        connected = {True: "ja", False: "nein", None: "unbekannt"}[view.account_connected]
+            next_drop = (
+                f"ab {local_text(view.next_start)}"
+                if view.next_start
+                else "nächster Drop folgt"
+            )
+        connected = {True: "ja", False: "nein", None: "unbekannt"}[
+            view.account_connected
+        ]
         return {
             "spiel": view.game_name,
             "kampagne": view.name,
@@ -455,7 +521,11 @@ class DropFile:
             "endet": local_text(view.end_at),
             "offen": f"{view.open_count()} von {view.total_drops} Drops",
             "naechster_drop": next_drop,
-            "kanaele": "nur bestimmte Kanäle" if view.channels else "alle Kanäle mit Drops für dieses Spiel",
+            "kanaele": (
+                "nur bestimmte Kanäle"
+                if view.channels
+                else "alle Kanäle mit Drops für dieses Spiel"
+            ),
             "konto_verbunden": connected,
             "art": "Quest" if view.quest else "Drop-Kampagne",
             "spiel_bild": view.game_image,
@@ -475,7 +545,9 @@ class DropFile:
             "abo_noetig": "ja" if view.needs_subscription() else "nein",
             "id": view.id,
             "slug": view.game_slug,
-            "ende_utc": view.end_at.strftime("%Y-%m-%dT%H:%M:%SZ") if view.end_at else None,
+            "ende_utc": (
+                view.end_at.strftime("%Y-%m-%dT%H:%M:%SZ") if view.end_at else None
+            ),
         }
 
 
@@ -530,11 +602,18 @@ def remember(campaign):
         return
     try:
         now = utc_now()
-        upcoming = [d.start_at for d in campaign.drops if d.start_at and d.start_at > now]
+        upcoming = [
+            d.start_at for d in campaign.drops if d.start_at and d.start_at > now
+        ]
         if campaign.start_at and campaign.start_at > now:
             upcoming.append(campaign.start_at)
         future = len([d for d in campaign.drops if d.start_at and d.start_at > now])
-        view = DropView(campaign, total=len(campaign.drops), future=future, next_start=min(upcoming) if upcoming else None)
+        view = DropView(
+            campaign,
+            total=len(campaign.drops),
+            future=future,
+            next_start=min(upcoming) if upcoming else None,
+        )
         with STATE.lock:
             STATE.memo[view.id] = Memo(view, future, view.next_start)
     except Exception:
@@ -546,7 +625,9 @@ def _link_states(twitch):
     try:
         for group in twitch.unlinked_drop_report() or []:
             if group.get("campaign_id"):
-                states[str(group["campaign_id"])] = True if group.get("linked") else False
+                states[str(group["campaign_id"])] = (
+                    True if group.get("linked") else False
+                )
     except Exception:
         pass
     return states
@@ -633,7 +714,12 @@ def _finished(views, now_utc):
             continue
         memo.closed = True
         if memo.next_start and memo.next_start > now_utc:
-            result.append((closed, f"heute erledigt, nächster Drop ab {local_text(memo.next_start)}"))
+            result.append(
+                (
+                    closed,
+                    f"heute erledigt, nächster Drop ab {local_text(memo.next_start)}",
+                )
+            )
         else:
             result.append((closed, DAILY_STATUS))
     return result
@@ -648,10 +734,19 @@ def _sync_categories(settings, ranked):
     games = settings["games"]
     for name, info in games.items():
         slug = info.get("slug")
-        if slug and info.get("active", True) and slugify(slug) not in known and slug not in extra:
+        if (
+            slug
+            and info.get("active", True)
+            and slugify(slug) not in known
+            and slug not in extra
+        ):
             extra.append(slug)
     for view in ranked[:TOP_GAMES_SEARCHED]:
-        if view.game_slug and slugify(view.game_slug) not in known and view.game_slug not in extra:
+        if (
+            view.game_slug
+            and slugify(view.game_slug) not in known
+            and view.game_slug not in extra
+        ):
             extra.append(view.game_slug)
     desired = list(STATE.base_categories) + extra
     if list(categories) != desired:
@@ -660,14 +755,23 @@ def _sync_categories(settings, ranked):
 
 def _log_status(ordered, finished, settings, live, blocked, statuses):
     if not ordered and not finished:
-        logger.info("Drops: zurzeit keine laufende Kampagne gefunden", extra={"emoji": ":package:"})
+        logger.info(
+            "Drops: zurzeit keine laufende Kampagne gefunden",
+            extra={"emoji": ":package:"},
+        )
         return
-    logger.info("Drops: %d Kampagnen in Arbeitsreihenfolge", len(ordered), extra={"emoji": ":package:"})
+    logger.info(
+        "Drops: %d Kampagnen in Arbeitsreihenfolge",
+        len(ordered),
+        extra={"emoji": ":package:"},
+    )
     for position, view in enumerate(ordered, start=1):
         nxt = None
         candidates = view.watchable()
         if candidates:
-            closest = min(candidates, key=lambda d: d.minutes_required - d.current_minutes_watched)
+            closest = min(
+                candidates, key=lambda d: d.minutes_required - d.current_minutes_watched
+            )
             nxt = f"{closest.current_minutes_watched}/{closest.minutes_required} Min. ({closest.name or closest.benefit or 'Drop'})"
         state = statuses.get(view.id, "")
         if not DropFile.is_active(view, settings):
@@ -734,10 +838,20 @@ def _publish(twitch, campaigns, streamers, now):
             current = None
             for streamer in streamers or []:
                 if getattr(streamer, "is_watching", False) is True:
-                    ids = [STATE.position[i] for i in _stream_ids(streamer) if i in STATE.position]
+                    ids = [
+                        STATE.position[i]
+                        for i in _stream_ids(streamer)
+                        if i in STATE.position
+                    ]
                     if ids:
-                        view = next(v for v in views if v.id == STATE.rank_ids[min(ids)])
-                        current = {"kanal": streamer.username, "spiel": view.game_name, "kampagne": view.name}
+                        view = next(
+                            v for v in views if v.id == STATE.rank_ids[min(ids)]
+                        )
+                        current = {
+                            "kanal": streamer.username,
+                            "spiel": view.game_name,
+                            "kampagne": view.name,
+                        }
                         break
             if STATE.file.write(views, settings, statuses, finished, current):
                 STATE.settings = STATE.file._settings
@@ -753,7 +867,11 @@ def matched_ids(streamer):
     if ids:
         return ids
     stream = getattr(streamer, "stream", None)
-    game = stream.game_name() if stream is not None and callable(getattr(stream, "game_name", None)) else None
+    game = (
+        stream.game_name()
+        if stream is not None and callable(getattr(stream, "game_name", None))
+        else None
+    )
     slug = slugify(game or "")
     channel_id = str(getattr(streamer, "channel_id", ""))
     return {
@@ -764,7 +882,9 @@ def matched_ids(streamer):
 
 
 def streamer_rank(streamer):
-    positions = [STATE.position[i] for i in matched_ids(streamer) if i in STATE.position]
+    positions = [
+        STATE.position[i] for i in matched_ids(streamer) if i in STATE.position
+    ]
     return min(positions) if positions else None
 
 
@@ -795,7 +915,9 @@ def drop_rank(streamer, rank):
     return (UNRANKED if position is None else position, rank)
 
 
-def reserve(twitch, snapshot, watching, streamers_index, streams_watched, is_drop, now=None):
+def reserve(
+    twitch, snapshot, watching, streamers_index, streams_watched, is_drop, now=None
+):
     watching = list(watching)
     if not STATE.configured or not STATE.position:
         return watching
@@ -815,14 +937,20 @@ def reserve(twitch, snapshot, watching, streamers_index, streams_watched, is_dro
             for i in watching
             if i == best
             or not is_drop(i)
-            or (streamer_rank(snapshot[i]) is not None and streamer_rank(snapshot[i]) <= best_rank)
+            or (
+                streamer_rank(snapshot[i]) is not None
+                and streamer_rank(snapshot[i]) <= best_rank
+            )
         ]
         return kept
     result = [
         i
         for i in watching
         if not is_drop(i)
-        or (streamer_rank(snapshot[i]) is not None and streamer_rank(snapshot[i]) <= best_rank)
+        or (
+            streamer_rank(snapshot[i]) is not None
+            and streamer_rank(snapshot[i]) <= best_rank
+        )
     ]
     if result and len(result) >= streams_watched:
         for position in range(len(result) - 1, -1, -1):

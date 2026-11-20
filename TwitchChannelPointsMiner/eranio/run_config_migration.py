@@ -5,6 +5,7 @@ import time
 
 _PREFIX = "run_config_migration:"
 
+
 def discover_new_constructor_kwargs(cls) -> dict[str, str]:
     discovered: dict[str, str] = {}
     try:
@@ -20,10 +21,12 @@ def discover_new_constructor_kwargs(cls) -> dict[str, str]:
             discovered[name] = literal
     return discovered
 
+
 def _safe_literal_repr(value) -> str | None:
     if value is None or isinstance(value, (bool, int, float, str)):
         return repr(value)
     return None
+
 
 def ensure_constructor_kwargs(
     file_path: str, class_name: str, expected_kwargs: dict[str, str]
@@ -49,9 +52,7 @@ def ensure_constructor_kwargs(
     try:
         tree = ast.parse(original_source)
     except SyntaxError as exc:
-        print(
-            f"{_PREFIX} {file_path} is not valid Python, leaving it untouched: {exc}"
-        )
+        print(f"{_PREFIX} {file_path} is not valid Python, leaving it untouched: {exc}")
         return False
 
     call_node = _find_call(tree, class_name)
@@ -59,7 +60,9 @@ def ensure_constructor_kwargs(
         return False
 
     if call_node.end_lineno is None or call_node.end_lineno == call_node.lineno:
-        pending = ", ".join(f"{name}={default}" for name, default in expected_kwargs.items())
+        pending = ", ".join(
+            f"{name}={default}" for name, default in expected_kwargs.items()
+        )
         print(
             f"{_PREFIX} {class_name}(...) call in {file_path} is on a single line, "
             f"please add the following manually: {pending}"
@@ -77,7 +80,9 @@ def ensure_constructor_kwargs(
 
     lines = original_source.splitlines(keepends=True)
     indent = _detect_arg_indent(lines, call_node)
-    new_lines = "".join(f"{indent}{name}={default},\n" for name, default in missing.items())
+    new_lines = "".join(
+        f"{indent}{name}={default},\n" for name, default in missing.items()
+    )
 
     patched_lines = list(lines)
     patched_lines.insert(call_node.lineno, new_lines)
@@ -103,19 +108,25 @@ def ensure_constructor_kwargs(
         return False
 
     added = ", ".join(missing.keys())
-    print(f"{_PREFIX} added new setting(s) {added} to {file_path} (backup: {backup_path})")
+    print(
+        f"{_PREFIX} added new setting(s) {added} to {file_path} (backup: {backup_path})"
+    )
     return True
+
 
 def _find_call(tree: ast.AST, class_name: str):
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             func = node.func
-            name = func.id if isinstance(func, ast.Name) else (
-                func.attr if isinstance(func, ast.Attribute) else None
+            name = (
+                func.id
+                if isinstance(func, ast.Name)
+                else (func.attr if isinstance(func, ast.Attribute) else None)
             )
             if name == class_name:
                 return node
     return None
+
 
 def _detect_arg_indent(lines: list[str], call_node: ast.Call) -> str:
     for kw in call_node.keywords:

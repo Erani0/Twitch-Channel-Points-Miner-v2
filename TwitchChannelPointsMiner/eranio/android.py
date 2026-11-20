@@ -4,7 +4,10 @@ import sys
 import threading
 from pathlib import Path
 
-from TwitchChannelPointsMiner.classes.TwitchLogin import TwitchLogin, parse_android_login
+from TwitchChannelPointsMiner.classes.TwitchLogin import (
+    TwitchLogin,
+    parse_android_login,
+)
 from TwitchChannelPointsMiner.constants import (
     ANDROID_CLIENT_ID,
     ANDROID_LOGIN_ENV_VAR,
@@ -92,7 +95,7 @@ def submit(text):
     else:
         message = (
             "Gespeichert. Aktiv nach dem nächsten Neustart, sobald "
-            "\"Android-Login nutzen\" eingeschaltet ist."
+            '"Android-Login nutzen" eingeschaltet ist.'
         )
     STATE.message = message
     logger.info("Android-Login gespeichert. %s", message)

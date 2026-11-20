@@ -529,7 +529,10 @@ def pending_order(snapshot, candidate_indexes, now):
     pending = []
     for rank, index in enumerate(candidate_indexes):
         streamer = snapshot[index]
-        if not streak_enabled(streamer) or getattr(streamer, "is_online", True) is False:
+        if (
+            not streak_enabled(streamer)
+            or getattr(streamer, "is_online", True) is False
+        ):
             continue
         track = refresh(streamer, now)
         if not track.done and not track.gave_up:
@@ -596,7 +599,9 @@ def wants_drop_slot(snapshot, unserved, now=None):
         return True
     if now < STATE.loan_cooldown_until:
         return False
-    return any(loan_key(snapshot[i].username) not in STATE.loan_exhausted for i in unserved)
+    return any(
+        loan_key(snapshot[i].username) not in STATE.loan_exhausted for i in unserved
+    )
 
 
 def apply(

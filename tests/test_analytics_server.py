@@ -315,7 +315,9 @@ def test_static_assets_are_served_without_authentication():
     # and image 401'd and silently failed to apply.
     server = AnalyticsServer(username="user", password="secret")
 
-    response = server.app.test_client().get(server.app.static_url_path + "/dashboard.css")
+    response = server.app.test_client().get(
+        server.app.static_url_path + "/dashboard.css"
+    )
     response.close()
 
     assert response.status_code == 200

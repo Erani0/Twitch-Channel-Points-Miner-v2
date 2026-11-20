@@ -26,8 +26,28 @@ def source(obj):
 @pytest.mark.parametrize(
     "module, names",
     [
-        (runner, ["main", "_load_config", "run_config", "restart_process", "_run_legacy", "_create_default_config", "cli"]),
-        (config_migration, ["convert_runner", "migrate_config", "_find_calls", "ConfigMigrationError", "CONFIG_VERSION"]),
+        (
+            runner,
+            [
+                "main",
+                "_load_config",
+                "run_config",
+                "restart_process",
+                "_run_legacy",
+                "_create_default_config",
+                "cli",
+            ],
+        ),
+        (
+            config_migration,
+            [
+                "convert_runner",
+                "migrate_config",
+                "_find_calls",
+                "ConfigMigrationError",
+                "CONFIG_VERSION",
+            ],
+        ),
         (
             config_editor,
             [
@@ -56,8 +76,20 @@ def test_base_signatures_used_by_the_extension():
     assert parameters(runner._load_config) == ["path"]
     assert parameters(runner.run_config) == ["config", "path", "on_miner_ready"]
     assert parameters(config_migration.convert_runner) == ["runner_path", "config_path"]
-    assert parameters(config_editor._byte_offset)[:3] == ["lines", "line", "column"] or len(parameters(config_editor._byte_offset)) == 3
-    for name in ("host", "port", "refresh", "days_ago", "username", "password", "log_poll_interval", "logs_file"):
+    assert (
+        parameters(config_editor._byte_offset)[:3] == ["lines", "line", "column"]
+        or len(parameters(config_editor._byte_offset)) == 3
+    )
+    for name in (
+        "host",
+        "port",
+        "refresh",
+        "days_ago",
+        "username",
+        "password",
+        "log_poll_interval",
+        "logs_file",
+    ):
         assert name in parameters(server_module.AnalyticsServer.__init__)
 
 
@@ -68,12 +100,25 @@ def test_runner_main_reads_the_documented_arguments():
 
 
 def test_twitch_hooks_are_in_place():
-    for name in ("_has_pending_watch_streak", "send_minute_watched_events", "sync_campaigns", "login", "get_drops_inventory"):
+    for name in (
+        "_has_pending_watch_streak",
+        "send_minute_watched_events",
+        "sync_campaigns",
+        "login",
+        "get_drops_inventory",
+    ):
         assert hasattr(twitch_module.Twitch, name), name
     text = source(twitch_module.Twitch.send_minute_watched_events)
-    for token in ("eranio_streak.apply", "eranio_drops.allows_watch", "eranio_drops.pick_key", "eranio_drops.reserve"):
+    for token in (
+        "eranio_streak.apply",
+        "eranio_drops.allows_watch",
+        "eranio_drops.pick_key",
+        "eranio_drops.reserve",
+    ):
         assert token in text, token
-    assert "eranio_streak.is_pending" in source(twitch_module.Twitch._has_pending_watch_streak)
+    assert "eranio_streak.is_pending" in source(
+        twitch_module.Twitch._has_pending_watch_streak
+    )
     assert "eranio_drops.drop_rank" in text
     sync = source(twitch_module.Twitch.sync_campaigns)
     assert "eranio_drops.remember" in sync and "eranio_drops.publish" in sync
@@ -81,46 +126,74 @@ def test_twitch_hooks_are_in_place():
 
 def test_dashboard_hook_and_view_functions():
     assert "dashboard.install" in source(server_module.AnalyticsServer.__init__)
-    assert hasattr(Streamer, "persistent_series") and hasattr(Streamer, "persistent_streak_days")
+    assert hasattr(Streamer, "persistent_series") and hasattr(
+        Streamer, "persistent_streak_days"
+    )
     assert hasattr(server_module.AnalyticsServer, "run")
 
 
 def test_settings_and_enum_members():
     Priority = settings_module.Priority
     Events = settings_module.Events
-    for name in ("STREAK", "DROPS", "ORDER", "STREAK_LENGTH_ASCENDING", "STREAK_LENGTH_DESCENDING"):
+    for name in (
+        "STREAK",
+        "DROPS",
+        "ORDER",
+        "STREAK_LENGTH_ASCENDING",
+        "STREAK_LENGTH_DESCENDING",
+    ):
         assert name in Priority.__members__
     assert "SUBSCRIPTION" in Events.__members__
     assert "Settings.config_path" in source(runner.run_config)
 
 
 def test_package_exports_the_compatible_class():
-    from TwitchChannelPointsMiner.eranio.compat import TwitchChannelPointsMiner as compat_class
+    from TwitchChannelPointsMiner.eranio.compat import (
+        TwitchChannelPointsMiner as compat_class,
+    )
 
     assert package.TwitchChannelPointsMiner is compat_class
     assert package.__version__
-    assert "from .eranio import TwitchChannelPointsMiner" in (ROOT / "TwitchChannelPointsMiner" / "__init__.py").read_text(encoding="utf-8")
+    assert "from .eranio import TwitchChannelPointsMiner" in (
+        ROOT / "TwitchChannelPointsMiner" / "__init__.py"
+    ).read_text(encoding="utf-8")
 
 
 def test_old_run_py_entry_points_keep_working():
     from TwitchChannelPointsMiner import run_config_migration
 
-    assert parameters(run_config_migration.ensure_constructor_kwargs) == ["file_path", "class_name", "expected_kwargs"]
+    assert parameters(run_config_migration.ensure_constructor_kwargs) == [
+        "file_path",
+        "class_name",
+        "expected_kwargs",
+    ]
     assert parameters(run_config_migration.discover_new_constructor_kwargs) == ["cls"]
     for name in ("LoggerSettings", "ColorPalette"):
-        assert hasattr(__import__("TwitchChannelPointsMiner.logger", fromlist=[name]), name)
-    assert "upgrade.switch_if_needed" in source(run_config_migration.ensure_constructor_kwargs)
+        assert hasattr(
+            __import__("TwitchChannelPointsMiner.logger", fromlist=[name]), name
+        )
+    assert "upgrade.switch_if_needed" in source(
+        run_config_migration.ensure_constructor_kwargs
+    )
 
 
 def test_launcher_and_upgrade_interfaces():
-    assert parameters(launcher.run) == ["port", "config_password", "host", "config_dir", "legacy_run_py"]
+    assert parameters(launcher.run) == [
+        "port",
+        "config_password",
+        "host",
+        "config_dir",
+        "legacy_run_py",
+    ]
     assert parameters(config_file.convert) == ["legacy_run_py", "target"]
     assert parameters(upgrade.switch_if_needed) == ["file_path", "argv"]
     assert parameters(config_file.create_default)[:3] == ["target", "username", "port"]
 
 
 def test_base_template_still_produces_a_usable_default_config(tmp_path):
-    target = config_file.create_default(tmp_path / "config" / "config.py", "konto", 4321)
+    target = config_file.create_default(
+        tmp_path / "config" / "config.py", "konto", 4321
+    )
     module = runner._load_config(target)
     assert module.MINER_CONFIG["username"] == "konto"
     assert module.ANALYTICS_CONFIG["port"] == 4321
@@ -145,5 +218,9 @@ def test_thin_start_file_keeps_the_updater_behaviour():
 
 
 def test_base_marker_file_has_version_and_commit():
-    parts = (ROOT / "TwitchChannelPointsMiner" / "eranio" / "V3_BASE").read_text(encoding="utf-8").split()
+    parts = (
+        (ROOT / "TwitchChannelPointsMiner" / "eranio" / "V3_BASE")
+        .read_text(encoding="utf-8")
+        .split()
+    )
     assert len(parts) == 2 and parts[0].count(".") == 2

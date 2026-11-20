@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -12,7 +13,13 @@ IDENTITY = ["-c", "user.name=t", "-c", "user.email=t@example.org"]
 
 
 def git(folder, *args):
-    result = subprocess.run(["git", *IDENTITY, *args], cwd=folder, capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        ["git", *IDENTITY, *args],
+        cwd=folder,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     return result.stdout.strip()
 
 
@@ -37,7 +44,11 @@ def repos(tmp_path):
     git(tmp_path, "clone", str(upstream), "fork")
     write(fork, INIT, 'x = 1\n__version__ = "3.0.0"  # x-release-please-version\n')
     write(fork, BASE, f"3.22.0 {first}\n")
-    write(fork, "tools/update_from_v3.py", (ROOT / "tools" / "update_from_v3.py").read_text(encoding="utf-8"))
+    write(
+        fork,
+        "tools/update_from_v3.py",
+        (ROOT / "tools" / "update_from_v3.py").read_text(encoding="utf-8"),
+    )
     git(fork, "add", "-A")
     git(fork, "commit", "-m", "eigene Version")
     git(fork, "remote", "add", "v3", str(upstream))
@@ -55,6 +66,13 @@ def update(fork, *extra):
         capture_output=True,
         text=True,
         encoding="utf-8",
+        env={
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@example.org",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@example.org",
+        },
     )
 
 
@@ -66,7 +84,7 @@ def test_update_merges_into_its_own_branch_and_keeps_the_own_version(repos):
     result = update(fork, "--notes-out", str(notes))
     assert result.returncode == 0, result.stdout + result.stderr
     assert git(fork, "rev-parse", "--abbrev-ref", "HEAD") == "update/v3-3.23.0"
-    assert 'x = 2' in (fork / INIT).read_text(encoding="utf-8")
+    assert "x = 2" in (fork / INIT).read_text(encoding="utf-8")
     assert '__version__ = "3.0.0"' in (fork / INIT).read_text(encoding="utf-8")
     assert (fork / "neu.txt").is_file()
     assert (fork / BASE).read_text(encoding="utf-8").startswith("3.23.0 ")

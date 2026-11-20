@@ -135,7 +135,9 @@ def test_available_update_forces_alert_and_throttles_to_daily(monkeypatch, caplo
     assert miner.next_update_check_at == 100 + (24 * 60 * 60)
 
 
-def test_available_update_gives_the_same_instructions_in_a_container(monkeypatch, caplog):
+def test_available_update_gives_the_same_instructions_in_a_container(
+    monkeypatch, caplog
+):
     miner = _miner_for_update_check()
     monkeypatch.setattr(miner_module, "__version__", "3.7.3")
     monkeypatch.setattr(miner_module, "check_versions", lambda: ("3.7.3", "3.8.0"))

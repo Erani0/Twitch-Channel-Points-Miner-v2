@@ -108,9 +108,11 @@ def clean_campaign(item):
         "naechster_start": text_or_none(item.get("naechster_start")),
         "art": "Quest" if item.get("art") == "Quest" else "Drop-Kampagne",
         "abo_noetig": item.get("abo_noetig") == "ja",
-        "konto_verbunden": item.get("konto_verbunden")
-        if item.get("konto_verbunden") in ("ja", "nein", "unbekannt")
-        else "unbekannt",
+        "konto_verbunden": (
+            item.get("konto_verbunden")
+            if item.get("konto_verbunden") in ("ja", "nein", "unbekannt")
+            else "unbekannt"
+        ),
         "pausiert": status.startswith("pausiert"),
         "tages_drop": status.startswith("heute erledigt")
         or bool(item.get("naechster_start")),

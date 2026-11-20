@@ -20,9 +20,13 @@ SKIP_ENV = "ERANIO_LEGACY_RUN"
 def thin_source(config_password=""):
     text = TEMPLATE.read_text(encoding="utf-8")
     if config_password:
-        replacement = f'CONFIG_PASSWORD = os.environ.get("CONFIG_PASSWORD", {config_password!r})'
+        replacement = (
+            f'CONFIG_PASSWORD = os.environ.get("CONFIG_PASSWORD", {config_password!r})'
+        )
         if PASSWORD_LINE not in text:
-            raise RuntimeError("Die Vorlage der Startdatei enthält die Passwortzeile nicht.")
+            raise RuntimeError(
+                "Die Vorlage der Startdatei enthält die Passwortzeile nicht."
+            )
         text = text.replace(PASSWORD_LINE, replacement)
     return text
 
@@ -36,7 +40,9 @@ def is_old_run_py(source):
         tree = ast.parse(source)
     except SyntaxError:
         return False
-    return not is_thin(source) and bool(config_file._find_calls(tree, "TwitchChannelPointsMiner"))
+    return not is_thin(source) and bool(
+        config_file._find_calls(tree, "TwitchChannelPointsMiner")
+    )
 
 
 def _literal_string(node, assigned):

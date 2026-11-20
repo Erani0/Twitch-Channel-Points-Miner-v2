@@ -19,8 +19,7 @@ EXCLUDED = ("tests/", "docs/", ".github/")
 MARKER = "ANMELDEPHASE ERREICHT"
 USER = "probe_konto"
 
-HOOK = textwrap.dedent(
-    """
+HOOK = textwrap.dedent("""
     import importlib.abc
     import importlib.util
     import os
@@ -54,9 +53,7 @@ HOOK = textwrap.dedent(
             return spec
 
     sys.meta_path.insert(0, Finder())
-    """
-    % MARKER
-)
+    """ % MARKER)
 
 
 def git(*args, cwd, check=True):
@@ -79,9 +76,17 @@ def old_egg_run_py():
         ],
         cwd=ROOT,
     ).decode("utf-8")
-    body = re.search(r"cat << 'EOF' > /mnt/server/run.py\n(.*?)\n      EOF\n", source, re.S).group(1)
-    text = "\n".join(line[6:] if line.startswith("      ") else line for line in body.split("\n"))
-    return text.replace("claim_drops_startup=True,", "claim_drops_startup=True,\n        auto_discover_drops=True,", 1)
+    body = re.search(
+        r"cat << 'EOF' > /mnt/server/run.py\n(.*?)\n      EOF\n", source, re.S
+    ).group(1)
+    text = "\n".join(
+        line[6:] if line.startswith("      ") else line for line in body.split("\n")
+    )
+    return text.replace(
+        "claim_drops_startup=True,",
+        "claim_drops_startup=True,\n        auto_discover_drops=True,",
+        1,
+    )
 
 
 def sha(path):
@@ -104,9 +109,13 @@ def rehearsal(tmp_path_factory):
     origin = top / "origin"
     origin.mkdir()
     git("init", "-b", "master", cwd=origin)
-    tracked = subprocess.check_output(
-        ["git", "ls-files", "-co", "--exclude-standard", "-z"], cwd=ROOT
-    ).decode("utf-8").split("\0")
+    tracked = (
+        subprocess.check_output(
+            ["git", "ls-files", "-co", "--exclude-standard", "-z"], cwd=ROOT
+        )
+        .decode("utf-8")
+        .split("\0")
+    )
     for name in tracked:
         source = ROOT / name
         if not name or name.startswith(EXCLUDED) or not source.is_file():
@@ -115,18 +124,41 @@ def rehearsal(tmp_path_factory):
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
     git("add", "-A", "-f", cwd=origin)
-    git("-c", "user.name=t", "-c", "user.email=t@example.org", "commit", "-q", "-m", "neuer master", cwd=origin)
+    git(
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@example.org",
+        "commit",
+        "-q",
+        "-m",
+        "neuer master",
+        cwd=origin,
+    )
 
     install = top / "install"
     clone = subprocess.run(
-        ["git", "clone", "-q", "--depth", "1", "--no-single-branch", "--branch", "v2-final-2.6.4", (ROOT).as_uri(), str(install)],
+        [
+            "git",
+            "clone",
+            "-q",
+            "--depth",
+            "1",
+            "--no-single-branch",
+            "--branch",
+            "v2-final-2.6.4",
+            (ROOT).as_uri(),
+            str(install),
+        ],
         capture_output=True,
         text=True,
     )
     if clone.returncode != 0:
         pytest.skip(f"alter Stand nicht verfügbar: {clone.stderr}")
     git("remote", "set-url", "origin", str(origin), cwd=install)
-    assert '__version__ = "2.6' in (install / "TwitchChannelPointsMiner" / "__init__.py").read_text(encoding="utf-8")
+    assert '__version__ = "2.6' in (
+        install / "TwitchChannelPointsMiner" / "__init__.py"
+    ).read_text(encoding="utf-8")
 
     (install / "run.py").write_text(old_egg_run_py(), encoding="utf-8", newline="\n")
     (install / ".setup_done").write_text("done")
@@ -137,12 +169,18 @@ def rehearsal(tmp_path_factory):
         '{"version": 4, "streamers": {}}', encoding="utf-8"
     )
     (install / "analytics" / USER).mkdir(parents=True, exist_ok=True)
-    (install / "analytics" / USER / "zicke8.json").write_text('{"series": []}', encoding="utf-8")
+    (install / "analytics" / USER / "zicke8.json").write_text(
+        '{"series": []}', encoding="utf-8"
+    )
     (install / "drop_campaigns.json").write_text('{"kampagnen": []}', encoding="utf-8")
     hooks = top / "hooks"
     hooks.mkdir()
     (hooks / "sitecustomize.py").write_text(HOOK, encoding="utf-8")
-    return type("Rehearsal", (), {"top": top, "install": install, "origin": origin, "hooks": hooks})
+    return type(
+        "Rehearsal",
+        (),
+        {"top": top, "install": install, "origin": origin, "hooks": hooks},
+    )
 
 
 def start(rehearsal, directory=None):
@@ -187,17 +225,27 @@ def test_old_installation_switches_to_the_thin_start_file(rehearsal):
     assert backup.read_bytes() == original
     assert (install / "run.py").read_text(encoding="utf-8") == upgrade.thin_source()
     unchanged = [name for name in USER_FILES if not name.startswith("analytics/")]
-    assert {name: sha(install / name) for name in unchanged} == {name: before[name] for name in unchanged}
+    assert {name: sha(install / name) for name in unchanged} == {
+        name: before[name] for name in unchanged
+    }
     analytics = install / "analytics" / USER
-    assert sha(analytics / "zicke8.json.v0.bak") == before[f"analytics/{USER}/zicke8.json"]
-    assert json.loads((analytics / "zicke8.json").read_text(encoding="utf-8"))["series"] == []
+    assert (
+        sha(analytics / "zicke8.json.v0.bak") == before[f"analytics/{USER}/zicke8.json"]
+    )
+    assert (
+        json.loads((analytics / "zicke8.json").read_text(encoding="utf-8"))["series"]
+        == []
+    )
 
     config = install / "config" / "config.py"
     module = runner._load_config(config)
     assert len(module.STREAMERS) == 14
     assert "TWITCH_USER" in config.read_text(encoding="utf-8")
     assert module.MINER_CONFIG["claim_drops_startup"] is True
-    assert module.ANALYTICS_CONFIG["port"] == 5999 or module.ANALYTICS_CONFIG["host"] == "0.0.0.0"
+    assert (
+        module.ANALYTICS_CONFIG["port"] == 5999
+        or module.ANALYTICS_CONFIG["host"] == "0.0.0.0"
+    )
     assert module.ERANIO_CONFIG["auto_discover_drops"] is True
     assert module.ERANIO_CONFIG["watch_streak_max_parallel"] == 2
     assert "password" not in module.MINER_CONFIG
@@ -214,7 +262,6 @@ def test_second_start_changes_nothing(rehearsal):
     assert MARKER in result.stdout + result.stderr
     assert {name: sha(install / name) for name in names} == before
     assert sorted(path.name for path in install.glob("run.py*")) == files_before
-
 
 
 EGG = "egg-twitch-channel-points-miner/egg-twitch-channel-points-miner-python-auto--install.yaml"
@@ -236,14 +283,23 @@ def egg_yaml(new):
 
     if new:
         return yaml.safe_load((ROOT / EGG).read_text(encoding="utf-8"))
-    return yaml.safe_load(subprocess.check_output(["git", "show", f"v2-final-2.6.4:{EGG}"], cwd=ROOT).decode("utf-8"))
+    return yaml.safe_load(
+        subprocess.check_output(
+            ["git", "show", f"v2-final-2.6.4:{EGG}"], cwd=ROOT
+        ).decode("utf-8")
+    )
 
 
 def run_install_script(rehearsal, new, directory):
     script = egg_yaml(new)["scripts"]["installation"]["script"]
-    lines = [line for line in script.split("\n") if not line.strip().startswith("apt-get")]
+    lines = [
+        line for line in script.split("\n") if not line.strip().startswith("apt-get")
+    ]
     script = "\n".join(lines).replace("/mnt/server", Path(directory).as_posix())
-    script = script.replace("https://github.com/Erani0/Twitch-Channel-Points-Miner-v2.git", rehearsal.origin.as_posix())
+    script = script.replace(
+        "https://github.com/Erani0/Twitch-Channel-Points-Miner-v2.git",
+        rehearsal.origin.as_posix(),
+    )
     result = subprocess.run(
         [bash(), "-s"],
         input=script,
@@ -260,7 +316,10 @@ def run_install_script(rehearsal, new, directory):
 def test_egg_update_keeps_startup_command_variables_and_identity():
     old, new = egg_yaml(False), egg_yaml(True)
     assert new["startup_commands"] == old["startup_commands"]
-    assert new["startup_commands"]["Default"] == "python -u /home/container/run.py --port {{SERVER_PORT}}"
+    assert (
+        new["startup_commands"]["Default"]
+        == "python -u /home/container/run.py --port {{SERVER_PORT}}"
+    )
     for key in ("uuid", "docker_images", "meta", "config"):
         assert new[key] == old[key]
     old_vars = {v["env_variable"]: v for v in old["variables"]}
@@ -293,7 +352,13 @@ def user_data(target):
     (target / "analytics").mkdir(exist_ok=True)
     (target / "analytics" / "a.json").write_text("{}", encoding="utf-8")
     (target / "drop_campaigns.json").write_text("{}", encoding="utf-8")
-    return [f"cookies/{USER}.pkl", "logs/miner.log", "analytics/a.json", "drop_campaigns.json", "config/config.py"]
+    return [
+        f"cookies/{USER}.pkl",
+        "logs/miner.log",
+        "analytics/a.json",
+        "drop_campaigns.json",
+        "config/config.py",
+    ]
 
 
 def test_reinstall_with_the_new_egg_keeps_all_user_data(rehearsal):
@@ -321,7 +386,9 @@ def test_reinstall_with_the_old_egg_does_not_convert_again(rehearsal):
     assert b"twitch_miner.mine(" in big
     result = start(rehearsal, target)
     assert MARKER in result.stdout + result.stderr
-    after = {name: sha(target / name) for name in names if not name.startswith("analytics/")}
+    after = {
+        name: sha(target / name) for name in names if not name.startswith("analytics/")
+    }
     assert after == {name: before[name] for name in after}
     assert (target / "run.py.v2-sicherung").read_bytes() == big
     assert (target / "run.py").read_text(encoding="utf-8") == upgrade.thin_source()

@@ -142,8 +142,18 @@ def env(tmp_path, monkeypatch):
     (analytics / "now_watching.json").write_text(
         json.dumps(
             [
-                {"username": "alpha", "reason": "drops", "game": "Game", "channel_points": 5},
-                {"username": "beta", "reason": "points", "game": None, "channel_points": 7},
+                {
+                    "username": "alpha",
+                    "reason": "drops",
+                    "game": "Game",
+                    "channel_points": 5,
+                },
+                {
+                    "username": "beta",
+                    "reason": "points",
+                    "game": None,
+                    "channel_points": 7,
+                },
             ]
         ),
         encoding="utf-8",
@@ -152,7 +162,9 @@ def env(tmp_path, monkeypatch):
     streak_history.STATE.reset()
     analytics_module.response_cache.clear()
     server = AnalyticsServer(password=None)
-    return SimpleNamespace(client=server.app.test_client(), analytics=analytics, server=server)
+    return SimpleNamespace(
+        client=server.app.test_client(), analytics=analytics, server=server
+    )
 
 
 def static_url(env, name):
@@ -163,7 +175,12 @@ def test_pages_and_assets_are_served(env):
     page = env.client.get("/")
     body = page.get_data(as_text=True)
     assert page.status_code == 200
-    for marker in ('id="drops-panel"', 'id="watching-box"', 'id="delete-dialog"', 'id="log-pause"'):
+    for marker in (
+        'id="drops-panel"',
+        'id="watching-box"',
+        'id="delete-dialog"',
+        'id="log-pause"',
+    ):
         assert marker in body
     for name in ("dashboard.js", "dashboard.css", "dark-theme.css", "banner.png"):
         response = env.client.get(static_url(env, name))
@@ -173,7 +190,13 @@ def test_pages_and_assets_are_served(env):
 
 
 def test_the_base_pages_are_not_served(env):
-    for name in ("charts.html", "script.js", "style.css", "windows_shell.html", "tail_buffer.js"):
+    for name in (
+        "charts.html",
+        "script.js",
+        "style.css",
+        "windows_shell.html",
+        "tail_buffer.js",
+    ):
         response = env.client.get(static_url(env, name))
         response.close()
         assert response.status_code == 404, name
@@ -210,7 +233,9 @@ def test_drops_endpoint_without_files_is_empty(env, tmp_path):
 
 def test_watching_reasons(env):
     streak.STATE.tracks["alpha"] = streak.Track(login="alpha", logical_start=0.0)
-    streak.STATE.tracks["beta"] = streak.Track(login="beta", logical_start=0.0, done=True)
+    streak.STATE.tracks["beta"] = streak.Track(
+        login="beta", logical_start=0.0, done=True
+    )
     streak.STATE.known_length["beta"] = 12
     data = env.client.get("/watching").get_json()
     by_name = {row["username"]: row for row in data["channels"]}
@@ -221,9 +246,7 @@ def test_watching_reasons(env):
 
 
 def test_nothing_reveals_the_base(env, monkeypatch):
-    monkeypatch.setattr(
-        dashboard, "fetch_latest_version", lambda: "99.0.0"
-    )
+    monkeypatch.setattr(dashboard, "fetch_latest_version", lambda: "99.0.0")
     texts = [env.client.get("/").get_data(as_text=True)]
     for path in ("/drops", "/watching", "/update_info", "/streamers", "/json/alpha"):
         texts.append(env.client.get(path).get_data(as_text=True))
@@ -247,7 +270,15 @@ def test_the_startup_version_is_the_own_version():
 
 
 def test_no_authentication_is_required_or_offered(env):
-    for path in ("/", "/streamers", "/json_all", "/drops", "/watching", "/log", "/drops_by_category"):
+    for path in (
+        "/",
+        "/streamers",
+        "/json_all",
+        "/drops",
+        "/watching",
+        "/log",
+        "/drops_by_category",
+    ):
         response = env.client.get(path)
         assert response.status_code != 401, path
         assert "WWW-Authenticate" not in response.headers
@@ -257,7 +288,12 @@ def test_no_authentication_is_required_or_offered(env):
 
 
 def test_json_path_traversal_is_blocked(env):
-    for path in ("/json/..%2fsecret", "/json/../secret", "/json/secret.txt", "/json/..%5c..%5csecret"):
+    for path in (
+        "/json/..%2fsecret",
+        "/json/../secret",
+        "/json/secret.txt",
+        "/json/..%5c..%5csecret",
+    ):
         assert env.client.get(path).status_code == 404, path
     assert env.client.get("/json/alpha").status_code == 200
 
@@ -284,17 +320,26 @@ def test_cross_site_delete_is_rejected(env):
 def test_update_info_uses_only_the_own_repository(env, monkeypatch):
     assert "Erani0/Twitch-Channel-Points-Miner-v2" in dashboard.UPDATE_SOURCE
     monkeypatch.setattr(dashboard, "fetch_latest_version", lambda: "99.0.0")
-    assert env.client.get("/update_info").get_json() == {"available": True, "latest": "99.0.0"}
+    assert env.client.get("/update_info").get_json() == {
+        "available": True,
+        "latest": "99.0.0",
+    }
     dashboard.UPDATE.reset()
     monkeypatch.setattr(dashboard, "fetch_latest_version", lambda: __version__)
-    assert env.client.get("/update_info").get_json() == {"available": False, "latest": None}
+    assert env.client.get("/update_info").get_json() == {
+        "available": False,
+        "latest": None,
+    }
     dashboard.UPDATE.reset()
 
     def broken():
         raise OSError("offline")
 
     monkeypatch.setattr(dashboard, "fetch_latest_version", broken)
-    assert env.client.get("/update_info").get_json() == {"available": False, "latest": None}
+    assert env.client.get("/update_info").get_json() == {
+        "available": False,
+        "latest": None,
+    }
 
 
 def test_the_version_is_read_from_the_own_init_file(monkeypatch):
@@ -329,7 +374,12 @@ def test_the_streak_series_is_served(env):
     data = env.client.get("/json/alpha").get_json()
     assert [entry["y"] for entry in data["streak"]] == [4, 5]
     assert data["series"][0]["y"] == 100
-    assert "streak" in env.client.get("/json_all").get_json()[0]["data"]
+    assert (
+        "streak"
+        in {e["name"]: e for e in env.client.get("/json_all").get_json()}["alpha"][
+            "data"
+        ]
+    )
 
 
 def test_old_streak_history_survives_new_entries(env):
@@ -348,7 +398,12 @@ def test_unchanged_days_are_not_written_again_within_the_interval(env):
     assert streak_history.record(alpha, 6, now=1000.0) is True
     assert streak_history.record(alpha, 6, now=1100.0) is False
     assert streak_history.record(alpha, 7, now=1200.0) is True
-    assert streak_history.record(alpha, 7, now=1200.0 + streak_history.RECORD_INTERVAL_SECONDS) is True
+    assert (
+        streak_history.record(
+            alpha, 7, now=1200.0 + streak_history.RECORD_INTERVAL_SECONDS
+        )
+        is True
+    )
     data = json.loads((env.analytics / "alpha.json").read_text(encoding="utf-8"))
     assert [entry["y"] for entry in data["streak"]] == [4, 5, 6, 7, 7]
 
@@ -362,7 +417,9 @@ def test_streak_history_is_new_file_when_none_exists(env):
 
 def test_sync_uses_the_reward_list_value_then_the_migrated_old_cache(env):
     alpha, beta, gamma = streamer("alpha"), streamer("beta"), streamer("gamma")
-    streak.STATE.tracks["alpha"] = streak.Track(login="alpha", logical_start=0.0, value=9)
+    streak.STATE.tracks["alpha"] = streak.Track(
+        login="alpha", logical_start=0.0, value=9
+    )
     streak.STATE.known_length.update({"alpha": 1, "beta": 21})
     assert streak_history.sync([alpha, beta, gamma], now=10.0) == 2
     stored = {
@@ -400,7 +457,15 @@ def test_the_reward_list_check_records_the_days(env):
 
 def test_the_front_end_keeps_the_streak_display():
     script = (ASSETS / "dashboard.js").read_text(encoding="utf-8")
-    for needle in ("watch_streak_days", "Streak ascending", "#ff9d45", "Watch streak (days)", "response[\"streak\"]"):
-        assert needle in script or needle in (ASSETS / "index.html").read_text(encoding="utf-8")
+    for needle in (
+        "watch_streak_days",
+        "Streak ascending",
+        "#ff9d45",
+        "Watch streak (days)",
+        'response["streak"]',
+    ):
+        assert needle in script or needle in (ASSETS / "index.html").read_text(
+            encoding="utf-8"
+        )
     page = (ASSETS / "index.html").read_text(encoding="utf-8")
     assert "Streak ascending" in page and "Streak descending" in page

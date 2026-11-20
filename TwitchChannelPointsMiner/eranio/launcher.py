@@ -49,13 +49,17 @@ def create_first_config(config_dir, port):
     if not username:
         return "FEHLER: Es ist kein Twitch-Benutzername gesetzt (Variable TWITCH_USER)."
     try:
-        config_file.create_default(Path(config_dir) / "config.py", username, port or 5000)
+        config_file.create_default(
+            Path(config_dir) / "config.py", username, port or 5000
+        )
     except Exception as error:
         return f"FEHLER: Die Datei config.py konnte nicht angelegt werden ({error})."
     return None
 
 
-def run(port=None, config_password=None, host=None, config_dir=None, legacy_run_py=None):
+def run(
+    port=None, config_password=None, host=None, config_dir=None, legacy_run_py=None
+):
     base = default_base_directory()
     config_dir = Path(config_dir) if config_dir else base / "config"
     if legacy_run_py is None:

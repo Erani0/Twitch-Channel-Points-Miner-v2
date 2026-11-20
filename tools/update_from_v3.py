@@ -19,7 +19,9 @@ def git(*args, check=True):
         ["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8"
     )
     if check and result.returncode != 0:
-        raise SystemExit(f"git {' '.join(args)} fehlgeschlagen: {result.stderr.strip()}")
+        raise SystemExit(
+            f"git {' '.join(args)} fehlgeschlagen: {result.stderr.strip()}"
+        )
     return result
 
 
@@ -44,7 +46,9 @@ def resolve_version_conflict(path):
         if "__version__" not in ours + theirs:
             raise ValueError("Konflikt außerhalb der Versionszeile")
         own_line = VERSION_PATTERN.search(ours)
-        merged = VERSION_PATTERN.sub(lambda found: own_line.group(0) if own_line else found.group(0), theirs)
+        merged = VERSION_PATTERN.sub(
+            lambda found: own_line.group(0) if own_line else found.group(0), theirs
+        )
         theirs_lines = set(theirs.splitlines())
         extra = [
             line
@@ -60,12 +64,21 @@ def resolve_version_conflict(path):
 def restore_own_version(own_line):
     path = ROOT / INIT_FILE
     text = path.read_text(encoding="utf-8")
-    path.write_text(VERSION_PATTERN.sub(lambda match: own_line, text, count=1), encoding="utf-8")
+    path.write_text(
+        VERSION_PATTERN.sub(lambda match: own_line, text, count=1), encoding="utf-8"
+    )
 
 
 def run_tests():
     return subprocess.run(
-        [sys.executable, "-m", "pytest", "tests", "-q", "--ignore=tests/test_windows_launcher.py"],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests",
+            "-q",
+            "--ignore=tests/test_windows_launcher.py",
+        ],
         cwd=ROOT,
     ).returncode
 
@@ -81,10 +94,14 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if git("status", "--porcelain").stdout.strip():
-        print("Es gibt nicht gespeicherte Änderungen. Bitte zuerst speichern oder verwerfen.")
+        print(
+            "Es gibt nicht gespeicherte Änderungen. Bitte zuerst speichern oder verwerfen."
+        )
         return 2
     if git("remote", "get-url", args.remote, check=False).returncode != 0:
-        print(f"Die Gegenstelle '{args.remote}' ist nicht eingerichtet (git remote add {args.remote} <Adresse>).")
+        print(
+            f"Die Gegenstelle '{args.remote}' ist nicht eingerichtet (git remote add {args.remote} <Adresse>)."
+        )
         return 2
     git("fetch", args.remote, "--tags")
     target = f"{args.remote}/{args.branch}"
@@ -99,7 +116,9 @@ def main(argv=None):
     if git("rev-parse", "--verify", branch, check=False).returncode == 0:
         print(f"Der Zweig {branch} gibt es schon.")
         return 2
-    own_line = VERSION_PATTERN.search((ROOT / INIT_FILE).read_text(encoding="utf-8")).group(0)
+    own_line = VERSION_PATTERN.search(
+        (ROOT / INIT_FILE).read_text(encoding="utf-8")
+    ).group(0)
     git("switch", "-c", branch)
     merge = git("merge", "--no-ff", "--no-commit", target, check=False)
     conflicts = [
@@ -140,7 +159,9 @@ def main(argv=None):
     if args.no_tests:
         print("Tests: nicht ausgeführt")
     else:
-        print("Tests: bestanden" if result == 0 else "Tests: FEHLGESCHLAGEN, bitte prüfen")
+        print(
+            "Tests: bestanden" if result == 0 else "Tests: FEHLGESCHLAGEN, bitte prüfen"
+        )
     print("Übernahme nach master nur nach Prüfung und Freigabe.")
     return 0 if result == 0 else 1
 

@@ -81,7 +81,9 @@ def prepared_source(source):
     for call in _find_calls(tree, "analytics"):
         for keyword in call.keywords:
             if keyword.arg == "config_password":
-                start = _byte_offset(lines, keyword.value.lineno, keyword.value.col_offset)
+                start = _byte_offset(
+                    lines, keyword.value.lineno, keyword.value.col_offset
+                )
                 start = encoded.rfind(b"config_password", 0, start)
                 end = _byte_offset(
                     lines, keyword.value.end_lineno, keyword.value.end_col_offset
@@ -108,7 +110,9 @@ def ensure_categories(text):
     for node in tree.body:
         if (
             isinstance(node, ast.Assign)
-            and any(isinstance(t, ast.Name) and t.id == "MINE_CONFIG" for t in node.targets)
+            and any(
+                isinstance(t, ast.Name) and t.id == "MINE_CONFIG" for t in node.targets
+            )
             and isinstance(node.value, ast.Dict)
         ):
             has = any(
@@ -118,7 +122,10 @@ def ensure_categories(text):
             if has:
                 return text
             lines = text.encode("utf-8").splitlines(keepends=True)
-            end = _byte_offset(lines, node.value.end_lineno, node.value.end_col_offset) - 1
+            end = (
+                _byte_offset(lines, node.value.end_lineno, node.value.end_col_offset)
+                - 1
+            )
             encoded = text.encode("utf-8")
             body = encoded[:end].rstrip()
             separator = b"" if body.endswith((b"{", b",")) else b","
@@ -150,7 +157,9 @@ def move_to_eranio_block(text):
     for node in tree.body:
         if (
             isinstance(node, ast.Assign)
-            and any(isinstance(t, ast.Name) and t.id == "MINER_CONFIG" for t in node.targets)
+            and any(
+                isinstance(t, ast.Name) and t.id == "MINER_CONFIG" for t in node.targets
+            )
             and isinstance(node.value, ast.Dict)
         ):
             miner = node.value
@@ -236,7 +245,9 @@ def dashboard_overrides(host, port, config_password):
         try:
             port = int(raw_port)
         except ValueError:
-            logger.warning("Der Wert von %s ist keine Zahl und wird ignoriert.", ENV_PORT)
+            logger.warning(
+                "Der Wert von %s ist keine Zahl und wird ignoriert.", ENV_PORT
+            )
     config_password = os.environ.get(ENV_PASSWORD) or config_password
     return host, port, config_password
 
@@ -266,7 +277,9 @@ def read_eranio_block(path):
     options = {}
     for name, value in block.items():
         if name not in ERANIO_KEYS:
-            logger.warning("Unbekannter Wert in %s wird ignoriert: %s", BLOCK_NAME, name)
+            logger.warning(
+                "Unbekannter Wert in %s wird ignoriert: %s", BLOCK_NAME, name
+            )
             continue
         if name == "priority":
             if not isinstance(value, list):
@@ -281,10 +294,14 @@ def read_eranio_block(path):
 
 EXAMPLE_NAME = "config.example.py"
 DEFAULT_ERANIO_BLOCK = (
-    "ERANIO_CONFIG = {" + NL
-    + "    'watch_streak_max_parallel': 2," + NL
-    + "    'use_hermes': True," + NL
-    + "}" + NL
+    "ERANIO_CONFIG = {"
+    + NL
+    + "    'watch_streak_max_parallel': 2,"
+    + NL
+    + "    'use_hermes': True,"
+    + NL
+    + "}"
+    + NL
 )
 _DEFAULT_REPLACEMENTS = (
     ('"username": "your-twitch-username"', '"username": {username!r}'),
@@ -304,7 +321,11 @@ _DEFAULT_REPLACEMENTS = (
 
 
 def default_config_text(username, port, template=None):
-    template = Path(template) if template else Path(__file__).resolve().parents[2] / EXAMPLE_NAME
+    template = (
+        Path(template)
+        if template
+        else Path(__file__).resolve().parents[2] / EXAMPLE_NAME
+    )
     text = template.read_text(encoding="utf-8")
     for old, new in _DEFAULT_REPLACEMENTS:
         text = text.replace(old, new.format(username=username, port=port), 1)
