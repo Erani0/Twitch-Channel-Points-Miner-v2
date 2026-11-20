@@ -1,0 +1,118 @@
+_comment: 'DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PANEL'
+meta:
+  version: PLCN_v3
+  update_url: https://raw.githubusercontent.com/Erani0/Twitch-Channel-Points-Miner-v2/refs/heads/master/egg-twitch-channel-points-miner/egg-twitch-channel-points-miner-python-auto--install.yaml
+exported_at: '2026-05-25T18:37:41+02:00'
+name: 'Twitch Channel Points Miner (Python Auto-Install)'
+author: info@eranio.de
+uuid: 10a9d6f6-3cfe-46b5-a28e-aeb15185810b
+description: 'Führt die Installation direkt in der run.py aus. Einfacher Startup Befehl.'
+icon: null
+tags: {  }
+features: null
+docker_images:
+  'Python 3.11': 'ghcr.io/pterodactyl/yolks:python_3.11'
+file_denylist: {  }
+startup_commands:
+  Default: 'python -u /home/container/run.py --port {{SERVER_PORT}}'
+config:
+  files: {  }
+  startup:
+    done: 'Start session:'
+  logs: {  }
+  stop: ^C
+scripts:
+  installation:
+    script: |
+      #!/bin/bash
+      set -e
+
+      echo "=== START DER INSTALLATION ==="
+      apt-get update -y
+      apt-get install -y git
+
+      cd /mnt/server
+
+      echo "Raeume temporaere Ordner auf..."
+      rm -rf .tmp_miner
+
+      echo "Lade Twitch-Channel-Points-Miner-v2 von GitHub herunter..."
+      git clone https://github.com/Erani0/Twitch-Channel-Points-Miner-v2.git .tmp_miner
+
+      echo "Verschiebe Dateien..."
+      cp -r .tmp_miner/* ./
+      cp -r .tmp_miner/.[!.]* ./ 2>/dev/null || true
+      rm -rf .tmp_miner
+
+      echo "Entferne unnoetige Entwicklungsdateien..."
+      rm -rf .github tests setup.py pyproject.toml uv.lock egg-twitch-channel-points-miner CODE_OF_CONDUCT.md CONTRIBUTING.md FAQ.md FEEDBACK_AUDIT.md FORK_FEATURES.md LICENSE README.md .gitattributes
+
+      echo "Erstelle die schlanke run.py..."
+      cp TwitchChannelPointsMiner/eranio/templates/run.py /mnt/server/run.py.neu
+      mv -f /mnt/server/run.py.neu /mnt/server/run.py
+      mkdir -p /mnt/server/config
+
+      echo "=== INSTALLATION ERFOLGREICH ABGESCHLOSSEN ==="
+    container: 'ghcr.io/pterodactyl/installers:debian'
+    entrypoint: bash
+variables:
+  -
+    sort: null
+    name: 'Twitch Passwort'
+    description: 'Wird nicht mehr benötigt (Anmeldung über den Aktivierungscode). Kann leer bleiben.'
+    env_variable: TWITCH_PASS
+    default_value: ''
+    user_viewable: true
+    user_editable: true
+    rules:
+      - nullable
+      - string
+      - 'max:255'
+  -
+    sort: null
+    name: 'Twitch Username'
+    description: 'Dein Twitch Benutzername'
+    env_variable: TWITCH_USER
+    default_value: ''
+    user_viewable: true
+    user_editable: true
+    rules:
+      - required
+      - string
+      - 'max:100'
+  -
+    sort: null
+    name: 'Server Name / Titel'
+    description: 'Der Name/Titel, der als Webseiten-Titel im Dashboard angezeigt werden soll'
+    env_variable: SERVER_NAME
+    default_value: 'Twitch Miner'
+    user_viewable: true
+    user_editable: true
+    rules:
+      - required
+      - string
+      - 'max:100'
+  -
+    sort: null
+    name: 'Passwort für die Einstellungsseite'
+    description: 'Optional. Mit Passwort ist die Einstellungsseite im Dashboard erreichbar, ohne Passwort gibt es sie nicht.'
+    env_variable: CONFIG_PASSWORD
+    default_value: ''
+    user_viewable: true
+    user_editable: true
+    rules:
+      - nullable
+      - string
+      - 'max:100'
+  -
+    sort: null
+    name: 'Android-Login'
+    description: 'Optional. Rückgabe-Adresse des Android-Logins, falls sie nicht in der Konsole eingegeben wird.'
+    env_variable: TWITCH_ANDROID_LOGIN
+    default_value: ''
+    user_viewable: true
+    user_editable: true
+    rules:
+      - nullable
+      - string
+      - 'max:2000'
