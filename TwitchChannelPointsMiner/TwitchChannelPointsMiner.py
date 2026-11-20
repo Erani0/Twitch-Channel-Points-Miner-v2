@@ -697,7 +697,6 @@ class TwitchChannelPointsMiner:
             )
 
         logger.info(f"Twitch Channel Points Miner - {__version__}")
-        logger.info(GITHUB_REPOSITORY_URL)
         if android_login:
             # Logged here, not where android_login is read: until
             # configure_loggers runs, messages have no handler and are lost.
@@ -1590,17 +1589,7 @@ class TwitchChannelPointsMiner:
         interval = self.update_check_interval_seconds
         if update_available:
             interval = max(interval, 24 * 60 * 60)
-            if _is_running_in_container():
-                update_instructions = (
-                    "Docker deployment detected. On the Docker host, pull "
-                    "zacharmstrong/twitch-channel-points-miner:latest and recreate "
-                    "the container. Docker Compose: docker compose pull && "
-                    "docker compose up -d"
-                )
-            else:
-                update_instructions = (
-                    f"Download it from {GITHUB_REPOSITORY_URL}/releases/latest"
-                )
+            update_instructions = "Restart the miner to install the update."
             Settings.latest_release_version = github_version
             Settings.update_instructions = update_instructions
             logger.info(

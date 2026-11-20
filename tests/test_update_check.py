@@ -129,13 +129,13 @@ def test_available_update_forces_alert_and_throttles_to_daily(monkeypatch, caplo
     assert record.levelno == logging.INFO
     assert record.event is Events.UPDATE_AVAILABLE
     assert record.force_alert is True
-    assert "/releases/latest" in record.msg
+    assert "Restart the miner" in record.msg
     assert Settings.latest_release_version == "3.8.0"
-    assert "/releases/latest" in Settings.update_instructions
+    assert "Restart the miner" in Settings.update_instructions
     assert miner.next_update_check_at == 100 + (24 * 60 * 60)
 
 
-def test_available_update_gives_docker_latest_image_instructions(monkeypatch, caplog):
+def test_available_update_gives_the_same_instructions_in_a_container(monkeypatch, caplog):
     miner = _miner_for_update_check()
     monkeypatch.setattr(miner_module, "__version__", "3.7.3")
     monkeypatch.setattr(miner_module, "check_versions", lambda: ("3.7.3", "3.8.0"))
@@ -147,8 +147,8 @@ def test_available_update_gives_docker_latest_image_instructions(monkeypatch, ca
     record = next(
         record for record in caplog.records if "Update available" in record.msg
     )
-    assert "zacharmstrong/twitch-channel-points-miner:latest" in record.msg
-    assert "docker compose pull && docker compose up -d" in record.msg
+    assert "Restart the miner" in record.msg
+    assert "docker" not in record.msg
     assert "/releases/latest" not in record.msg
 
 
