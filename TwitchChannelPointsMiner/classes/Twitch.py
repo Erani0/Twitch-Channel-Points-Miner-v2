@@ -6465,9 +6465,7 @@ class Twitch(object):
         if watchers is None or gql is None:
             return
 
-        from TwitchChannelPointsMiner.eranio import segments as eranio_segments
-
-        if not eranio_segments.should_poll(drop_stream):
+        if drop_stream is not True:
             return
 
         try:
