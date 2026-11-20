@@ -161,3 +161,28 @@ Top-level dict after the base blocks. Allowed keys (`config_file.ERANIO_KEYS`): 
 
 ### Android login (`eranio/android.py`)
 Offer only, never blocking: `compat.mine` calls `android.offer()`, which logs the instruction once (base `ANDROID_LOGIN_URL`) when `cookies/<user>-android.pkl` is missing and starts (a) a daemon reader on stdin (raw `os.read`, survives closed or missing stdin) and (b) a one-time read of `TWITCH_ANDROID_LOGIN`. The settings page has a field as well. Validation and storage are the base `TwitchLogin` (`__accept_android_token` checks client id and account, `save_cookies` writes the JSON cookie file). The base switches the whole client with the `android_login` constructor option, which cannot change at runtime, so a stored login becomes active after a restart once "Android-Login nutzen" (base action `update_login`) is on. The token is never logged or returned.
+
+## 12. Thin run.py, switch of existing installations, egg, update tooling (phase 4b.6 to 5)
+
+Base files touched: none.
+
+### Thin run.py (`eranio/templates/run.py`, single source of truth)
+Same for everyone. It keeps the old self-updater unchanged in behaviour (git fetch, compare with `origin/master`, `git reset --hard origin/master`, delete list of development files, `pip install -r requirements.txt` when `.setup_done` is missing, restart through `os.execv`), changes into its own folder first, reads `--port` (fallback `SERVER_PORT`, default 5000) and the optional `CONFIG_PASSWORD` environment variable, then calls `eranio.launcher.run(port=..., config_password=..., host="0.0.0.0")`. A crash restarts the process after 15 seconds, as before. `upgrade.thin_source(password)` renders it (the only variable part is the default of `CONFIG_PASSWORD`, used when the old run.py had a `config_password`). The egg install script copies this file (no second copy).
+
+### Switch of an existing installation (`eranio/upgrade.py`)
+Entry point kept: the old run.py calls `TwitchChannelPointsMiner.run_config_migration.ensure_constructor_kwargs(file_path, class_name, expected_kwargs)` (shim for `eranio/run_config_migration.py`) after its updater has reset the code to the new master. The function first calls `upgrade.switch_if_needed(file_path)`:
+- only when the file is named `run.py`, is the started script (`sys.argv[0]`), and `ERANIO_LEGACY_RUN` is not set;
+- only for a big old run.py (contains a `TwitchChannelPointsMiner(` call, not the thin marker);
+- no `config/config.py` yet: `config_file.convert` writes it (all settings, `ERANIO_CONFIG`, the egg username stays `os.environ.get("TWITCH_USER")`), verified through `runner._load_config`; an existing `config.py` is never touched or converted again;
+- backup `run.py.v2-sicherung` (existing backup is kept, a timestamp is added to the new one), thin run.py written atomically (`run.py.neu`, then `os.replace`), then `os.execv` of the thin run.py with the same arguments;
+- any failure: a created `config.py` is removed again, run.py stays untouched, one German warning, the old run.py continues through the compatible class (its old behaviour of adding constructor keywords stays).
+Second run: the thin file is detected, nothing happens.
+
+### Launcher additions
+Legacy file candidates: `run.py.v2-sicherung`, then `run.py.old`. Without `config.py` and without a legacy file the launcher creates `config/config.py` from `config.example.py` (`config_file.create_default`: username from `TWITCH_USER`, dashboard on 0.0.0.0 with the given port, analytics on, update check off, time zone Europe/Berlin, `ERANIO_CONFIG`) and continues; without `TWITCH_USER` it stops with a German message. The replacements are plain text replacements of the base template: the guard test `test_base_template_still_produces_a_usable_default_config` fails when a base update changes one of those lines.
+
+### Egg (`egg-twitch-channel-points-miner/`)
+Same uuid, image, startup command and `update_url`. All old variables stay (`TWITCH_PASS` is now optional and unused), new optional ones with empty default: `CONFIG_PASSWORD`, `TWITCH_ANDROID_LOGIN`. The install script no longer writes settings: it clones, copies, removes development files as before, copies the thin run.py (atomically) and creates `config/`; it never touches `config/`, cookies, logs, analytics or `drop_campaigns.json`.
+
+### Update tooling
+`tools/update_from_v3.py` (wrappers `.sh`, `.ps1`): fetch of the remote named `v3`, merge into `update/v3-<version>` without pushing, conflicts only tolerated in the `__version__` line (own number wins, other lines of both sides are merged), `eranio/V3_BASE` updated, tests, German summary. `.github/workflows/v3-update-check.yml` runs it daily when the repository variable `V3_REPO_URL` is set and opens a pull request with the change list and the test result; it never merges. Guard tests for all docking points: `tests/test_eranio_docking.py`; rehearsal of the whole upgrade path: `tests/test_eranio_upgrade.py`; tool tests: `tests/test_eranio_update_tool.py`.
