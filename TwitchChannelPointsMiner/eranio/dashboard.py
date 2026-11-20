@@ -4,6 +4,7 @@ import os
 import re
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -120,6 +121,24 @@ def clean_campaign(item):
     }
 
 
+EXPIRED_STATUS = "abgelaufen"
+
+
+def campaign_has_ended(campaign, now=None):
+    if campaign["status"] == EXPIRED_STATUS:
+        return True
+    end = campaign.get("ende_utc")
+    if not end:
+        return False
+    try:
+        ends_at = datetime.strptime(end, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+    except ValueError:
+        return False
+    return ends_at <= (now or datetime.now(timezone.utc))
+
+
 def drops_overview():
     data = read_json_file(campaigns_path())
     campaigns = []
@@ -129,7 +148,7 @@ def drops_overview():
         campaigns = [
             c
             for c in (clean_campaign(x) for x in data.get("kampagnen") or [])
-            if c is not None
+            if c is not None and not campaign_has_ended(c)
         ]
         updated = text_or_none(data.get("aktualisiert"))
         raw_current = data.get("jetzt")

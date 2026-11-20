@@ -223,6 +223,20 @@ def test_drops_endpoint_shape_and_image_filter(env):
     assert history["abgelaufen"][0]["item_art_url"] is None
 
 
+def test_drops_endpoint_hides_ended_campaigns(env, tmp_path):
+    path = tmp_path / "drop_campaigns.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    base = data["kampagnen"][0]
+    data["kampagnen"] += [
+        {**base, "id": "old", "status": "abgelaufen", "ende_utc": None},
+        {**base, "id": "past", "status": "läuft", "ende_utc": "2020-01-01T00:00:00Z"},
+        {**base, "id": "odd", "status": "läuft", "ende_utc": "kaputt"},
+    ]
+    path.write_text(json.dumps(data), encoding="utf-8")
+    ids = [c["id"] for c in env.client.get("/drops").get_json()["kampagnen"]]
+    assert ids == ["c1", "c2", "odd"]
+
+
 def test_drops_endpoint_without_files_is_empty(env, tmp_path):
     (tmp_path / "drop_campaigns.json").unlink()
     (env.analytics / "drops_by_category.json").unlink()
