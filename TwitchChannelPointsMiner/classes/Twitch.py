@@ -6619,6 +6619,7 @@ class Twitch(object):
         drop_pick_stickiness_minutes=0,
         watch_status_interval_minutes=15,
     ):
+        from TwitchChannelPointsMiner.eranio import drops as eranio_drops
         from TwitchChannelPointsMiner.eranio import streak as eranio_streak
 
         # Streamers already warned about a missing spade URL, so the warning
@@ -6674,6 +6675,7 @@ class Twitch(object):
                     for i in range(0, len(streamers_snapshot))
                     if streamers_snapshot[i].is_online is True
                     and not self.__channel_ban_active(streamers_snapshot[i], now)
+                    and eranio_drops.allows_watch(streamers_snapshot[i])
                     and (
                         not is_drop_discovered(streamers_snapshot[i])
                         or self.__drops_condition(streamers_snapshot[i]) is True
@@ -6748,6 +6750,10 @@ class Twitch(object):
                     )
                     return category_deadlines.get(game_slug, datetime.max)
 
+                category_order = eranio_drops.pick_key(
+                    streamers_snapshot, category_expiration
+                )
+
                 indexes_by_source = {
                     source: [
                         index
@@ -6760,15 +6766,13 @@ class Twitch(object):
                 # order like the other sources do (only one is ever watched at
                 # a time, below) - order them so whichever campaign is closest
                 # to expiring is always the one considered/selected first.
-                indexes_by_source[StreamerSource.CATEGORIES].sort(
-                    key=category_expiration
-                )
+                indexes_by_source[StreamerSource.CATEGORIES].sort(key=category_order)
                 # Wildcard-discovered streams get the same soonest-expiring-first
                 # ordering as preferred categories, but as an independent tier --
                 # see the safety net below, which caps each tier at one watch
                 # slot per cycle separately so neither can crowd out the other.
                 indexes_by_source[StreamerSource.WILDCARD_CATEGORIES].sort(
-                    key=category_expiration
+                    key=category_order
                 )
 
                 # Stickiness: a bare expiration sort hands the tier's watch
@@ -7068,7 +7072,7 @@ class Twitch(object):
                     index for index in streamers_watching if index in preferred_tier
                 ]
                 best_category_index = (
-                    min(category_candidates, key=category_expiration)
+                    min(category_candidates, key=category_order)
                     if category_candidates
                     else None
                 )
@@ -7098,7 +7102,7 @@ class Twitch(object):
                     index for index in streamers_watching if index in wildcard_tier
                 ]
                 best_wildcard_category_index = (
-                    min(wildcard_category_candidates, key=category_expiration)
+                    min(wildcard_category_candidates, key=category_order)
                     if wildcard_category_candidates
                     else None
                 )
@@ -7238,7 +7242,7 @@ class Twitch(object):
                     rank = source_rank[streamer_source(index)]
                     if _streamer_drops_demoted(index):
                         rank += len(source_rank)
-                    return rank
+                    return eranio_drops.drop_rank(streamers_snapshot[index], rank)
 
                 def _watchable_campaigns(index):
                     return [
@@ -7486,7 +7490,15 @@ class Twitch(object):
                 streamers_watching = eranio_streak.apply(
                     self,
                     streamers_snapshot,
-                    filtered_streamers_watching,
+                    eranio_drops.reserve(
+                        self,
+                        streamers_snapshot,
+                        filtered_streamers_watching,
+                        streamers_index,
+                        streams_watched,
+                        _is_drop_stream,
+                        now,
+                    ),
                     streamers_index,
                     priority,
                     streams_watched,
@@ -12002,6 +12014,8 @@ class Twitch(object):
         return campaigns, last_full_success, now
 
     def sync_campaigns(self, streamers, chunk_size=3):
+        from TwitchChannelPointsMiner.eranio import drops as eranio_drops
+
         # Full dashboard refresh every 15 minutes. A failed refresh keeps the
         # previous campaigns and is retried after CAMPAIGNS_RETRY_SECONDS
         # rather than blanking every stream's campaigns until the next slot.
@@ -12126,6 +12140,7 @@ class Twitch(object):
                     for index in range(0, len(campaigns_details)):
                         if campaigns_details[index] is not None:
                             campaign = Campaign(campaigns_details[index])
+                            eranio_drops.remember(campaign)
                             if campaign.dt_match is True:
                                 # Remove all the drops already claimed or with dt not matching
                                 campaign.clear_drops()
@@ -12164,6 +12179,8 @@ class Twitch(object):
                         previous_progress_step,
                     )
                 )
+
+                eranio_drops.publish(self, campaigns, streamers)
 
                 # Check if user It's currently streaming the same game present in campaigns_details
                 for streamer in list(streamers):
