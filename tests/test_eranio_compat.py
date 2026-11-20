@@ -31,6 +31,7 @@ from TwitchChannelPointsMiner.classes.Settings import (
     Events,
     FollowersOrder,
     Priority,
+    Settings,
 )
 from TwitchChannelPointsMiner.classes.Twitch import Twitch
 from TwitchChannelPointsMiner.eranio import compat
@@ -55,7 +56,23 @@ def workdir(tmp_path, monkeypatch):
     signals = (signal.SIGINT, signal.SIGSEGV, signal.SIGTERM)
     previous = {sign: signal.getsignal(sign) for sign in signals}
     created = []
+    names = set(Settings.__slots__) | {
+        "analytics_path",
+        "config_path",
+        "latest_release_version",
+        "update_instructions",
+    }
+    missing = object()
+    saved = {name: Settings.__dict__.get(name, missing) for name in names}
     yield tmp_path, created
+    for name, value in saved.items():
+        if value is missing:
+            if name in Settings.__dict__ and name not in Settings.__slots__:
+                delattr(Settings, name)
+            elif name in Settings.__slots__ and not hasattr(Settings.__dict__.get(name), "__get__"):
+                pass
+        else:
+            setattr(Settings, name, value)
     for miner in created:
         try:
             miner.queue_listener.stop()
