@@ -277,3 +277,50 @@ def read_eranio_block(path):
             value = members
         options[name] = value
     return options
+
+
+EXAMPLE_NAME = "config.example.py"
+DEFAULT_ERANIO_BLOCK = (
+    "ERANIO_CONFIG = {" + NL
+    + "    'watch_streak_max_parallel': 2," + NL
+    + "    'use_hermes': True," + NL
+    + "}" + NL
+)
+_DEFAULT_REPLACEMENTS = (
+    ('"username": "your-twitch-username"', '"username": {username!r}'),
+    ('"claim_drops_startup": False', '"claim_drops_startup": True'),
+    ('"enable_analytics": False', '"enable_analytics": True'),
+    ('"update_check": True', '"update_check": False'),
+    ('time_zone=""', 'time_zone="Europe/Berlin"'),
+    (
+        "ANALYTICS_CONFIG = None",
+        "ANALYTICS_CONFIG = {{'host': '0.0.0.0', 'port': {port}, 'refresh': 5, 'days_ago': 360}}",
+    ),
+    (
+        "# Copy this template to config/config.py and review each setting before use.",
+        "# Einstellungen des Miners. Sie lassen sich hier oder auf der Einstellungsseite ändern.",
+    ),
+)
+
+
+def default_config_text(username, port, template=None):
+    template = Path(template) if template else Path(__file__).resolve().parents[2] / EXAMPLE_NAME
+    text = template.read_text(encoding="utf-8")
+    for old, new in _DEFAULT_REPLACEMENTS:
+        text = text.replace(old, new.format(username=username, port=port), 1)
+    ast.parse(text)
+    return text.rstrip(NL) + NL + NL + DEFAULT_ERANIO_BLOCK
+
+
+def create_default(target, username, port=5000, template=None):
+    target = Path(target)
+    text = default_config_text(username, port, template)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_name(target.name + ".tmp")
+    temporary.write_text(text, encoding="utf-8")
+    try:
+        os.chmod(temporary, 0o600)
+    except OSError:
+        pass
+    os.replace(temporary, target)
+    return target

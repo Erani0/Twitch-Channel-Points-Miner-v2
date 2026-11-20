@@ -44,12 +44,25 @@ def prepare(config_dir, legacy_run_py):
     return None
 
 
+def create_first_config(config_dir, port):
+    username = os.environ.get("TWITCH_USER", "").strip()
+    if not username:
+        return "FEHLER: Es ist kein Twitch-Benutzername gesetzt (Variable TWITCH_USER)."
+    try:
+        config_file.create_default(Path(config_dir) / "config.py", username, port or 5000)
+    except Exception as error:
+        return f"FEHLER: Die Datei config.py konnte nicht angelegt werden ({error})."
+    return None
+
+
 def run(port=None, config_password=None, host=None, config_dir=None, legacy_run_py=None):
     base = default_base_directory()
     config_dir = Path(config_dir) if config_dir else base / "config"
     if legacy_run_py is None:
-        candidate = base / "run.py.old"
-        legacy_run_py = candidate if candidate.is_file() else None
+        for name in ("run.py.v2-sicherung", "run.py.old"):
+            if (base / name).is_file():
+                legacy_run_py = base / name
+                break
     if port is not None:
         os.environ[config_file.ENV_PORT] = str(int(port))
     if host:
@@ -59,6 +72,15 @@ def run(port=None, config_password=None, host=None, config_dir=None, legacy_run_
     failure = prepare(config_dir, legacy_run_py)
     if failure is not None:
         return run_legacy(legacy_run_py, failure)
+    if not (config_dir / "config.py").is_file() and legacy_run_py is None:
+        failure = create_first_config(config_dir, port)
+        if failure is not None:
+            print(failure, file=sys.stderr, flush=True)
+            return 1
+        print(
+            "Die Datei config/config.py wurde mit Standardwerten angelegt. Der Miner startet jetzt.",
+            flush=True,
+        )
     if not (config_dir / "config.py").is_file():
         print(
             "FEHLER: Es gibt weder eine Datei config.py noch eine alte Startdatei zum Übernehmen.",
