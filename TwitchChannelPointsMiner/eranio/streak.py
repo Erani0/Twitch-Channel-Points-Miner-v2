@@ -429,6 +429,10 @@ def run_check(streamer, track, now):
         return
     track.value = milestone.value
     track.expires_at = milestone.expires_at
+    if milestone.value is not None:
+        from TwitchChannelPointsMiner.eranio import streak_history
+
+        streak_history.record(streamer, max(0, int(milestone.value)), now)
     if track.baseline_value is None:
         track.baseline_value = milestone.value or 0
     report_missed(track, milestone, now)
