@@ -83,6 +83,8 @@ Chat of discovered channels (3.0.8, `compat.without_discovered_chat`, always act
 
 Streams watched (3.0.8, base file `TwitchChannelPointsMiner.py`, `_normalize_streams_watched`): accepts 1, 2 or 3 (base: 1 or 2), settings page choice (1, 2, 3). For testing whether Twitch credits a third channel.
 
+First config (3.0.9, `config_file.default_config_text`): built from `eranio/templates/config.py` (the owner's settings: chat never, category chat never, 2 streams plus the drop slot, watch streak parallel 2, category refresh 2 hours, Android login, followers) instead of the base `config.example.py`; `STREAMERS` holds only `eranio`. `__USERNAME__` and `__PORT__` become the fallback values behind `TWITCH_USER` / `SERVER_PORT`. A config converted from an old run.py gets `Streamer("eranio")` appended when it is missing (`ensure_always_watched`).
+
 Egg install script (3.0.8): an existing `run.py` that is not the thin launcher is copied to `run.py.v2-sicherung` (dated name if that exists) before the thin template replaces it, so a reinstall over an old installation converts its settings instead of starting with an empty default config.
 
 Cycle: `publish` runs once a minute from the sync loop. It re-reads the file when its mtime changed (order and aktiv apply immediately), rewrites it at most every 15 minutes or after a change, and logs the German status overview every 15 minutes.

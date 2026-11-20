@@ -201,6 +201,40 @@ def test_base_template_still_produces_a_usable_default_config(tmp_path):
     assert module.ERANIO_CONFIG
 
 
+def test_default_config_uses_the_owner_settings_and_watches_eranio(tmp_path):
+    from TwitchChannelPointsMiner.classes.Chat import ChatPresence
+
+    target = config_file.create_default(
+        tmp_path / "config" / "config.py", "konto", 4321
+    )
+    module = runner._load_config(target)
+    assert [s.username for s in module.STREAMERS] == ["eranio"]
+    assert module.MINER_CONFIG["streamer_settings"].chat is ChatPresence.NEVER
+    assert module.MINER_CONFIG["streams_watched"] == 2
+    assert module.MINER_CONFIG["android_login"] is True
+    assert module.MINE_CONFIG["followers"] is True
+    assert module.MINE_CONFIG["category_chat"] is ChatPresence.NEVER
+    assert module.MINE_CONFIG["category_refresh_interval_hours"] == 2
+    assert module.ERANIO_CONFIG["watch_streak_max_parallel"] == 2
+    assert module.ERANIO_CONFIG["auto_discover_drops"] is True
+    assert module.ANALYTICS_CONFIG["host"] == "0.0.0.0"
+
+
+def test_a_converted_config_always_watches_eranio():
+    text = 'STREAMERS = [\n    Streamer("a"),\n]\n'
+    result = config_file.ensure_always_watched(text)
+    assert 'Streamer("a"),' in result and 'Streamer("eranio")' in result
+    ast.parse(result)
+    assert config_file.ensure_always_watched(result) == result
+    empty = config_file.ensure_always_watched("STREAMERS = []\n")
+    assert 'Streamer("eranio")' in empty
+    ast.parse(empty)
+    present = 'STREAMERS = [Streamer("Eranio", settings=None)]\n'
+    assert config_file.ensure_always_watched(present) == present
+    inline = 'STREAMERS = [Streamer("a")]\n'
+    ast.parse(config_file.ensure_always_watched(inline))
+
+
 def test_thin_start_file_keeps_the_updater_behaviour():
     text = upgrade.TEMPLATE.read_text(encoding="utf-8")
     ast.parse(text)

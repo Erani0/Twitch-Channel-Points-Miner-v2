@@ -217,7 +217,7 @@ def convert(legacy_run_py, target):
         convert_runner(staged, target)
     try:
         text = target.read_text(encoding="utf-8")
-        text = move_to_eranio_block(ensure_categories(text))
+        text = ensure_always_watched(move_to_eranio_block(ensure_categories(text)))
         ast.parse(text)
         temporary = target.with_name(target.name + ".tmp")
         temporary.write_text(text, encoding="utf-8")
@@ -292,45 +292,60 @@ def read_eranio_block(path):
     return options
 
 
-EXAMPLE_NAME = "config.example.py"
-DEFAULT_ERANIO_BLOCK = (
-    "ERANIO_CONFIG = {"
-    + NL
-    + "    'watch_streak_max_parallel': 2,"
-    + NL
-    + "    'use_hermes': True,"
-    + NL
-    + "}"
-    + NL
-)
-_DEFAULT_REPLACEMENTS = (
-    ('"username": "your-twitch-username"', '"username": {username!r}'),
-    ('"claim_drops_startup": False', '"claim_drops_startup": True'),
-    ('"enable_analytics": False', '"enable_analytics": True'),
-    ('"update_check": True', '"update_check": False'),
-    ('time_zone=""', 'time_zone="Europe/Berlin"'),
-    (
-        "ANALYTICS_CONFIG = None",
-        "ANALYTICS_CONFIG = {{'host': '0.0.0.0', 'port': {port}, 'refresh': 5, 'days_ago': 360}}",
-    ),
-    (
-        "# Copy this template to config/config.py and review each setting before use.",
-        "# Einstellungen des Miners. Sie lassen sich hier oder auf der Einstellungsseite ändern.",
-    ),
-)
+DEFAULT_TEMPLATE = Path(__file__).resolve().parent / "templates" / "config.py"
+ALWAYS_WATCHED = "eranio"
 
 
 def default_config_text(username, port, template=None):
-    template = (
-        Path(template)
-        if template
-        else Path(__file__).resolve().parents[2] / EXAMPLE_NAME
-    )
+    template = Path(template) if template else DEFAULT_TEMPLATE
     text = template.read_text(encoding="utf-8")
-    for old, new in _DEFAULT_REPLACEMENTS:
-        text = text.replace(old, new.format(username=username, port=port), 1)
+    text = text.replace('"__USERNAME__"', repr(str(username)), 1)
+    text = text.replace("__PORT__", str(int(port)), 1)
     ast.parse(text)
-    return text.rstrip(NL) + NL + NL + DEFAULT_ERANIO_BLOCK
+    return text
+
+
+def _streamers_list(tree):
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and any(isinstance(t, ast.Name) and t.id == "STREAMERS" for t in node.targets)
+            and isinstance(node.value, ast.List)
+        ):
+            return node.value
+    return None
+
+
+def _streamer_login(element):
+    if isinstance(element, ast.Constant) and isinstance(element.value, str):
+        return element.value
+    if (
+        isinstance(element, ast.Call)
+        and element.args
+        and isinstance(element.args[0], ast.Constant)
+        and isinstance(element.args[0].value, str)
+    ):
+        return element.args[0].value
+    return None
+
+
+def ensure_always_watched(text):
+    tree = ast.parse(text)
+    streamers = _streamers_list(tree)
+    if streamers is None:
+        return text
+    logins = {(_streamer_login(e) or "").lower() for e in streamers.elts}
+    if ALWAYS_WATCHED in logins:
+        return text
+    encoded = text.encode("utf-8")
+    lines = encoded.splitlines(keepends=True)
+    end = _byte_offset(lines, streamers.end_lineno, streamers.end_col_offset) - 1
+    body = encoded[:end].rstrip()
+    separator = b"" if body.endswith((b"[", b",")) else b","
+    entry = f'{NL}    Streamer("{ALWAYS_WATCHED}"),{NL}'.encode("utf-8")
+    result = (body + separator + entry + encoded[end:]).decode("utf-8")
+    ast.parse(result)
+    return result
 
 
 def create_default(target, username, port=5000, template=None):
