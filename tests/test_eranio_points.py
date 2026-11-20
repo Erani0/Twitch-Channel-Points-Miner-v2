@@ -21,7 +21,7 @@ def test_channels_without_points_are_skipped_after_the_check():
     assert points.STATE.pending == set()
 
 
-def test_a_known_result_is_checked_again_after_twelve_hours():
+def test_a_known_result_is_checked_again_after_one_day():
     points.store(["alpha"], {"alpha": False}, now=0)
     later = points.KNOWN_SECONDS + 1
     assert points.has_points(streamer("alpha"), now=later) is False
@@ -90,3 +90,27 @@ def test_watch_selection_uses_the_points_check():
 
 def test_batches_stay_within_the_twitch_alias_limit():
     assert points.BATCH_SIZE <= 15
+
+
+def test_the_result_is_kept_for_a_day_and_survives_a_restart(tmp_path, monkeypatch):
+    path = tmp_path / "check.json"
+    monkeypatch.setattr(points, "cache_path", lambda: str(path))
+    assert points.KNOWN_SECONDS == 24 * 3600
+    points.store(["alpha", "beta"], {"alpha": False, "beta": True}, now=1000)
+    stored = json.loads(path.read_text(encoding="utf-8"))
+    assert stored["kanaele"]["alpha"] == {"punkte": False, "geprueft": 1000}
+    points.STATE.reset()
+    assert points.has_points(streamer("alpha"), now=1000 + 23 * 3600) is False
+    assert points.has_points(streamer("beta"), now=1000 + 23 * 3600) is True
+    assert points.STATE.pending == set()
+    points.STATE.reset()
+    assert points.has_points(streamer("alpha"), now=1000 + 25 * 3600) is True
+    assert points.STATE.pending == {"alpha"}
+
+
+def test_a_broken_cache_file_is_ignored(tmp_path, monkeypatch):
+    path = tmp_path / "check.json"
+    path.write_text("kein json", encoding="utf-8")
+    monkeypatch.setattr(points, "cache_path", lambda: str(path))
+    assert points.has_points(streamer("alpha"), now=10) is True
+    assert points.STATE.pending == {"alpha"}

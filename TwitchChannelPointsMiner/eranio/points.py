@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import threading
 import time
 
@@ -10,7 +11,8 @@ logger = logging.getLogger(__name__)
 GQL_URL = "https://gql.twitch.tv/gql"
 PUBLIC_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
 BATCH_SIZE = 15
-KNOWN_SECONDS = 12 * 3600
+KNOWN_SECONDS = 24 * 3600
+CACHE_FILE = "points_check_eranio.json"
 RETRY_SECONDS = 10 * 60
 WORKER_PAUSE_SECONDS = 2
 
@@ -27,6 +29,7 @@ class PointsState:
         self.pending = set()
         self.reported = set()
         self.worker = None
+        self.loaded = False
 
 
 STATE = PointsState()
@@ -36,12 +39,65 @@ def _login(streamer):
     return str(getattr(streamer, "username", "") or "").strip().lower()
 
 
+def cache_path():
+    from TwitchChannelPointsMiner.classes.Settings import Settings
+
+    folder = getattr(Settings, "analytics_path", None)
+    return os.path.join(folder, CACHE_FILE) if folder else None
+
+
+def _load_locked(now):
+    STATE.loaded = True
+    path = cache_path()
+    if not path:
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return
+    channels = data.get("kanaele") if isinstance(data, dict) else None
+    for login, entry in (channels if isinstance(channels, dict) else {}).items():
+        if not isinstance(entry, dict):
+            continue
+        enabled = entry.get("punkte")
+        checked = entry.get("geprueft")
+        if not isinstance(enabled, bool) or not isinstance(checked, (int, float)):
+            continue
+        if now - checked >= KNOWN_SECONDS:
+            continue
+        STATE.enabled[login] = enabled
+        STATE.checked_at[login] = checked
+        if enabled is False:
+            STATE.reported.add(login)
+
+
+def _save_locked(now):
+    path = cache_path()
+    if not path:
+        return
+    channels = {
+        login: {"punkte": STATE.enabled[login], "geprueft": checked}
+        for login, checked in STATE.checked_at.items()
+        if now - checked < KNOWN_SECONDS and login in STATE.enabled
+    }
+    try:
+        temporary = path + ".tmp"
+        with open(temporary, "w", encoding="utf-8") as handle:
+            json.dump({"version": 1, "kanaele": channels}, handle)
+        os.replace(temporary, path)
+    except OSError:
+        logger.debug("Kanalpunkte-Prüfung konnte nicht gespeichert werden.")
+
+
 def has_points(streamer, now=None):
     login = _login(streamer)
     if not login:
         return True
     now = time.time() if now is None else now
     with STATE.lock:
+        if not STATE.loaded:
+            _load_locked(now)
         checked = STATE.checked_at.get(login)
         if checked is not None and now - checked < KNOWN_SECONDS:
             return STATE.enabled.get(login, True)
@@ -128,6 +184,8 @@ def store(logins, results, now=None):
                     newly_disabled.append(login)
             else:
                 STATE.failed_at[login] = now
+        if any(login in results for login in logins):
+            _save_locked(now)
     for login in newly_disabled:
         logger.info(
             "%s hat keine Kanalpunkte und wird nur noch für Drops geschaut",

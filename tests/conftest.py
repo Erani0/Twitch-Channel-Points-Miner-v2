@@ -34,6 +34,7 @@ def offline_eranio_points(monkeypatch):
 
     points.STATE.reset()
     monkeypatch.setattr(points, "_ensure_worker", lambda: None)
+    monkeypatch.setattr(points, "cache_path", lambda: None)
     yield
     points.STATE.reset()
 
