@@ -12,6 +12,8 @@ class Priority(Enum):
     SUBSCRIBED = auto()
     POINTS_ASCENDING = auto()
     POINTS_DESCENDING = auto()
+    STREAK_LENGTH_ASCENDING = auto()
+    STREAK_LENGTH_DESCENDING = auto()
 
 
 class StreamerSource(Enum):
@@ -85,6 +87,7 @@ class Events(Enum):
     DROP_STATUS = auto()
     DROP_LINK_REQUIRED = auto()
     CHAT_MENTION = auto()
+    SUBSCRIPTION = auto()
     GIFTED_SUB = auto()
     CONFIGURATION = auto()
     # The "Watching for points" status line; console and file logs only,

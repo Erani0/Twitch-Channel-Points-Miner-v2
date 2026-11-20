@@ -1,0 +1,181 @@
+import logging
+
+from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
+from TwitchChannelPointsMiner.classes.AnalyticsServer import LOOPBACK_HOSTS
+from TwitchChannelPointsMiner.eranio.git_config import dedupe_git_safe_directories
+from TwitchChannelPointsMiner.TwitchChannelPointsMiner import (
+    TwitchChannelPointsMiner as BaseMiner,
+)
+
+logger = logging.getLogger(__name__)
+
+MIN_OFFLINE_FOR_NEW_STREAK = 1800
+
+STREAK_LENGTH_PRIORITIES = (
+    Priority.STREAK_LENGTH_ASCENDING,
+    Priority.STREAK_LENGTH_DESCENDING,
+)
+
+
+def normalize_priority(priority):
+    if priority is None:
+        return None
+    entries = list(priority) if isinstance(priority, (list, tuple)) else [priority]
+    normalized = []
+    for entry in entries:
+        mapped = Priority.STREAK if entry in STREAK_LENGTH_PRIORITIES else entry
+        if mapped == Priority.STREAK and Priority.STREAK in normalized:
+            continue
+        normalized.append(mapped)
+    return normalized
+
+
+def normalize_watch_streak_max_parallel(value):
+    if value is None:
+        return None
+    return max(1, int(value))
+
+
+def normalize_watch_streak_min_offline_seconds(value):
+    if value is None:
+        return MIN_OFFLINE_FOR_NEW_STREAK
+    return max(0, int(value))
+
+
+class TwitchChannelPointsMiner(BaseMiner):
+    def __init__(
+        self,
+        username: str,
+        password: str = None,
+        claim_drops_startup: bool = False,
+        enable_analytics: bool = False,
+        disable_ssl_cert_verification: bool = False,
+        disable_at_in_nickname: bool = False,
+        watch_only_drops: bool = False,
+        stop_watch_when_drops_completed: bool = False,
+        auto_discover_drops: bool = False,
+        priority=None,
+        logger_settings=None,
+        streamer_settings=None,
+        watch_streak_max_parallel: int | None = None,
+        watch_streak_min_offline_seconds: int = MIN_OFFLINE_FOR_NEW_STREAK,
+        use_hermes: bool = True,
+        **v3_options,
+    ):
+        try:
+            dedupe_git_safe_directories()
+        except Exception:
+            pass
+
+        self.watch_only_drops = bool(watch_only_drops)
+        self.stop_watch_when_drops_completed = bool(stop_watch_when_drops_completed)
+        self.auto_discover_drops = bool(auto_discover_drops)
+        self.watch_streak_max_parallel = normalize_watch_streak_max_parallel(
+            watch_streak_max_parallel
+        )
+        self.watch_streak_min_offline_seconds = (
+            normalize_watch_streak_min_offline_seconds(watch_streak_min_offline_seconds)
+        )
+        self.use_hermes = bool(use_hermes)
+        self.requested_priority = (
+            list(priority) if isinstance(priority, (list, tuple)) else priority
+        )
+
+        options = dict(v3_options)
+        options.setdefault("update_check", False)
+        if logger_settings is not None:
+            options["logger_settings"] = logger_settings
+        if streamer_settings is not None:
+            options["streamer_settings"] = streamer_settings
+        normalized_priority = normalize_priority(priority)
+        if normalized_priority is not None:
+            options["priority"] = normalized_priority
+        super().__init__(
+            username,
+            claim_drops_startup=claim_drops_startup,
+            enable_analytics=enable_analytics,
+            disable_ssl_cert_verification=disable_ssl_cert_verification,
+            disable_at_in_nickname=disable_at_in_nickname,
+            **options,
+        )
+
+        if use_hermes:
+            logger.info("The classic event connection (PubSub) is used.")
+        if any(entry in STREAK_LENGTH_PRIORITIES for entry in self._as_list(priority)):
+            logger.info(
+                "Priority.STREAK_LENGTH_ASCENDING/DESCENDING currently behave "
+                "like Priority.STREAK."
+            )
+
+    @staticmethod
+    def _as_list(priority):
+        if priority is None:
+            return []
+        return list(priority) if isinstance(priority, (list, tuple)) else [priority]
+
+    def analytics(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 5000,
+        refresh: int = 5,
+        days_ago: int = 7,
+        password: str = None,
+        log_poll_interval: int = 5,
+    ):
+        exposed_without_password = (
+            host not in LOOPBACK_HOSTS and not password and Settings.enable_analytics
+        )
+        if not exposed_without_password:
+            return super().analytics(
+                host=host,
+                port=port,
+                refresh=refresh,
+                days_ago=days_ago,
+                password=password,
+                log_poll_interval=log_poll_interval,
+            )
+        from TwitchChannelPointsMiner.classes.AnalyticsServer import AnalyticsServer
+
+        logger.warning(
+            "The dashboard is reachable from the network without a password."
+        )
+        http_server = AnalyticsServer(
+            host="127.0.0.1",
+            port=port,
+            refresh=refresh,
+            days_ago=min(days_ago, 365 * 15),
+            username=self.username,
+            password=None,
+            log_poll_interval=log_poll_interval,
+            logs_file=self.logs_file,
+        )
+        http_server.host = host
+        http_server.daemon = True
+        http_server.name = "Analytics Thread"
+        http_server.start()
+
+    def mine(
+        self,
+        streamers: list = None,
+        blacklist: list = None,
+        followers: bool = False,
+        followers_order: FollowersOrder = FollowersOrder.ASC,
+        *args,
+        watch_only_drops: bool = None,
+        stop_watch_when_drops_completed: bool = None,
+        **kwargs,
+    ):
+        if watch_only_drops is not None:
+            self.watch_only_drops = bool(watch_only_drops)
+        if stop_watch_when_drops_completed is not None:
+            self.stop_watch_when_drops_completed = bool(
+                stop_watch_when_drops_completed
+            )
+        return super().mine(
+            list(streamers) if streamers is not None else [],
+            list(blacklist) if blacklist is not None else [],
+            followers,
+            followers_order,
+            *args,
+            **kwargs,
+        )
