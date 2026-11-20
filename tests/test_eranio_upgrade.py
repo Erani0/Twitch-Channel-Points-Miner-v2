@@ -401,3 +401,25 @@ def test_old_password_is_carried_into_the_thin_start_file():
     thin = upgrade.thin_source("geheim")
     assert "geheim" in thin and upgrade.is_thin(thin)
     assert upgrade.old_config_password("TwitchChannelPointsMiner()\nm.mine([])\n") == ""
+
+
+def test_thin_run_py_refreshes_itself_and_keeps_the_password(tmp_path):
+    from TwitchChannelPointsMiner.eranio import upgrade
+
+    run_py = tmp_path / "run.py"
+    old = upgrade.thin_source("geheim").replace('"docs",', "")
+    run_py.write_text(old, encoding="utf-8", newline="\n")
+    assert upgrade.refresh_thin(run_py) is True
+    refreshed = run_py.read_text(encoding="utf-8")
+    assert refreshed == upgrade.thin_source("geheim")
+    assert upgrade.thin_config_password(refreshed) == "geheim"
+    assert upgrade.refresh_thin(run_py) is False
+
+
+def test_refresh_leaves_an_old_run_py_alone(tmp_path):
+    from TwitchChannelPointsMiner.eranio import upgrade
+
+    run_py = tmp_path / "run.py"
+    run_py.write_text("print('alt')\n", encoding="utf-8")
+    assert upgrade.refresh_thin(run_py) is False
+    assert run_py.read_text(encoding="utf-8") == "print('alt')\n"

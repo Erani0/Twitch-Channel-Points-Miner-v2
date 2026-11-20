@@ -61,6 +61,16 @@ def run(
     port=None, config_password=None, host=None, config_dir=None, legacy_run_py=None
 ):
     base = default_base_directory()
+    try:
+        from TwitchChannelPointsMiner.eranio import upgrade
+
+        if upgrade.refresh_thin(base / "run.py"):
+            print(
+                "Die Startdatei run.py wurde auf den aktuellen Stand gebracht.",
+                flush=True,
+            )
+    except Exception as error:
+        logger.debug("run.py refresh failed: %s", error)
     config_dir = Path(config_dir) if config_dir else base / "config"
     if legacy_run_py is None:
         for name in ("run.py.v2-sicherung", "run.py.old"):

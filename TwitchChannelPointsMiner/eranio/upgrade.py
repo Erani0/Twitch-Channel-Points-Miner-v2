@@ -35,6 +35,44 @@ def is_thin(source):
     return THIN_MARKER in source
 
 
+def thin_config_password(source):
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return ""
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "CONFIG_PASSWORD"
+            and isinstance(node.value, ast.Call)
+            and len(node.value.args) == 2
+            and isinstance(node.value.args[1], ast.Constant)
+            and isinstance(node.value.args[1].value, str)
+        ):
+            return node.value.args[1].value
+    return ""
+
+
+def refresh_thin(run_py):
+    run_py = Path(run_py)
+    try:
+        current = run_py.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    if not is_thin(current):
+        return False
+    wanted = thin_source(thin_config_password(current))
+    if current == wanted:
+        return False
+    ast.parse(wanted)
+    temporary = run_py.with_name(run_py.name + ".neu")
+    temporary.write_text(wanted, encoding="utf-8", newline="\n")
+    os.replace(temporary, run_py)
+    return True
+
+
 def is_old_run_py(source):
     try:
         tree = ast.parse(source)

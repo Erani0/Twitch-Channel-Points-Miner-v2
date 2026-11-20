@@ -45,7 +45,7 @@ scripts:
       rm -rf .tmp_miner
 
       echo "Entferne unnoetige Entwicklungsdateien..."
-      rm -rf .github tests setup.py pyproject.toml uv.lock egg-twitch-channel-points-miner CODE_OF_CONDUCT.md CONTRIBUTING.md FAQ.md FEEDBACK_AUDIT.md FORK_FEATURES.md LICENSE README.md .gitattributes
+      rm -rf .github tests setup.py pyproject.toml uv.lock egg-twitch-channel-points-miner CODE_OF_CONDUCT.md CONTRIBUTING.md FAQ.md FEEDBACK_AUDIT.md FORK_FEATURES.md LICENSE README.md .gitattributes .git-blame-ignore-revs .release-please-manifest.json release-please-config.json AGENTS.md BUILD.md CHANGELOG.md DOCKERHUB.md SECURITY.md CLAUDE.md CLONE.md TRAFFIC.md DELETE_PYCACHE.bat Dockerfile build_windows.bat windows_installer.iss windows_launcher.py pytest.ini requirements-dev.txt requirements-optional.txt requirements-windows.txt docs supervisor tools
 
       echo "Erstelle die schlanke run.py..."
       cp TwitchChannelPointsMiner/eranio/templates/run.py /mnt/server/run.py.neu
