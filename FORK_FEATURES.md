@@ -85,12 +85,14 @@ Relevant tests:
 - Daily drops (for example one chest per day): a campaign whose next drop starts later shows "heute erledigt, nächster Drop ab ..." instead of finished; at every day change (UTC and German time) pauses are lifted and all campaigns are checked again right away.
 - Every 15 minutes a status overview goes to the log (order, status, open drops, progress towards the next drop, watched channel). Drops whose preconditions are not met count as not doable.
 - The drop channel is replaced when it goes offline or shows no progress for 25 minutes; a campaign that shows no progress on its channels (for example subscription-only drops) is paused for 6 hours. Drops that need 0 minutes are not used to decide the order. A channel from your own streamer list is reused instead of being added twice.
+- Since October 2026 Twitch only credits drop minutes while the stream's video segments are requested like a real player does; minute-watched events alone still give channel points but no drop progress. The drop channel (or, without `auto_discover_drops`, one watched channel with drops) now has its media playlist fetched every 10 seconds and every new segment requested once with HEAD, so no video data is downloaded.
 - The `safe.directory` line that `run.py` adds to `~/.gitconfig` on every start is de-duplicated automatically.
 - Existing installations update as usual; `run.py` is never overwritten and the new behaviour only starts once `auto_discover_drops=True` is set.
 
 Relevant tests:
 - `tests/test_drop_priority_file.py`
 - `tests/test_drop_discovery.py`
+- `tests/test_hls_watcher.py`
 
 ## 6) Compatibility note
 

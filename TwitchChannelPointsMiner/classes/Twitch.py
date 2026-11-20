@@ -10,6 +10,7 @@ import os
 import random
 import re
 import string
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 
@@ -39,6 +40,7 @@ from TwitchChannelPointsMiner.classes.Settings import (
     Priority,
     Settings,
 )
+from TwitchChannelPointsMiner.classes.HlsWatcher import HlsWatcher
 from TwitchChannelPointsMiner.classes.TwitchLogin import TwitchLogin
 from TwitchChannelPointsMiner.constants import (
     CLIENT_ID,
@@ -148,6 +150,8 @@ class Twitch(object):
         "_last_client_version_error_log",
         "_reported_completed_drops",
         "_reported_skipped_drops",
+        "hls_watcher",
+        "_hls_thread",
     ]
 
     def __init__(self, username, user_agent, password=None, watch_streak_max_parallel=None):
@@ -163,6 +167,16 @@ class Twitch(object):
             CLIENT_ID, self.device_id, username, self.user_agent, password=password
         )
         self.running = True
+        self.hls_watcher = HlsWatcher(
+            self._fetch_playback_access_token,
+            lambda method, url, **kwargs: self._request_with_retry(
+                method, url, request_name=f"hls_{method.lower()}", **kwargs
+            ),
+            user_agent,
+            lambda: self.running,
+            sleep=lambda seconds: interruptible_sleep(lambda: self.running, seconds, step=1),
+        )
+        self._hls_thread = None
         # self.integrity = None
         # self.integrity_expire = 0
         self.client_session = token_hex(16)
@@ -1679,6 +1693,27 @@ class Twitch(object):
 
         return []
 
+    def _start_hls_watcher(self):
+        if self._hls_thread is not None and self._hls_thread.is_alive():
+            return
+        self._hls_thread = threading.Thread(target=self.hls_watcher.run, daemon=True)
+        self._hls_thread.name = "Drop segments"
+        self._hls_thread.start()
+
+    @staticmethod
+    def _hls_target(streamers, streamers_watching):
+        watching = [streamers[index] for index in streamers_watching]
+        for streamer in watching:
+            if getattr(streamer, "is_auto_drop_channel", False) is True:
+                return streamer
+        for streamer in watching:
+            try:
+                if streamer.drops_condition() is True:
+                    return streamer
+            except Exception:
+                continue
+        return None
+
     def _select_streamers_to_watch(self, streamers, streamers_index, priority):
         now = time.time()
         eligible_streamers_index = [
@@ -2116,6 +2151,7 @@ class Twitch(object):
         stop_watch_when_drops_completed=False,
         chunk_size=3,
     ):
+        self._start_hls_watcher()
         while self.running:
             try:
                 streamers_index = [
@@ -2200,6 +2236,10 @@ class Twitch(object):
                 self._refresh_selection_context(streamers, streamers_index, priority)
                 streamers_watching = self._select_streamers_to_watch(
                     streamers, streamers_index, priority
+                )
+
+                self.hls_watcher.set_target(
+                    self._hls_target(streamers, streamers_watching)
                 )
 
                 drops_logging_enabled = Priority.DROPS in priority
