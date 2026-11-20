@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 GQL_URL = "https://gql.twitch.tv/gql"
 PUBLIC_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
-BATCH_SIZE = 35
+BATCH_SIZE = 15
 KNOWN_SECONDS = 12 * 3600
 RETRY_SECONDS = 10 * 60
 WORKER_PAUSE_SECONDS = 2

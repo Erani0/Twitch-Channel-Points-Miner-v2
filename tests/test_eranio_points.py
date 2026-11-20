@@ -86,3 +86,7 @@ def test_watch_selection_uses_the_points_check():
     text = inspect.getsource(twitch_module.Twitch.send_minute_watched_events)
     assert "eranio_points.has_points(streamers_snapshot[i])" in text
     json.dumps(points.STATE.enabled)
+
+
+def test_batches_stay_within_the_twitch_alias_limit():
+    assert points.BATCH_SIZE <= 15
