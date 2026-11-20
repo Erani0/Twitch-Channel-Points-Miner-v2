@@ -75,7 +75,7 @@ def old_egg_run_py():
         [
             "git",
             "show",
-            "master:egg-twitch-channel-points-miner/egg-twitch-channel-points-miner-python-auto--install.yaml",
+            "v2-final-2.6.4:egg-twitch-channel-points-miner/egg-twitch-channel-points-miner-python-auto--install.yaml",
         ],
         cwd=ROOT,
     ).decode("utf-8")
@@ -119,7 +119,7 @@ def rehearsal(tmp_path_factory):
 
     install = top / "install"
     clone = subprocess.run(
-        ["git", "clone", "-q", "--depth", "1", "--branch", "master", (ROOT).as_uri(), str(install)],
+        ["git", "clone", "-q", "--depth", "1", "--no-single-branch", "--branch", "v2-final-2.6.4", (ROOT).as_uri(), str(install)],
         capture_output=True,
         text=True,
     )
@@ -236,7 +236,7 @@ def egg_yaml(new):
 
     if new:
         return yaml.safe_load((ROOT / EGG).read_text(encoding="utf-8"))
-    return yaml.safe_load(subprocess.check_output(["git", "show", f"master:{EGG}"], cwd=ROOT).decode("utf-8"))
+    return yaml.safe_load(subprocess.check_output(["git", "show", f"v2-final-2.6.4:{EGG}"], cwd=ROOT).decode("utf-8"))
 
 
 def run_install_script(rehearsal, new, directory):

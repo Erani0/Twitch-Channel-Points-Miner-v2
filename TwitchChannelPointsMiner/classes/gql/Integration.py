@@ -555,7 +555,8 @@ class GQL:
             if parsed_response is not None:
                 for edge in parsed_response.follows.edges:
                     follow = edge.node
-                    follows.append(follow.login)
+                    if follow.login not in follows:
+                        follows.append(follow.login)
                 has_next = parsed_response.follows.page_info.has_next_page
                 if has_next:
                     next_cursor = parsed_response.follows.page_info.end_cursor

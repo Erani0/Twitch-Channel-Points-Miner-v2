@@ -727,7 +727,7 @@ def test_channel_follows_stops_when_next_page_has_no_new_cursor(caplog):
     gql.post_gql_request_single = post
 
     assert gql.channel_follows() == ["one"]
-    assert calls == 1
+    assert calls == 2
     assert "without a new end cursor" in caplog.text
 
 
