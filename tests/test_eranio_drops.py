@@ -284,8 +284,47 @@ class TestLayer:
         drops.remember(Campaign(raw_campaign("done")))
         publish(layer, [campaign("other")])
         data = {k["id"]: k for k in read(layer.path)["kampagnen"]}
-        assert data["done"]["status"] == "alles abgeholt"
+        assert data["done"]["status"] == drops.DAILY_STATUS
         assert data["done"]["offen"] == "0 von 1 Drops"
+
+    def test_all_claimed_with_future_end_stays_daily_and_listed(self, layer):
+        drops.remember(Campaign(raw_campaign("done")))
+        for step in range(3):
+            publish(layer, [campaign("other")], now=T0 + step * 900)
+            data = {k["id"]: k for k in read(layer.path)["kampagnen"]}
+            assert data["done"]["status"] == "heute erledigt, wird täglich neu geprüft"
+            assert not drops.STATE.file._settings["campaigns"]["done"]["entry"]["status"] == "alles abgeholt"
+
+    def test_same_drop_id_resets_next_day_and_is_mined_again(self, layer):
+        item = campaign("daily", game="Spiel D")
+        drops.remember(Campaign(raw_campaign("daily", game="Spiel D")))
+        watcher = streamer("w", [], game="Spiel D", discovered=True)
+        publish(layer, [], [watcher])
+        assert read(layer.path)["kampagnen"][0]["status"] == drops.DAILY_STATUS
+        drops.STATE.day = ("alt", "alt")
+        publish(layer, [item], [watcher], now=T0 + 100)
+        watcher.stream.campaigns = [item]
+        watcher.stream.campaigns_ids = [item.id]
+        publish(layer, [item], [watcher], now=T0 + 1100)
+        entry = read(layer.path)["kampagnen"][0]
+        assert entry["status"] == "läuft"
+        assert drops.allows_watch(watcher)
+        assert drops.streamer_rank(watcher) == 0
+
+    def test_all_claimed_and_ended_is_finished_and_removed_after_two_weeks(self, layer):
+        ended = Campaign(raw_campaign("old"))
+        drops.remember(ended)
+        publish(layer, [])
+        assert read(layer.path)["kampagnen"][0]["status"] == drops.DAILY_STATUS
+        drops.STATE.memo["old"].view.end_at = utc_now() - timedelta(days=1)
+        publish(layer, [], now=T0 + 900)
+        assert read(layer.path)["kampagnen"][0]["status"] == "alles abgeholt"
+        drops.STATE.memo["old"].view.end_at = utc_now() - timedelta(days=15)
+        data = read(layer.path)
+        data["kampagnen"][0]["ende_utc"] = (utc_now() - timedelta(days=15)).strftime(FMT)
+        save(layer.path, data)
+        publish(layer, [], now=T0 + 1800)
+        assert [k["id"] for k in read(layer.path)["kampagnen"]] == []
 
     def test_daily_chest_stays_open_until_next_day(self, layer):
         drops.remember(Campaign(raw_campaign("chest", extra_drops=(("Bronze", 10),))))
@@ -303,7 +342,7 @@ class TestLayer:
         publish(layer, [], now=T0 + 100)
         assert layer.twitch.drop_watch_health["x"]["blocked_until"] == {}
         entry = {k["id"]: k for k in read(layer.path)["kampagnen"]}["chest"]
-        assert entry["status"] == "gerade kein Live-Kanal"
+        assert entry["status"] == drops.DAILY_STATUS
 
     def test_quest_type_is_reported(self, layer):
         quest = campaign("q")

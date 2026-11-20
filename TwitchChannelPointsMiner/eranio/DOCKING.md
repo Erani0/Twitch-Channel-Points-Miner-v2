@@ -87,6 +87,6 @@ Data kept per campaign entry for the dashboard phase (all from v3 objects, `drop
 
 Gaps in v3 (not filled with old code):
 - v3 `Campaign` objects have no `isAccountConnected`; the link state is only known for campaigns v3 reported as unlinked (`unlinked_drop_report`): `nein` there, `ja` when v3 says linked, otherwise `unbekannt`.
-- `Campaign.clear_drops()` removes claimed and not yet started drops before the sync pass. The layer therefore remembers the uncleared campaign in `remember()` (total drops, next start). A campaign that vanishes without a future drop is shown as "alles abgeholt"; a repeating daily drop that reuses the same drop id cannot be told from a finished campaign.
+- `Campaign.clear_drops()` removes claimed and not yet started drops before the sync pass. The layer therefore remembers the uncleared campaign in `remember()` (total drops, next start). A campaign that vanishes while its end is in the future is never "alles abgeholt": it shows "heute erledigt, wird täglich neu geprüft" (or "nächster Drop ab ..."), stays listed and is re-checked every 15 minutes and at every day change, so a reset or re-added daily drop (same or new id) turns it back to "läuft" and eligible for the pick. "alles abgeholt" only after the campaign end.
 - v3 asks only channels tagged with drops or listed in a campaign allow-list; the old "ask every live followed channel directly" part is not reproduced.
 - v3 does not store a per-campaign "no progress" state; "pausiert" is taken from `drop_watch_health` per game, not per campaign.

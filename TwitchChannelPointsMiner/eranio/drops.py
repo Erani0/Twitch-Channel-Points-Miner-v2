@@ -17,6 +17,7 @@ RETENTION_DAYS = 14
 STATUS_INTERVAL_SECONDS = 15 * 60
 WRITE_INTERVAL_SECONDS = 15 * 60
 UNRANKED = 10**6
+DAILY_STATUS = "heute erledigt, wird täglich neu geprüft"
 TOP_GAMES_SEARCHED = 5
 
 HINT = [
@@ -366,8 +367,11 @@ class DropFile:
                 carried = dict(old)
                 carried["aktiv"] = settings["campaigns"].get(cid, {}).get("active", True)
                 if end is not None and now > end:
-                    carried["status"] = "abgelaufen"
-                elif carried.get("status") != "alles abgeholt":
+                    if carried.get("status") != "alles abgeholt":
+                        carried["status"] = "abgelaufen"
+                elif str(carried.get("status") or "").startswith(("heute erledigt", "alles abgeholt")):
+                    carried["status"] = DAILY_STATUS
+                else:
                     carried["status"] = "gerade kein Live-Kanal"
                 entries[cid] = carried
                 items.append((cid, str(carried.get("spiel") or ""), None))
@@ -480,6 +484,7 @@ class Memo:
         self.view = view
         self.future = future
         self.next_start = next_start
+        self.closed = False
 
 
 class State:
@@ -618,20 +623,19 @@ def _finished(views, now_utc):
         if view.end_at and now_utc > view.end_at + timedelta(days=RETENTION_DAYS):
             del STATE.memo[cid]
             continue
+        closed = DropView.__new__(DropView)
+        closed.__dict__.update(view.__dict__)
+        closed.drops = []
+        closed.future_drops = memo.future
+        closed.next_start = memo.next_start
         if view.end_at and now_utc > view.end_at:
-            result.append((view, "abgelaufen"))
+            result.append((closed, "alles abgeholt" if memo.closed else "abgelaufen"))
+            continue
+        memo.closed = True
+        if memo.next_start and memo.next_start > now_utc:
+            result.append((closed, f"heute erledigt, nächster Drop ab {local_text(memo.next_start)}"))
         else:
-            closed = DropView.__new__(DropView)
-            closed.__dict__.update(view.__dict__)
-            closed.drops = []
-            closed.future_drops = memo.future
-            closed.next_start = memo.next_start
-            if memo.next_start and memo.next_start > now_utc:
-                result.append((closed, f"heute erledigt, nächster Drop ab {local_text(memo.next_start)}"))
-            elif memo.future:
-                result.append((closed, "gerade kein Live-Kanal"))
-            else:
-                result.append((closed, "alles abgeholt"))
+            result.append((closed, DAILY_STATUS))
     return result
 
 
