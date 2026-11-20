@@ -2,6 +2,7 @@ import logging
 import os
 from pathlib import Path
 
+from TwitchChannelPointsMiner.classes.Chat import ChatPresence
 from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
 from TwitchChannelPointsMiner.eranio import (
     android,
@@ -21,7 +22,20 @@ from TwitchChannelPointsMiner.TwitchChannelPointsMiner import (
 logger = logging.getLogger(__name__)
 
 MIN_OFFLINE_FOR_NEW_STREAK = 1800
-DROP_REFRESH_HOURS = 0.25
+CATEGORY_CHAT_ARG_INDEX = 5
+
+
+def without_discovered_chat(args, kwargs):
+    if len(args) > CATEGORY_CHAT_ARG_INDEX:
+        if args[CATEGORY_CHAT_ARG_INDEX] is None:
+            args = (
+                args[:CATEGORY_CHAT_ARG_INDEX]
+                + (ChatPresence.NEVER,)
+                + args[CATEGORY_CHAT_ARG_INDEX + 1 :]
+            )
+    elif kwargs.get("category_chat") is None:
+        kwargs["category_chat"] = ChatPresence.NEVER
+    return args, kwargs
 
 STREAK_LENGTH_PRIORITIES = (
     Priority.STREAK_LENGTH_ASCENDING,
@@ -229,12 +243,9 @@ class TwitchChannelPointsMiner(BaseMiner):
             drops.configure(categories=shared)
             kwargs.setdefault("wildcard_categories", True)
             kwargs.setdefault("drop_pick_stickiness_minutes", 0)
-            kwargs["category_refresh_interval_hours"] = min(
-                float(kwargs.get("category_refresh_interval_hours", 6)),
-                DROP_REFRESH_HOURS,
-            )
         else:
             drops.STATE.reset()
+        args, kwargs = without_discovered_chat(args, kwargs)
         if watch_only_drops is not None:
             self.watch_only_drops = bool(watch_only_drops)
         if stop_watch_when_drops_completed is not None:

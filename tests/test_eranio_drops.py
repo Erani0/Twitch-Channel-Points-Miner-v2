@@ -9,7 +9,12 @@ import pytest
 
 from TwitchChannelPointsMiner.classes.entities.Campaign import Campaign
 from TwitchChannelPointsMiner.classes.entities.Drop import utc_now
-from TwitchChannelPointsMiner.classes.Settings import Priority
+from TwitchChannelPointsMiner.classes.Chat import ChatPresence
+from TwitchChannelPointsMiner.classes.Settings import (
+    CategoryCampaignOrder,
+    FollowersOrder,
+    Priority,
+)
 from TwitchChannelPointsMiner.eranio import drops, streak
 from TwitchChannelPointsMiner.eranio.drops import DropFile, DropView, empty_settings
 from test_eranio_compat import owner_options, workdir  # noqa: F401
@@ -673,8 +678,45 @@ class TestCompat:
         assert seen["categories"] is drops.STATE.categories
         assert seen["wildcard_categories"] is True
         assert seen["drop_pick_stickiness_minutes"] == 0
-        assert seen["category_refresh_interval_hours"] == 0.25
+        assert seen["category_refresh_interval_hours"] == 6
         assert drops.active()
+
+    def test_the_configured_category_refresh_interval_is_kept(
+        self, workdir, monkeypatch
+    ):
+        miner, seen = self.run_mine(workdir, monkeypatch)
+        miner.mine(["a"], category_refresh_interval_hours=6)
+        assert seen["category_refresh_interval_hours"] == 6
+
+    def test_discovered_drop_channels_never_join_chat_by_default(
+        self, workdir, monkeypatch
+    ):
+        miner, seen = self.run_mine(workdir, monkeypatch)
+        miner.mine(["a"], category_chat=None)
+        assert seen["category_chat"] is ChatPresence.NEVER
+
+    def test_a_configured_category_chat_is_kept(self, workdir, monkeypatch):
+        miner, seen = self.run_mine(workdir, monkeypatch)
+        miner.mine(["a"], category_chat=ChatPresence.ONLINE)
+        assert seen["category_chat"] is ChatPresence.ONLINE
+
+    def test_a_positional_category_chat_of_none_becomes_never(
+        self, workdir, monkeypatch
+    ):
+        miner, seen = self.run_mine(workdir, monkeypatch, auto_discover_drops=False)
+        miner.mine(
+            ["a"],
+            [],
+            False,
+            FollowersOrder.ASC,
+            [],
+            True,
+            30,
+            "VIEWERS_DESC",
+            CategoryCampaignOrder.ORDER,
+            None,
+        )
+        assert seen["category_chat"] is ChatPresence.NEVER
 
     def test_explicit_options_are_respected(self, workdir, monkeypatch):
         miner, seen = self.run_mine(workdir, monkeypatch)
@@ -699,4 +741,5 @@ class TestCompat:
         assert seen["categories"] == []
         assert seen["drop_pick_stickiness_minutes"] == 15
         assert seen["category_refresh_interval_hours"] == 6
+        assert seen["category_chat"] is ChatPresence.NEVER
         assert not drops.active()

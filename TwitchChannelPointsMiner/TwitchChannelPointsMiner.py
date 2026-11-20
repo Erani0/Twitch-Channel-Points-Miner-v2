@@ -97,10 +97,10 @@ def _migrate_analytics_data(path):
 
 
 def _normalize_streams_watched(streams_watched):
-    if type(streams_watched) is int and streams_watched in (1, 2):
+    if type(streams_watched) is int and streams_watched in (1, 2, 3):
         return streams_watched
 
-    logger.error("streams_watched must be either 1 or 2; using the default value 2")
+    logger.error("streams_watched must be 1, 2 or 3; using the default value 2")
     return 2
 
 

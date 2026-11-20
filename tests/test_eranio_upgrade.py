@@ -409,6 +409,37 @@ def test_reinstall_with_the_old_egg_does_not_convert_again(rehearsal):
     assert not (target / "config" / ".converted-from-run-py").exists()
 
 
+def test_reinstall_with_the_new_egg_over_an_old_installation_keeps_its_settings(
+    rehearsal,
+):
+    target = rehearsal.top / "alt_neu"
+    target.mkdir()
+    run_install_script(rehearsal, False, target)
+    big = (target / "run.py").read_bytes()
+    assert b"twitch_miner.mine(" in big
+    run_install_script(rehearsal, True, target)
+    assert (target / "run.py.v2-sicherung").read_bytes() == big
+    assert (target / "run.py").read_text(encoding="utf-8") == upgrade.thin_source()
+    result = start(rehearsal, target)
+    assert MARKER in result.stdout + result.stderr
+    assert (target / "config" / ".converted-from-run-py").exists()
+    converted = (target / "config" / "config.py").read_text(encoding="utf-8")
+    assert "TWITCH_USER" in converted
+
+
+def test_reinstall_keeps_an_existing_backup_of_the_old_start_file(rehearsal):
+    target = rehearsal.top / "alt_alt_neu"
+    target.mkdir()
+    run_install_script(rehearsal, False, target)
+    (target / "run.py.v2-sicherung").write_text("aelter", encoding="utf-8")
+    big = (target / "run.py").read_bytes()
+    run_install_script(rehearsal, True, target)
+    assert (target / "run.py.v2-sicherung").read_text(encoding="utf-8") == "aelter"
+    dated = list(target.glob("run.py.v2-sicherung.*"))
+    assert len(dated) == 1
+    assert dated[0].read_bytes() == big
+
+
 def test_old_password_is_carried_into_the_thin_start_file():
     source = 'TwitchChannelPointsMiner(username="x")\nPW = "geheim"\nm.analytics(host="0.0.0.0", port=1, config_password=PW)\n'
     assert upgrade.old_config_password(source) == "geheim"

@@ -50,7 +50,7 @@ CLASS_IMPORTS = {
 MINER_SPEC = {
     "claim_drops_startup": ("bool", False),
     "disable_at_in_nickname": ("bool", False),
-    "streams_watched": ("choice", (1, 2), 2),
+    "streams_watched": ("choice", (1, 2, 3), 2),
 }
 ERANIO_SPEC = {
     "watch_only_drops": ("bool", False),
