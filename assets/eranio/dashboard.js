@@ -565,17 +565,23 @@ function isTwitchImage(url) {
 
 function imageOrIcon(url, className, iconClass) {
     var holder = el('div', className);
-    holder.appendChild(el('i', 'fas ' + iconClass));
+    var icon = el('i', 'fas ' + iconClass);
+    holder.appendChild(icon);
     if (isTwitchImage(url)) {
         var img = document.createElement('img');
         img.alt = '';
-        img.loading = 'lazy';
+        img.decoding = 'async';
         img.referrerPolicy = 'no-referrer';
+        img.hidden = true;
         img.addEventListener('load', function () {
-            holder.textContent = '';
-            holder.appendChild(img);
+            if (icon.parentNode) icon.parentNode.removeChild(icon);
+            img.hidden = false;
+        });
+        img.addEventListener('error', function () {
+            if (img.parentNode) img.parentNode.removeChild(img);
         });
         img.src = url;
+        holder.appendChild(img);
     }
     return holder;
 }
