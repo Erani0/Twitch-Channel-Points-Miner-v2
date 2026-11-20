@@ -9,24 +9,16 @@ def make(func, message, level=logging.INFO):
     )
 
 
-def test_noisy_info_lines_become_debug():
+def test_noisy_info_lines_are_dropped():
     f = quiet.DemoteNoisyInfo()
-    record = make("__active_incomplete_drop_deadline", "Enough time")
-    assert f.filter(record) is True
-    assert record.levelno == logging.DEBUG
-    record = make("send_minute_watched_events", "Campaign: x")
-    f.filter(record)
-    assert record.levelno == logging.DEBUG
+    assert f.filter(make("__active_incomplete_drop_deadline", "Enough time")) is False
+    assert f.filter(make("send_minute_watched_events", "Campaign: x")) is False
 
 
 def test_other_lines_stay_unchanged():
     f = quiet.DemoteNoisyInfo()
-    record = make("send_minute_watched_events", "Claim drop")
-    f.filter(record)
-    assert record.levelno == logging.INFO
-    record = make("__log_category", "kaputt", logging.WARNING)
-    f.filter(record)
-    assert record.levelno == logging.WARNING
+    assert f.filter(make("send_minute_watched_events", "Claim drop")) is True
+    assert f.filter(make("__log_category", "kaputt", logging.WARNING)) is True
 
 
 def test_install_adds_the_filter_once():

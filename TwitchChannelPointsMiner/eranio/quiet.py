@@ -7,7 +7,7 @@ LOGGER_NAME = "TwitchChannelPointsMiner.classes.Twitch"
 
 class DemoteNoisyInfo(logging.Filter):
     def filter(self, record):
-        if record.levelno != logging.INFO:
+        if record.levelno >= logging.WARNING:
             return True
         noisy = record.funcName in NOISY_FUNCTIONS
         if not noisy and record.funcName == "send_minute_watched_events":
@@ -16,10 +16,7 @@ class DemoteNoisyInfo(logging.Filter):
             except Exception:
                 message = ""
             noisy = message.startswith(NOISY_PREFIXES)
-        if noisy:
-            record.levelno = logging.DEBUG
-            record.levelname = "DEBUG"
-        return True
+        return not noisy
 
 
 def install():
