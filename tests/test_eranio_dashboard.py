@@ -230,9 +230,27 @@ def test_drops_endpoint_hides_ended_campaigns(env, tmp_path):
     data = json.loads(path.read_text(encoding="utf-8"))
     base = data["kampagnen"][0]
     data["kampagnen"] += [
-        {**base, "id": "old", "kampagne": "Old", "status": "abgelaufen", "ende_utc": None},
-        {**base, "id": "past", "kampagne": "Past", "status": "läuft", "ende_utc": "2020-01-01T00:00:00Z"},
-        {**base, "id": "done", "kampagne": "Done", "status": "alles abgeholt", "ende_utc": "2999-01-01T00:00:00Z"},
+        {
+            **base,
+            "id": "old",
+            "kampagne": "Old",
+            "status": "abgelaufen",
+            "ende_utc": None,
+        },
+        {
+            **base,
+            "id": "past",
+            "kampagne": "Past",
+            "status": "läuft",
+            "ende_utc": "2020-01-01T00:00:00Z",
+        },
+        {
+            **base,
+            "id": "done",
+            "kampagne": "Done",
+            "status": "alles abgeholt",
+            "ende_utc": "2999-01-01T00:00:00Z",
+        },
         {**base, "id": "odd", "status": "läuft", "ende_utc": "kaputt"},
     ]
     path.write_text(json.dumps(data), encoding="utf-8")
@@ -252,11 +270,26 @@ def test_game_and_history_images_are_filled_in():
     assert dashboard.game_image("Unbekannt") is None
     assert dashboard.game_image("Game", CDN) == CDN
     index = dashboard.drop_image_index(
-        [{"spiel": "Game", "kampagne": "Camp", "drops": [{"name": "Hat", "belohnung": "Big Hat", "bild": DROP_CDN}]}]
+        [
+            {
+                "spiel": "Game",
+                "kampagne": "Camp",
+                "drops": [{"name": "Hat", "belohnung": "Big Hat", "bild": DROP_CDN}],
+            }
+        ]
     )
-    assert dashboard.history_image({"campaign": "camp", "item_name": "hat"}, index) == DROP_CDN
-    assert dashboard.history_image({"category": "Game", "benefit": "Big Hat"}, index) == DROP_CDN
-    assert dashboard.history_image({"campaign": "Other", "item_name": "Hat"}, index) is None
+    assert (
+        dashboard.history_image({"campaign": "camp", "item_name": "hat"}, index)
+        == DROP_CDN
+    )
+    assert (
+        dashboard.history_image({"category": "Game", "benefit": "Big Hat"}, index)
+        == DROP_CDN
+    )
+    assert (
+        dashboard.history_image({"campaign": "Other", "item_name": "Hat"}, index)
+        is None
+    )
 
 
 def test_history_is_kept_in_its_own_file(env, tmp_path):

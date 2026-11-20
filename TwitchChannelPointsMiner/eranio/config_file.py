@@ -309,7 +309,9 @@ def _streamers_list(tree):
     for node in tree.body:
         if (
             isinstance(node, ast.Assign)
-            and any(isinstance(t, ast.Name) and t.id == "STREAMERS" for t in node.targets)
+            and any(
+                isinstance(t, ast.Name) and t.id == "STREAMERS" for t in node.targets
+            )
             and isinstance(node.value, ast.List)
         ):
             return node.value

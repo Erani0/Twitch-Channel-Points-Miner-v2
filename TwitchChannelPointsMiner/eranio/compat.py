@@ -37,6 +37,7 @@ def without_discovered_chat(args, kwargs):
         kwargs["category_chat"] = ChatPresence.NEVER
     return args, kwargs
 
+
 STREAK_LENGTH_PRIORITIES = (
     Priority.STREAK_LENGTH_ASCENDING,
     Priority.STREAK_LENGTH_DESCENDING,
