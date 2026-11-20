@@ -1,0 +1,80 @@
+name: Basis-Update prüfen
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    name: Neue Basis prüfen
+    runs-on: ubuntu-latest
+    if: vars.V3_REPO_URL != ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Abhängigkeiten installieren
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Zusammenführung vorbereiten
+        id: merge
+        env:
+          V3_REPO_URL: ${{ vars.V3_REPO_URL }}
+        run: |
+          git config user.name "update-bot"
+          git config user.email "update-bot@users.noreply.github.com"
+          git remote add v3 "$V3_REPO_URL"
+          code=0
+          python tools/update_from_v3.py --no-tests --notes-out "$RUNNER_TEMP/notes.txt" || code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" != "0" ] && [ "$code" != "3" ]; then
+            echo "Die Zusammenführung ist nicht sauber gelaufen (Code $code)."
+          fi
+
+      - name: Tests ausführen
+        id: tests
+        if: steps.merge.outputs.code == '0'
+        continue-on-error: true
+        run: |
+          python -m pytest tests -q --ignore=tests/test_windows_launcher.py 2>&1 | tee "$RUNNER_TEMP/tests.txt"
+          exit "${PIPESTATUS[0]}"
+
+      - name: Zweig hochladen und Pull Request öffnen
+        if: steps.merge.outputs.code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch=$(git rev-parse --abbrev-ref HEAD)
+          case "$branch" in update/v3-*) ;; *) echo "Kein Update-Zweig."; exit 1 ;; esac
+          if [ "${{ steps.tests.outcome }}" = "success" ]; then
+            result="Alle Tests bestanden."
+          else
+            result="Tests FEHLGESCHLAGEN, bitte prüfen."
+          fi
+          tail -n 15 "$RUNNER_TEMP/tests.txt" > "$RUNNER_TEMP/tests-tail.txt" || true
+          {
+            cat "$RUNNER_TEMP/notes.txt"
+            echo
+            echo "Testergebnis: $result"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/tests-tail.txt"
+            echo '```'
+            echo
+            echo "Wird nicht automatisch übernommen. Übernahme nur nach Prüfung."
+          } > "$RUNNER_TEMP/body.md"
+          git push origin "$branch"
+          gh pr create --base master --head "$branch" --title "Basis-Update $branch" --body-file "$RUNNER_TEMP/body.md"
