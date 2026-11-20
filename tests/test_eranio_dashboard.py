@@ -213,7 +213,9 @@ def test_drops_endpoint_shape_and_image_filter(env):
     assert first["drops"][0]["bild"] == DROP_CDN
     assert first["drops"][1]["bild"] is None
     assert first["drops"][1]["abgeholt"] is True
-    assert second["spiel_bild"] is None
+    assert second["spiel_bild"] == (
+        "https://static-cdn.jtvnw.net/ttv-boxart/Other-144x192.jpg"
+    )
     assert second["aktiv"] is False
     assert second["tages_drop"] is True
     assert data["jetzt"]["kanal"] == "alpha"
@@ -228,13 +230,33 @@ def test_drops_endpoint_hides_ended_campaigns(env, tmp_path):
     data = json.loads(path.read_text(encoding="utf-8"))
     base = data["kampagnen"][0]
     data["kampagnen"] += [
-        {**base, "id": "old", "status": "abgelaufen", "ende_utc": None},
-        {**base, "id": "past", "status": "läuft", "ende_utc": "2020-01-01T00:00:00Z"},
+        {**base, "id": "old", "kampagne": "Old", "status": "abgelaufen", "ende_utc": None},
+        {**base, "id": "past", "kampagne": "Past", "status": "läuft", "ende_utc": "2020-01-01T00:00:00Z"},
+        {**base, "id": "done", "kampagne": "Done", "status": "alles abgeholt", "ende_utc": "2999-01-01T00:00:00Z"},
         {**base, "id": "odd", "status": "läuft", "ende_utc": "kaputt"},
     ]
     path.write_text(json.dumps(data), encoding="utf-8")
-    ids = [c["id"] for c in env.client.get("/drops").get_json()["kampagnen"]]
-    assert ids == ["c1", "c2", "odd"]
+    result = env.client.get("/drops").get_json()
+    assert [c["id"] for c in result["kampagnen"]] == ["c1", "c2", "odd"]
+    ended = result["verlauf"]["kampagnen"]
+    assert [row["kampagne"] for row in ended] == ["Done", "Past", "Old"]
+    assert ended[0]["abgeschlossen"] is True and ended[1]["abgeschlossen"] is False
+    assert ended[0]["drops_gesamt"] == 2 and ended[0]["drops_abgeholt"] == 1
+    assert ended[0]["spiel_bild"] == CDN
+
+
+def test_game_and_history_images_are_filled_in():
+    assert dashboard.game_image("Call of Duty: Warzone") == (
+        "https://static-cdn.jtvnw.net/ttv-boxart/Call%20of%20Duty%3A%20Warzone-144x192.jpg"
+    )
+    assert dashboard.game_image("Unbekannt") is None
+    assert dashboard.game_image("Game", CDN) == CDN
+    index = dashboard.drop_image_index(
+        [{"spiel": "Game", "kampagne": "Camp", "drops": [{"name": "Hat", "belohnung": "Big Hat", "bild": DROP_CDN}]}]
+    )
+    assert dashboard.history_image({"campaign": "camp", "item_name": "hat"}, index) == DROP_CDN
+    assert dashboard.history_image({"category": "Game", "benefit": "Big Hat"}, index) == DROP_CDN
+    assert dashboard.history_image({"campaign": "Other", "item_name": "Hat"}, index) is None
 
 
 def test_drops_endpoint_without_files_is_empty(env, tmp_path):
@@ -242,7 +264,7 @@ def test_drops_endpoint_without_files_is_empty(env, tmp_path):
     (env.analytics / "drops_by_category.json").unlink()
     data = env.client.get("/drops").get_json()
     assert data["kampagnen"] == []
-    assert data["verlauf"] == {"abgeholt": [], "abgelaufen": []}
+    assert data["verlauf"] == {"abgeholt": [], "abgelaufen": [], "kampagnen": []}
 
 
 def test_watching_reasons(env):

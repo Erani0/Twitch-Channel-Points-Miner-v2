@@ -557,6 +557,7 @@ body {
 }
 
 .drop-item-name {
+    color: var(--text-primary);
     font-family: var(--font-header);
     font-weight: 600;
     overflow: hidden;
@@ -595,6 +596,330 @@ body {
 
 .drop-history-row {
     margin-bottom: 0.5rem;
+}
+
+.drops-block {
+    padding: 0;
+    max-width: 100%;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.drops-block-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.85rem 1rem 0.5rem;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    text-align: left;
+}
+
+.drops-block-head.is-toggle {
+    cursor: pointer;
+    padding-bottom: 0.85rem;
+}
+
+.drops-block-head.is-toggle:hover .drops-block-title {
+    color: var(--accent);
+}
+
+.drops-block-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-family: var(--font-header);
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.drops-block-count {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.drops-chevron {
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+}
+
+#drops-history.is-open > .drops-block-head .drops-chevron,
+.drops-row.is-open > .drops-row-head .drops-chevron {
+    transform: rotate(180deg);
+}
+
+.drops-history-body {
+    display: none;
+}
+
+#drops-history.is-open .drops-history-body {
+    display: block;
+}
+
+.drops-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0 1rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.drops-chips-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.drops-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.drops-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.65rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--bg-primary);
+    color: var(--text-muted);
+    font-family: var(--font-header);
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+}
+
+.drops-chip:hover {
+    color: var(--text-primary);
+}
+
+.drops-chip.is-active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+}
+
+.drops-chip-count {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+}
+
+.drops-search.input::placeholder {
+    color: var(--text-muted);
+}
+
+.drops-search.input {
+    flex: 0 1 260px;
+    min-width: 0;
+    height: 2rem;
+    font-size: 0.9rem;
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.drops-empty {
+    padding: 1rem;
+    color: var(--text-muted);
+}
+
+.drops-row {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.drops-row:last-child {
+    border-bottom: 0;
+}
+
+.drops-row.is-off {
+    opacity: 0.55;
+}
+
+.drops-row.is-current {
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.drops-row-head {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.drops-row-head:hover {
+    background: var(--bg-primary);
+}
+
+.drops-row-image {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 43px;
+    overflow: hidden;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-muted);
+}
+
+.drops-row-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.drops-row-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.drops-row-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.drops-row-line .hud-badge {
+    font-size: 0.7rem;
+}
+
+.drops-row-game {
+    color: var(--text-primary);
+    font-family: var(--font-header);
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.drops-row-campaign {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 0.3rem;
+}
+
+.drops-row-main .hud-progress {
+    height: 4px;
+    max-width: 420px;
+}
+
+.drops-row-side {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+    text-align: right;
+    max-width: 240px;
+}
+
+.drops-status {
+    font-family: var(--font-header);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.drops-status.is-running {
+    color: var(--accent);
+}
+
+.drops-status.is-waiting {
+    color: var(--text-muted);
+}
+
+.drops-status.is-action {
+    color: var(--accent-orange);
+}
+
+.drops-status.is-daily {
+    color: var(--accent-cyan);
+}
+
+.drops-row-facts {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.drops-row-details {
+    padding: 0 1rem 1rem calc(1rem + 32px + 0.85rem);
+}
+
+.drops-row-details .drop-items {
+    margin-top: 0.6rem;
+}
+
+.drops-table-row {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.6fr) 104px 150px;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.45rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.drops-table-row.is-header {
+    padding-top: 0.6rem;
+    color: var(--text-muted);
+    font-family: var(--font-header);
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.drops-table-row.is-expired .drops-cell.is-title,
+.drops-table-row.is-ended .drops-cell.is-title {
+    color: var(--text-muted);
+}
+
+.drops-cell {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.drops-cell.is-title {
+    color: var(--text-primary);
+    font-family: var(--font-header);
+    font-weight: 600;
+}
+
+.drops-cell.is-game,
+.drops-cell.is-campaign,
+.drops-cell.is-date {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+}
+
+.drops-cell.is-date {
+    font-variant-numeric: tabular-nums;
+}
+
+.drops-more {
+    display: block;
+    margin: 0.75rem auto;
 }
 
 .hud-modal {
@@ -670,6 +995,91 @@ body {
 
     .drop-items {
         grid-template-columns: 1fr;
+    }
+
+    .drops-toolbar {
+        padding: 0 0.75rem 0.75rem;
+    }
+
+    .drops-chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        max-width: 100%;
+        padding-bottom: 0.2rem;
+    }
+
+    .drops-chip {
+        flex: 0 0 auto;
+    }
+
+    .drops-search.input {
+        flex: 1 1 100%;
+    }
+
+    .drops-row-head {
+        flex-wrap: wrap;
+        padding: 0.6rem 0.75rem;
+        gap: 0.6rem;
+    }
+
+    .drops-row-main {
+        flex: 1 1 calc(100% - 80px);
+    }
+
+    .drops-row-side {
+        order: 3;
+        flex: 1 1 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: baseline;
+        max-width: none;
+        text-align: left;
+        padding-left: calc(32px + 0.6rem);
+    }
+
+    .drops-row-details {
+        padding: 0 0.75rem 0.75rem;
+    }
+
+    .drops-table-row {
+        grid-template-columns: 36px minmax(0, 1fr) auto;
+        grid-template-areas:
+            "icon title type"
+            "icon meta date";
+        row-gap: 0.15rem;
+        padding: 0.55rem 0.75rem;
+    }
+
+    .drops-table-row.is-header {
+        display: none;
+    }
+
+    .drops-cell.is-icon {
+        grid-area: icon;
+    }
+
+    .drops-cell.is-title {
+        grid-area: title;
+    }
+
+    .drops-cell.is-type {
+        grid-area: type;
+        text-align: right;
+    }
+
+    .drops-cell.is-game {
+        grid-area: meta;
+    }
+
+    .drops-cell.is-campaign {
+        display: none;
+    }
+
+    .drops-cell.is-date {
+        grid-area: date;
+        text-align: right;
+        font-size: 0.78rem;
     }
 
     .drops-section {

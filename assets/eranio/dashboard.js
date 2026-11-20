@@ -607,82 +607,380 @@ function progressBar(current, required) {
     return wrap;
 }
 
-function renderDrops(data) {
-    var root = document.getElementById('drops-content');
-    root.textContent = '';
-    var campaigns = data.kampagnen || [];
-    if (data.aktualisiert) {
-        root.appendChild(el('p', 'drops-updated', 'Updated ' + data.aktualisiert));
+var DROPS_PAGE = 25;
+var ACTIVE_FILTERS = [
+    ['all', 'All'],
+    ['running', 'Running'],
+    ['waiting', 'Waiting for live'],
+    ['action', 'Needs action'],
+    ['daily', 'Done today']
+];
+var HISTORY_FILTERS = [
+    ['all', 'All'],
+    ['claimed', 'Claimed'],
+    ['expired', 'Expired drops'],
+    ['ended', 'Ended campaigns']
+];
+
+function storedValue(key, fallback) {
+    try {
+        var value = localStorage.getItem(key);
+        return value === null ? fallback : value;
+    } catch (e) {
+        return fallback;
     }
-    if (campaigns.length === 0) {
-        root.appendChild(el('div', 'box drops-empty', 'No drop campaigns found yet. The list fills itself once the miner has checked your campaigns.'));
-    }
-    campaigns.forEach(function (campaign) {
-        var card = el('div', 'box drop-card' + (campaign.aktiv ? '' : ' is-off'));
-        var head = el('div', 'drop-head');
-        head.appendChild(imageOrIcon(campaign.spiel_bild, 'drop-game-image', 'fa-gamepad'));
-        var title = el('div', 'drop-title');
-        title.appendChild(el('div', 'drop-game', campaign.spiel));
-        title.appendChild(el('div', 'drop-campaign', campaign.kampagne));
-        var badges = el('div', 'drop-badges');
-        badges.appendChild(badge(campaign.art === 'Quest' ? 'Quest' : 'Drop campaign', campaign.art === 'Quest' ? 'is-cyan' : ''));
-        if (campaign.abo_noetig) badges.appendChild(badge('Sub required', 'is-warn'));
-        if (campaign.konto_verbunden === 'nein') badges.appendChild(badge('Link account', 'is-warn'));
-        if (campaign.tages_drop) badges.appendChild(badge('Daily drop', 'is-cyan'));
-        if (campaign.pausiert) badges.appendChild(badge('Paused', 'is-warn'));
-        if (!campaign.aktiv) badges.appendChild(badge('Off', 'is-muted'));
-        title.appendChild(badges);
-        head.appendChild(title);
-        var side = el('div', 'drop-side');
-        side.appendChild(el('div', 'drop-status', campaign.status));
-        var left = remainingText(campaign.ende_utc);
-        if (campaign.endet) side.appendChild(el('div', 'drop-end', 'Ends ' + campaign.endet + (left ? ' (' + left + ')' : '')));
-        if (campaign.naechster_start) side.appendChild(el('div', 'drop-end', 'Next start ' + campaign.naechster_start));
-        head.appendChild(side);
-        card.appendChild(head);
-        var list = el('div', 'drop-items');
-        (campaign.drops || []).forEach(function (drop) {
-            var row = el('div', 'drop-item' + (drop.abgeholt ? ' is-done' : ''));
-            row.appendChild(imageOrIcon(drop.bild, 'drop-item-image', 'fa-gift'));
-            var body = el('div', 'drop-item-body');
-            body.appendChild(el('div', 'drop-item-name', drop.belohnung || drop.name || 'Drop'));
-            var meta = el('div', 'drop-item-meta');
-            if (drop.abgeholt) {
-                meta.appendChild(badge('Claimed', ''));
-            } else {
-                meta.appendChild(el('span', '', drop.minuten_aktuell + ' of ' + drop.minuten_noetig + ' min'));
-                if (drop.abo_noetig) meta.appendChild(badge('Sub required', 'is-warn'));
-            }
-            body.appendChild(meta);
-            body.appendChild(progressBar(drop.abgeholt ? 1 : drop.minuten_aktuell, drop.abgeholt ? 1 : drop.minuten_noetig));
-            row.appendChild(body);
-            list.appendChild(row);
-        });
-        card.appendChild(list);
-        root.appendChild(card);
-    });
-    renderDropHistory(root, data.verlauf || {});
 }
 
-function renderDropHistory(root, history) {
-    var sections = [['Claimed drops', history.abgeholt || []], ['Expired drops', history.abgelaufen || []]];
-    sections.forEach(function (section) {
-        var box = el('div', 'box drop-history');
-        box.appendChild(el('div', 'drop-history-title', section[0] + ' (' + section[1].length + ')'));
-        if (section[1].length === 0) {
-            box.appendChild(el('div', 'drop-history-empty', 'Nothing here yet.'));
-        }
-        section[1].slice(0, 50).forEach(function (item) {
-            var row = el('div', 'drop-history-row');
-            row.appendChild(imageOrIcon(item.item_art_url, 'drop-item-image is-small', 'fa-gift'));
-            var text = el('div', 'drop-item-body');
-            text.appendChild(el('div', 'drop-item-name', item.benefit || item.item_name || 'Drop'));
-            text.appendChild(el('div', 'drop-item-meta', [item.category, item.campaign, item.datetime].filter(Boolean).join(' / ')));
-            row.appendChild(text);
-            box.appendChild(row);
-        });
-        root.appendChild(box);
+function storeValue(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    } catch (e) {
+    }
+}
+
+var dropsUi = {
+    data: null,
+    filter: storedValue('dropsFilter', 'all'),
+    search: '',
+    activeLimit: DROPS_PAGE,
+    open: {},
+    touched: {},
+    historyOpen: storedValue('dropsHistoryOpen', '0') === '1',
+    historyFilter: storedValue('dropsHistoryFilter', 'all'),
+    historySearch: '',
+    historyLimit: DROPS_PAGE
+};
+
+function campaignKey(campaign) {
+    return campaign.id || (campaign.spiel + '|' + campaign.kampagne);
+}
+
+function campaignGroup(campaign) {
+    if (campaign.status === 'läuft') return 'running';
+    if (campaign.konto_verbunden === 'nein' || campaign.pausiert || campaign.status === 'nur mit Abo' || campaign.status === 'nichts per Zuschauen machbar') return 'action';
+    if (campaign.tages_drop) return 'daily';
+    if (campaign.status === 'gerade kein Live-Kanal') return 'waiting';
+    return 'waiting';
+}
+
+function isCurrentCampaign(campaign, current) {
+    return !!(current && current.kampagne && current.kampagne === campaign.kampagne && (!current.spiel || current.spiel === campaign.spiel));
+}
+
+function campaignProgress(campaign) {
+    var drops = campaign.drops || [];
+    var needed = 0;
+    var done = 0;
+    var claimed = 0;
+    drops.forEach(function (drop) {
+        var required = drop.minuten_noetig || 0;
+        needed += required;
+        done += drop.abgeholt ? required : Math.min(drop.minuten_aktuell || 0, required);
+        if (drop.abgeholt) claimed += 1;
     });
+    return {total: drops.length, claimed: claimed, needed: needed, done: done};
+}
+
+function filterChips(filters, counts, selected, onPick) {
+    var wrap = el('div', 'drops-chips');
+    filters.forEach(function (entry) {
+        var chip = el('button', 'drops-chip' + (entry[0] === selected ? ' is-active' : ''));
+        chip.type = 'button';
+        chip.appendChild(el('span', '', entry[1]));
+        chip.appendChild(el('span', 'drops-chip-count', String(counts[entry[0]] || 0)));
+        chip.addEventListener('click', function () { onPick(entry[0]); });
+        wrap.appendChild(chip);
+    });
+    return wrap;
+}
+
+function searchField(placeholder, value, onInput) {
+    var input = el('input', 'input drops-search');
+    input.type = 'search';
+    input.placeholder = placeholder;
+    input.value = value;
+    input.setAttribute('aria-label', placeholder);
+    input.addEventListener('input', function () { onInput(input.value); });
+    return input;
+}
+
+function matchesSearch(text, query) {
+    if (!query) return true;
+    return text.toLowerCase().indexOf(query.toLowerCase()) !== -1;
+}
+
+function buildDropsSkeleton(root) {
+    root.textContent = '';
+    var updated = el('p', 'drops-updated');
+    updated.id = 'drops-updated';
+    root.appendChild(updated);
+
+    var active = el('div', 'box drops-block');
+    var activeHead = el('div', 'drops-block-head');
+    var activeTitle = el('div', 'drops-block-title', 'Active campaigns');
+    activeTitle.appendChild(el('span', 'drops-block-count'));
+    activeTitle.lastChild.id = 'drops-active-count';
+    activeHead.appendChild(activeTitle);
+    active.appendChild(activeHead);
+    var activeTools = el('div', 'drops-toolbar');
+    var activeChips = el('div', 'drops-chips-wrap');
+    activeChips.id = 'drops-active-chips';
+    activeTools.appendChild(activeChips);
+    activeTools.appendChild(searchField('Search game or campaign', dropsUi.search, function (value) {
+        dropsUi.search = value;
+        dropsUi.activeLimit = DROPS_PAGE;
+        fillActiveCampaigns();
+    }));
+    active.appendChild(activeTools);
+    var activeList = el('div', 'drops-list');
+    activeList.id = 'drops-active-list';
+    active.appendChild(activeList);
+    root.appendChild(active);
+
+    var history = el('div', 'box drops-block');
+    history.id = 'drops-history';
+    var toggle = el('button', 'drops-block-head is-toggle');
+    toggle.type = 'button';
+    toggle.id = 'drops-history-toggle';
+    var historyTitle = el('div', 'drops-block-title', 'History');
+    historyTitle.appendChild(el('span', 'drops-block-count'));
+    historyTitle.lastChild.id = 'drops-history-count';
+    toggle.appendChild(historyTitle);
+    toggle.appendChild(el('i', 'fas fa-chevron-down drops-chevron'));
+    toggle.addEventListener('click', function () {
+        dropsUi.historyOpen = !dropsUi.historyOpen;
+        storeValue('dropsHistoryOpen', dropsUi.historyOpen ? '1' : '0');
+        fillHistory();
+    });
+    history.appendChild(toggle);
+    var body = el('div', 'drops-history-body');
+    body.id = 'drops-history-body';
+    var historyTools = el('div', 'drops-toolbar');
+    var historyChips = el('div', 'drops-chips-wrap');
+    historyChips.id = 'drops-history-chips';
+    historyTools.appendChild(historyChips);
+    historyTools.appendChild(searchField('Search reward, game or campaign', dropsUi.historySearch, function (value) {
+        dropsUi.historySearch = value;
+        dropsUi.historyLimit = DROPS_PAGE;
+        fillHistory();
+    }));
+    body.appendChild(historyTools);
+    var table = el('div', 'drops-table');
+    table.id = 'drops-history-table';
+    body.appendChild(table);
+    history.appendChild(body);
+    root.appendChild(history);
+    root.dataset.ready = '1';
+}
+
+function renderDrops(data) {
+    var root = document.getElementById('drops-content');
+    dropsUi.data = data || {};
+    if (root.dataset.ready !== '1') buildDropsSkeleton(root);
+    document.getElementById('drops-updated').textContent = dropsUi.data.aktualisiert ? 'Updated ' + dropsUi.data.aktualisiert : '';
+    fillActiveCampaigns();
+    fillHistory();
+}
+
+function fillActiveCampaigns() {
+    var data = dropsUi.data || {};
+    var current = data.jetzt;
+    var campaigns = (data.kampagnen || []).slice();
+    var rank = {running: 1, waiting: 2, daily: 3, action: 4};
+    campaigns.sort(function (a, b) {
+        var ra = isCurrentCampaign(a, current) ? 0 : (a.aktiv ? rank[campaignGroup(a)] : 5);
+        var rb = isCurrentCampaign(b, current) ? 0 : (b.aktiv ? rank[campaignGroup(b)] : 5);
+        if (ra !== rb) return ra - rb;
+        return (Date.parse(a.ende_utc) || 8.64e15) - (Date.parse(b.ende_utc) || 8.64e15);
+    });
+    var counts = {all: campaigns.length, running: 0, waiting: 0, action: 0, daily: 0};
+    campaigns.forEach(function (campaign) { counts[campaignGroup(campaign)] += 1; });
+    var chips = document.getElementById('drops-active-chips');
+    chips.textContent = '';
+    chips.appendChild(filterChips(ACTIVE_FILTERS, counts, dropsUi.filter, function (value) {
+        dropsUi.filter = value;
+        dropsUi.activeLimit = DROPS_PAGE;
+        storeValue('dropsFilter', value);
+        fillActiveCampaigns();
+    }));
+    document.getElementById('drops-active-count').textContent = campaigns.length;
+    var list = document.getElementById('drops-active-list');
+    list.textContent = '';
+    var shown = campaigns.filter(function (campaign) {
+        if (dropsUi.filter !== 'all' && campaignGroup(campaign) !== dropsUi.filter) return false;
+        return matchesSearch(campaign.spiel + ' ' + campaign.kampagne, dropsUi.search);
+    });
+    if (campaigns.length === 0) {
+        list.appendChild(el('div', 'drops-empty', 'No active drop campaigns right now. The list fills itself once the miner has checked your campaigns.'));
+        return;
+    }
+    if (shown.length === 0) {
+        list.appendChild(el('div', 'drops-empty', 'No campaign matches this filter.'));
+        return;
+    }
+    shown.slice(0, dropsUi.activeLimit).forEach(function (campaign) {
+        list.appendChild(campaignRow(campaign, isCurrentCampaign(campaign, current)));
+    });
+    if (shown.length > dropsUi.activeLimit) {
+        var more = el('button', 'button drops-more', 'Show more (' + (shown.length - dropsUi.activeLimit) + ' left)');
+        more.type = 'button';
+        more.addEventListener('click', function () {
+            dropsUi.activeLimit += DROPS_PAGE;
+            fillActiveCampaigns();
+        });
+        list.appendChild(more);
+    }
+}
+
+function campaignRow(campaign, isCurrent) {
+    var key = campaignKey(campaign);
+    var open = dropsUi.touched[key] ? !!dropsUi.open[key] : isCurrent;
+    var group = campaignGroup(campaign);
+    var row = el('div', 'drops-row is-' + group + (isCurrent ? ' is-current' : '') + (campaign.aktiv ? '' : ' is-off') + (open ? ' is-open' : ''));
+    var head = el('button', 'drops-row-head');
+    head.type = 'button';
+    head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    head.appendChild(imageOrIcon(campaign.spiel_bild, 'drops-row-image', 'fa-gamepad'));
+    var main = el('div', 'drops-row-main');
+    var line = el('div', 'drops-row-line');
+    line.appendChild(el('span', 'drops-row-game', campaign.spiel || 'Unknown game'));
+    if (isCurrent) line.appendChild(badge('Watching', ''));
+    if (campaign.art === 'Quest') line.appendChild(badge('Quest', 'is-cyan'));
+    if (campaign.abo_noetig) line.appendChild(badge('Sub', 'is-warn'));
+    if (campaign.konto_verbunden === 'nein') line.appendChild(badge('Link account', 'is-warn'));
+    if (campaign.tages_drop) line.appendChild(badge('Daily', 'is-cyan'));
+    if (!campaign.aktiv) line.appendChild(badge('Off', 'is-muted'));
+    main.appendChild(line);
+    main.appendChild(el('div', 'drops-row-campaign', campaign.kampagne));
+    var progress = campaignProgress(campaign);
+    main.appendChild(progressBar(progress.done, progress.needed));
+    head.appendChild(main);
+    var side = el('div', 'drops-row-side');
+    side.appendChild(el('span', 'drops-status is-' + group, campaign.status));
+    var facts = [];
+    if (progress.total) facts.push(progress.claimed + '/' + progress.total + ' drops');
+    var left = remainingText(campaign.ende_utc);
+    if (left) facts.push(left);
+    if (campaign.naechster_start) facts.push('next ' + campaign.naechster_start);
+    side.appendChild(el('span', 'drops-row-facts', facts.join(' · ')));
+    head.appendChild(side);
+    head.appendChild(el('i', 'fas fa-chevron-down drops-chevron'));
+    head.addEventListener('click', function () {
+        dropsUi.touched[key] = true;
+        dropsUi.open[key] = !open;
+        fillActiveCampaigns();
+    });
+    row.appendChild(head);
+    if (open) row.appendChild(campaignDetails(campaign));
+    return row;
+}
+
+function campaignDetails(campaign) {
+    var details = el('div', 'drops-row-details');
+    if (campaign.endet) details.appendChild(el('div', 'drop-end', 'Ends ' + campaign.endet + (campaign.offen ? ' · ' + campaign.offen : '')));
+    if (campaign.naechster_drop) details.appendChild(el('div', 'drop-end', 'Next drop: ' + campaign.naechster_drop));
+    var list = el('div', 'drop-items');
+    (campaign.drops || []).forEach(function (drop) {
+        var item = el('div', 'drop-item' + (drop.abgeholt ? ' is-done' : ''));
+        item.appendChild(imageOrIcon(drop.bild, 'drop-item-image', 'fa-gift'));
+        var body = el('div', 'drop-item-body');
+        body.appendChild(el('div', 'drop-item-name', drop.belohnung || drop.name || 'Drop'));
+        var meta = el('div', 'drop-item-meta');
+        if (drop.abgeholt) {
+            meta.appendChild(badge('Claimed', ''));
+        } else {
+            meta.appendChild(el('span', '', drop.minuten_aktuell + ' of ' + drop.minuten_noetig + ' min'));
+            if (drop.abo_noetig) meta.appendChild(badge('Sub required', 'is-warn'));
+        }
+        body.appendChild(meta);
+        body.appendChild(progressBar(drop.abgeholt ? 1 : drop.minuten_aktuell, drop.abgeholt ? 1 : drop.minuten_noetig));
+        item.appendChild(body);
+        list.appendChild(item);
+    });
+    if (!(campaign.drops || []).length) list.appendChild(el('div', 'drops-empty', 'No drop details known yet.'));
+    details.appendChild(list);
+    return details;
+}
+
+function historyTime(text, fallback) {
+    var parsed = text ? Date.parse(String(text).replace(' ', 'T')) : NaN;
+    return isNaN(parsed) ? (fallback || 0) : parsed;
+}
+
+function historyRows(history) {
+    var rows = [];
+    (history.abgeholt || []).forEach(function (item) {
+        rows.push({kind: 'claimed', image: item.item_art_url, title: item.benefit || item.item_name || 'Drop', game: item.category, campaign: item.campaign, date: item.datetime, time: historyTime(item.datetime, item.x)});
+    });
+    (history.abgelaufen || []).forEach(function (item) {
+        rows.push({kind: 'expired', image: item.item_art_url, title: item.benefit || item.item_name || 'Drop', game: item.category, campaign: item.campaign, date: item.datetime, time: historyTime(item.datetime, item.x)});
+    });
+    (history.kampagnen || []).forEach(function (item) {
+        var detail = item.drops_gesamt ? item.drops_abgeholt + ' of ' + item.drops_gesamt + ' drops claimed' : '';
+        rows.push({kind: 'ended', completed: item.abgeschlossen, image: item.spiel_bild, title: item.kampagne, game: item.spiel, campaign: detail, date: item.endet, time: Date.parse(item.ende_utc) || 0});
+    });
+    rows.sort(function (a, b) { return b.time - a.time; });
+    return rows;
+}
+
+var HISTORY_LABELS = {claimed: ['Claimed', ''], expired: ['Expired', 'is-warn'], ended: ['Ended', 'is-muted']};
+
+function fillHistory() {
+    var box = document.getElementById('drops-history');
+    var rows = historyRows((dropsUi.data || {}).verlauf || {});
+    var counts = {all: rows.length, claimed: 0, expired: 0, ended: 0};
+    rows.forEach(function (row) { counts[row.kind] += 1; });
+    document.getElementById('drops-history-count').textContent = rows.length;
+    box.classList.toggle('is-open', dropsUi.historyOpen);
+    document.getElementById('drops-history-toggle').setAttribute('aria-expanded', dropsUi.historyOpen ? 'true' : 'false');
+    if (!dropsUi.historyOpen) return;
+    var chips = document.getElementById('drops-history-chips');
+    chips.textContent = '';
+    chips.appendChild(filterChips(HISTORY_FILTERS, counts, dropsUi.historyFilter, function (value) {
+        dropsUi.historyFilter = value;
+        dropsUi.historyLimit = DROPS_PAGE;
+        storeValue('dropsHistoryFilter', value);
+        fillHistory();
+    }));
+    var shown = rows.filter(function (row) {
+        if (dropsUi.historyFilter !== 'all' && row.kind !== dropsUi.historyFilter) return false;
+        return matchesSearch([row.title, row.game, row.campaign].join(' '), dropsUi.historySearch);
+    });
+    var table = document.getElementById('drops-history-table');
+    table.textContent = '';
+    if (shown.length === 0) {
+        table.appendChild(el('div', 'drops-empty', rows.length ? 'Nothing matches this filter.' : 'Nothing here yet.'));
+        return;
+    }
+    var header = el('div', 'drops-table-row is-header');
+    ['', 'Reward / campaign', 'Game', 'Campaign / result', 'Type', 'Date'].forEach(function (text) {
+        header.appendChild(el('div', 'drops-cell', text));
+    });
+    table.appendChild(header);
+    shown.slice(0, dropsUi.historyLimit).forEach(function (row) {
+        var line = el('div', 'drops-table-row is-' + row.kind);
+        var icon = el('div', 'drops-cell is-icon');
+        icon.appendChild(imageOrIcon(row.image, 'drop-item-image is-small', row.kind === 'ended' ? 'fa-gamepad' : 'fa-gift'));
+        line.appendChild(icon);
+        line.appendChild(el('div', 'drops-cell is-title', row.title));
+        line.appendChild(el('div', 'drops-cell is-game', row.game || ''));
+        line.appendChild(el('div', 'drops-cell is-campaign', row.campaign || ''));
+        var type = el('div', 'drops-cell is-type');
+        var label = HISTORY_LABELS[row.kind];
+        type.appendChild(badge(row.kind === 'ended' && row.completed ? 'Completed' : label[0], row.kind === 'ended' && row.completed ? 'is-cyan' : label[1]));
+        line.appendChild(type);
+        line.appendChild(el('div', 'drops-cell is-date', row.date || ''));
+        table.appendChild(line);
+    });
+    if (shown.length > dropsUi.historyLimit) {
+        var more = el('button', 'button drops-more', 'Show more (' + (shown.length - dropsUi.historyLimit) + ' left)');
+        more.type = 'button';
+        more.addEventListener('click', function () {
+            dropsUi.historyLimit += DROPS_PAGE;
+            fillHistory();
+        });
+        table.appendChild(more);
+    }
 }
 
 function loadDrops() {

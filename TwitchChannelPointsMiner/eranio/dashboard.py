@@ -6,7 +6,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import requests
 from flask import Response, abort, render_template_string, request, send_from_directory
@@ -91,6 +91,54 @@ def clean_drop(item):
     }
 
 
+BOXART_URL = "https://static-cdn.jtvnw.net/ttv-boxart/{}-144x192.jpg"
+UNKNOWN_GAMES = ("", "Unbekannt")
+
+
+def game_image(game, stored=None):
+    image = safe_image(stored)
+    if image:
+        return image
+    if not isinstance(game, str) or game.strip() in UNKNOWN_GAMES:
+        return None
+    return BOXART_URL.format(quote(game.strip(), safe=""))
+
+
+def _image_key(*parts):
+    return tuple(str(p or "").strip().casefold() for p in parts)
+
+
+def drop_image_index(raw_campaigns):
+    index = {}
+    for campaign in raw_campaigns:
+        if not isinstance(campaign, dict):
+            continue
+        for drop in campaign.get("drops") or []:
+            if not isinstance(drop, dict):
+                continue
+            image = safe_image(drop.get("bild"))
+            if not image:
+                continue
+            for label in (drop.get("name"), drop.get("belohnung")):
+                if not label:
+                    continue
+                index.setdefault(_image_key(campaign.get("kampagne"), label), image)
+                index.setdefault(_image_key(campaign.get("spiel"), label), image)
+    return index
+
+
+def history_image(item, index):
+    image = safe_image(item.get("item_art_url"))
+    if image or not index:
+        return image
+    for scope in (item.get("campaign"), item.get("category")):
+        for label in (item.get("item_name"), item.get("benefit")):
+            found = index.get(_image_key(scope, label))
+            if found:
+                return found
+    return None
+
+
 def clean_campaign(item):
     if not isinstance(item, dict):
         return None
@@ -98,7 +146,7 @@ def clean_campaign(item):
     return {
         "id": text_or_none(item.get("id")),
         "spiel": text_or_none(item.get("spiel")) or "",
-        "spiel_bild": safe_image(item.get("spiel_bild")),
+        "spiel_bild": game_image(item.get("spiel"), item.get("spiel_bild")),
         "kampagne": text_or_none(item.get("kampagne")) or "",
         "aktiv": item.get("aktiv") is not False,
         "status": status,
@@ -122,10 +170,11 @@ def clean_campaign(item):
 
 
 EXPIRED_STATUS = "abgelaufen"
+COMPLETED_STATUS = "alles abgeholt"
 
 
 def campaign_has_ended(campaign, now=None):
-    if campaign["status"] == EXPIRED_STATUS:
+    if campaign["status"] in (EXPIRED_STATUS, COMPLETED_STATUS):
         return True
     end = campaign.get("ende_utc")
     if not end:
@@ -139,17 +188,38 @@ def campaign_has_ended(campaign, now=None):
     return ends_at <= (now or datetime.now(timezone.utc))
 
 
+def ended_campaign_row(campaign):
+    drops_list = campaign["drops"]
+    return {
+        "spiel": campaign["spiel"],
+        "spiel_bild": campaign["spiel_bild"],
+        "kampagne": campaign["kampagne"],
+        "endet": campaign["endet"],
+        "ende_utc": campaign["ende_utc"],
+        "abgeschlossen": campaign["status"] == COMPLETED_STATUS,
+        "drops_gesamt": len(drops_list),
+        "drops_abgeholt": sum(1 for d in drops_list if d["abgeholt"]),
+    }
+
+
 def drops_overview():
     data = read_json_file(campaigns_path())
     campaigns = []
+    ended = []
     current = None
     updated = None
+    images = {}
     if isinstance(data, dict):
-        campaigns = [
-            c
-            for c in (clean_campaign(x) for x in data.get("kampagnen") or [])
-            if c is not None and not campaign_has_ended(c)
-        ]
+        images = drop_image_index(data.get("kampagnen") or [])
+        for item in data.get("kampagnen") or []:
+            campaign = clean_campaign(item)
+            if campaign is None:
+                continue
+            if campaign_has_ended(campaign):
+                ended.append(ended_campaign_row(campaign))
+            else:
+                campaigns.append(campaign)
+        ended.sort(key=lambda r: r["ende_utc"] or "", reverse=True)
         updated = text_or_none(data.get("aktualisiert"))
         raw_current = data.get("jetzt")
         if isinstance(raw_current, dict):
@@ -158,15 +228,17 @@ def drops_overview():
                 "spiel": text_or_none(raw_current.get("spiel")),
                 "kampagne": text_or_none(raw_current.get("kampagne")),
             }
+    history = drop_history(images)
+    history["kampagnen"] = ended[:HISTORY_LIMIT]
     return {
         "kampagnen": campaigns,
         "jetzt": current,
         "aktualisiert": updated,
-        "verlauf": drop_history(),
+        "verlauf": history,
     }
 
 
-def drop_history():
+def drop_history(images=None):
     analytics_path = getattr(Settings, "analytics_path", None)
     if not analytics_path:
         return {"abgeholt": [], "abgelaufen": []}
@@ -189,7 +261,7 @@ def drop_history():
             "current_minutes_watched": number_or_zero(
                 item.get("current_minutes_watched")
             ),
-            "item_art_url": safe_image(item.get("item_art_url")),
+            "item_art_url": history_image(item, images),
         }
         if item.get("status") == "captured":
             claimed.append(row)
