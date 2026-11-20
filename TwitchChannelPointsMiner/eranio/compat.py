@@ -4,7 +4,7 @@ from pathlib import Path
 
 from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
 from TwitchChannelPointsMiner.classes.AnalyticsServer import LOOPBACK_HOSTS
-from TwitchChannelPointsMiner.eranio import streak
+from TwitchChannelPointsMiner.eranio import drops, streak
 from TwitchChannelPointsMiner.eranio.streak_cache import migrate_old_cache
 from TwitchChannelPointsMiner.eranio.git_config import dedupe_git_safe_directories
 from TwitchChannelPointsMiner.TwitchChannelPointsMiner import (
@@ -14,6 +14,7 @@ from TwitchChannelPointsMiner.TwitchChannelPointsMiner import (
 logger = logging.getLogger(__name__)
 
 MIN_OFFLINE_FOR_NEW_STREAK = 1800
+DROP_REFRESH_HOURS = 0.25
 
 STREAK_LENGTH_PRIORITIES = (
     Priority.STREAK_LENGTH_ASCENDING,
@@ -182,6 +183,22 @@ class TwitchChannelPointsMiner(BaseMiner):
         stop_watch_when_drops_completed: bool = None,
         **kwargs,
     ):
+        if self.auto_discover_drops:
+            if args:
+                shared = list(args[0] or [])
+                args = (shared,) + tuple(args[1:])
+            else:
+                shared = list(kwargs.get("categories") or [])
+                kwargs["categories"] = shared
+            drops.configure(categories=shared)
+            kwargs.setdefault("wildcard_categories", True)
+            kwargs.setdefault("drop_pick_stickiness_minutes", 0)
+            kwargs["category_refresh_interval_hours"] = min(
+                float(kwargs.get("category_refresh_interval_hours", 6)),
+                DROP_REFRESH_HOURS,
+            )
+        else:
+            drops.STATE.reset()
         if watch_only_drops is not None:
             self.watch_only_drops = bool(watch_only_drops)
         if stop_watch_when_drops_completed is not None:
