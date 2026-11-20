@@ -3,6 +3,7 @@ import inspect
 import logging
 import os
 import pickle
+import re
 import runpy
 import signal
 import socket
@@ -463,3 +464,144 @@ def test_streak_extension_is_configured_from_constructor_options(workdir):
     assert streak.STATE.min_gap_seconds == 900
     assert streak.STATE.length_order == "desc"
     assert streak.STATE.cache is miner.watch_streak_cache
+
+
+EXTERNAL_HOSTS = [
+    "185.228.178.24:5000",
+    "n02.eranio.de:5000",
+    "n02.eranio.de",
+    "10.2.16.50:25565",
+]
+
+
+def started_dashboard(workdir, monkeypatch, host="0.0.0.0", port=5000):
+    tmp_path, created = workdir
+    from TwitchChannelPointsMiner.classes import AnalyticsServer as server_module
+
+    started = []
+    monkeypatch.setattr(
+        server_module.AnalyticsServer, "start", lambda self: started.append(self)
+    )
+    miner = package.TwitchChannelPointsMiner(**owner_options())
+    created.append(miner)
+    analytics = Path(Settings.analytics_path)
+    (analytics / "alpha.json").write_text(
+        '{"series": [{"x": 1700000000000, "y": 1, "z": "Watch"}],'
+        ' "streak": [{"x": 1700000000000, "y": 3}]}',
+        encoding="utf-8",
+    )
+    (analytics / "beta.json").write_text('{"series": []}', encoding="utf-8")
+    log_file = tmp_path / "miner.log"
+    log_file.write_text("one\ntwo\n", encoding="utf-8")
+    miner.analytics(host=host, port=port, refresh=5, days_ago=360)
+    assert len(started) == 1
+    started[0].logs_file = str(log_file)
+    server_module.response_cache.clear()
+    return started[0]
+
+
+@pytest.mark.parametrize("host", EXTERNAL_HOSTS)
+def test_dashboard_is_reachable_from_outside_through_the_egg_call(
+    workdir, monkeypatch, host
+):
+    from TwitchChannelPointsMiner.eranio import dashboard
+
+    monkeypatch.setattr(dashboard, "fetch_latest_version", lambda: "99.0.0")
+    dashboard.UPDATE.reset()
+    server = started_dashboard(workdir, monkeypatch)
+    assert server.host == "0.0.0.0"
+    assert server.password is None
+    client = server.app.test_client()
+    origin = f"http://{host}"
+    headers = {
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "cors",
+        "Origin": origin,
+        "Referer": origin + "/",
+        "User-Agent": "Mozilla/5.0",
+    }
+
+    def get(path):
+        response = client.get(path, base_url=origin, headers=headers)
+        response.close()
+        return response
+
+    page = client.get("/", base_url=origin, headers=headers)
+    assert page.status_code == 200
+    body = page.get_data(as_text=True)
+    assets = re.findall(r'(?:href|src)="(/assets/[^"]+)"', body)
+    assert len(assets) >= 4
+    for path in ["/"] + assets + [
+        "/streamers",
+        "/json/alpha",
+        "/json_all",
+        "/drops",
+        "/watching",
+        "/update_info",
+        "/drops_by_category",
+        "/now_watching",
+        "/log?lastIndex=0&tailBytes=65536",
+    ]:
+        assert get(path).status_code == 200, (host, path)
+
+    prefs = client.post(
+        "/dashboard_prefs", json={"key": "dark-mode", "value": "true"}, base_url=origin, headers=headers
+    )
+    assert prefs.status_code == 200
+    deleted = client.delete("/streamers/beta", base_url=origin, headers=headers)
+    assert deleted.status_code == 204
+
+
+def test_loopback_dashboard_through_the_compat_call_still_answers_other_hosts(
+    workdir, monkeypatch
+):
+    server = started_dashboard(workdir, monkeypatch, host="127.0.0.1")
+    response = server.app.test_client().get("/streamers", base_url="http://185.228.178.24:5000")
+    assert response.status_code == 403
+
+
+def test_the_dashboard_really_listens_on_all_interfaces(workdir, monkeypatch):
+    waitress_server = pytest.importorskip("waitress.server")
+    import urllib.request
+
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    server = started_dashboard(workdir, monkeypatch, port=port)
+    created = []
+    original = waitress_server.create_server
+
+    def capture(*args, **kwargs):
+        instance = original(*args, **kwargs)
+        created.append(instance)
+        return instance
+
+    monkeypatch.setattr(waitress_server, "create_server", capture)
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    for _ in range(100):
+        if created:
+            break
+        threading.Event().wait(0.05)
+    assert created
+    try:
+        assert created[0].socket.getsockname()[0] == "0.0.0.0"
+        local = socket.gethostbyname(socket.gethostname())
+        for address in ("127.0.0.1", local):
+            request = urllib.request.Request(
+                f"http://{address}:{port}/streamers", headers={"Host": "185.228.178.24:5000"}
+            )
+            with urllib.request.urlopen(request, timeout=5) as response:
+                assert response.status == 200
+    finally:
+        created[0].close()
+        thread.join(timeout=5)
+
+
+def test_the_web_server_and_its_export_dependency_are_required():
+    root = Path(__file__).resolve().parents[1]
+    requirements = (root / "requirements.txt").read_text(encoding="utf-8")
+    setup = (root / "setup.py").read_text(encoding="utf-8")
+    for name in ("waitress", "openpyxl"):
+        assert name + "==" in requirements
+        assert name + "==" in setup

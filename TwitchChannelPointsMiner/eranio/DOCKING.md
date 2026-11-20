@@ -119,3 +119,19 @@ Streak history (old display kept): `streak_history.record` writes the days into 
 Section 6 status: startup repository line removed, update text neutral, release URL no longer passed to a page (our page does not use it), dashboard title/about/badges/credit line live only in the unserved base `assets/charts.html`. Still present as invisible text: gist URLs in `DropBadgeCatalog.py` / `TwitchDropsApp.py`, User-Agent string in `utils/Utils.py: check_versions` (network only, `update_check` is off by default), license files and headers.
 
 `eranio/V3_BASE` (content `<base version> <commit>`) is read only by tooling and never shown or served.
+
+## 9. External access and web server
+
+- The egg run.py calls `analytics(host="0.0.0.0", port=SERVER_PORT, ...)`. `compat.analytics` builds the server with the temporary host 127.0.0.1 and sets `host = "0.0.0.0"` right afterwards; every host check of the base (`require_authentication`) and of our guard reads `self.host` at request time, so nothing computed at construction blocks. Tests (`tests/test_eranio_compat.py`) request the page, all assets and all endpoints with the Host headers `185.228.178.24:5000`, `n02.eranio.de:5000`, `n02.eranio.de` and a private address, with same-origin browser headers (Origin, Referer, Sec-Fetch-Site), including POST and DELETE: all answer 200 or 204. One test starts `AnalyticsServer.run()` for real and checks that waitress listens on `0.0.0.0` and that the dashboard answers on 127.0.0.1 and on the machine's own address.
+- The base server runs on waitress only (`from waitress.server import create_server` inside `run()`); there is no werkzeug fallback. Without waitress the dashboard thread dies with an ImportError and mining continues without a dashboard. `waitress==3.0.2` is in `requirements.txt` and `setup.py`; the egg install step runs `pip install -r requirements.txt`, so it is installed there.
+
+## 10. Streamers export (`eranio/export.py`)
+
+Ported from the old version, same columns (Streamer, Points, Followdate, Last Stream, Sub, Banned, Watchstreaks, Points gained), same style (header colours, table, data bar, widths), same file name `logs/report_<YYYY-MM-DD>_<account>.xlsx` (rolls over at midnight, old file stays), same trigger: first export once the miner runs and streamers are loaded, then every 10 minutes (thread "Streamers export", started in `compat.mine`), and a last export when the miner stops (`finally` in `compat.mine`, covers the signal handler). The daily "Points gained" baseline file `logs/daily_points_baseline.<account>.json` keeps its old format. Dependency: `openpyxl==3.1.5` added to `requirements.txt` and `setup.py`; pandas is not needed (the sheet is written with openpyxl directly, result identical).
+
+Data sources on the new base (the old helpers do not exist there):
+- Watchstreaks: `streak_history.current_days` (RewardList value, then the days migrated from the old cache), one RewardList request per streamer if neither is known; each export also records the value into the analytics file.
+- Followdate: ChannelFollows pages read once at the first export (`followed_at` of the base parser).
+- Banned: `ChatRoomBanStatus` request (hash of the old version) once per streamer.
+- Last Stream: stream start of the streak track or the newest session of the base watch streak cache (the base `Stream` has no `created_at`).
+- Sub: "yes" when the account has an active points multiplier for the channel (the old tier lookup is not in the base query; same result for subscribers).

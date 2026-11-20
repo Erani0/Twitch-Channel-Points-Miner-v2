@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
-from TwitchChannelPointsMiner.eranio import drops, streak, streak_history
+from TwitchChannelPointsMiner.eranio import drops, export, streak, streak_history
 from TwitchChannelPointsMiner.eranio.streak_cache import migrate_old_cache
 from TwitchChannelPointsMiner.eranio.git_config import dedupe_git_safe_directories
 from TwitchChannelPointsMiner.TwitchChannelPointsMiner import (
@@ -113,6 +113,7 @@ class TwitchChannelPointsMiner(BaseMiner):
             ),
             self.watch_streak_min_offline_seconds,
         )
+        export.configure(self.username)
         streak.configure(
             max_parallel=self.watch_streak_max_parallel,
             min_gap_seconds=self.watch_streak_min_offline_seconds,
@@ -199,11 +200,16 @@ class TwitchChannelPointsMiner(BaseMiner):
                 stop_watch_when_drops_completed
             )
         streak_history.start(self)
-        return super().mine(
-            list(streamers) if streamers is not None else [],
-            list(blacklist) if blacklist is not None else [],
-            followers,
-            followers_order,
-            *args,
-            **kwargs,
-        )
+        export.STATE.follow_order = followers_order
+        export.start(self)
+        try:
+            return super().mine(
+                list(streamers) if streamers is not None else [],
+                list(blacklist) if blacklist is not None else [],
+                followers,
+                followers_order,
+                *args,
+                **kwargs,
+            )
+        finally:
+            export.finish(self)

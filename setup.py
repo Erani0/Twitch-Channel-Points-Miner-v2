@@ -36,6 +36,7 @@ setuptools.setup(
         "waitress==3.0.2",
         "irc==20.5.0",
         "pytz==2026.6",
+        "openpyxl==3.1.5",
     ],
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
