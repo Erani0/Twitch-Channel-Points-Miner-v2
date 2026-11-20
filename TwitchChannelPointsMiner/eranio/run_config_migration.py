@@ -28,6 +28,14 @@ def _safe_literal_repr(value) -> str | None:
 def ensure_constructor_kwargs(
     file_path: str, class_name: str, expected_kwargs: dict[str, str]
 ) -> bool:
+    try:
+        from TwitchChannelPointsMiner.eranio import upgrade
+
+        if upgrade.switch_if_needed(file_path):
+            return False
+    except Exception as exc:
+        print(f"{_PREFIX} {exc}")
+
     if not expected_kwargs:
         return False
 
