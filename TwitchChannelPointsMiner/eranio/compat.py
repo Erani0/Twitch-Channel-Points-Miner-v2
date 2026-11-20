@@ -3,7 +3,15 @@ import os
 from pathlib import Path
 
 from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
-from TwitchChannelPointsMiner.eranio import drops, export, streak, streak_history
+from TwitchChannelPointsMiner.eranio import (
+    android,
+    config_file,
+    drops,
+    export,
+    settings_page,
+    streak,
+    streak_history,
+)
 from TwitchChannelPointsMiner.eranio.streak_cache import migrate_old_cache
 from TwitchChannelPointsMiner.eranio.git_config import dedupe_git_safe_directories
 from TwitchChannelPointsMiner.TwitchChannelPointsMiner import (
@@ -71,6 +79,21 @@ class TwitchChannelPointsMiner(BaseMiner):
         except Exception:
             pass
 
+        block = config_file.runtime_eranio_options()
+        auto_discover_drops = block.get("auto_discover_drops", auto_discover_drops)
+        watch_only_drops = block.get("watch_only_drops", watch_only_drops)
+        stop_watch_when_drops_completed = block.get(
+            "stop_watch_when_drops_completed", stop_watch_when_drops_completed
+        )
+        watch_streak_max_parallel = block.get(
+            "watch_streak_max_parallel", watch_streak_max_parallel
+        )
+        watch_streak_min_offline_seconds = block.get(
+            "watch_streak_min_offline_seconds", watch_streak_min_offline_seconds
+        )
+        use_hermes = block.get("use_hermes", use_hermes)
+        priority = block.get("priority", priority)
+        self.config_password = None
         self.watch_only_drops = bool(watch_only_drops)
         self.stop_watch_when_drops_completed = bool(stop_watch_when_drops_completed)
         self.auto_discover_drops = bool(auto_discover_drops)
@@ -103,6 +126,7 @@ class TwitchChannelPointsMiner(BaseMiner):
             **options,
         )
 
+        android.configure(username, options.get("android_login") is True)
         if use_hermes:
             logger.info("The classic event connection (PubSub) is used.")
         state_dir = os.path.join(Path().absolute(), "logs")
@@ -139,7 +163,11 @@ class TwitchChannelPointsMiner(BaseMiner):
         days_ago: int = 7,
         password: str = None,
         log_poll_interval: int = 5,
+        config_password: str = None,
     ):
+        host, port, config_password = config_file.dashboard_overrides(
+            host, port, config_password
+        )
         if not Settings.enable_analytics:
             return super().analytics(
                 host=host,
@@ -164,7 +192,18 @@ class TwitchChannelPointsMiner(BaseMiner):
         http_server.host = host
         http_server.daemon = True
         http_server.name = "Analytics Thread"
+        if isinstance(config_password, str) and config_password:
+            self.config_password = config_password
+            settings_page.install(
+                http_server.app, http_server, config_password, self.settings_info
+            )
         http_server.start()
+
+    def settings_info(self):
+        return {
+            "username": self.username,
+            "auto_discover_drops": self.auto_discover_drops,
+        }
 
     def mine(
         self,
@@ -199,6 +238,7 @@ class TwitchChannelPointsMiner(BaseMiner):
             self.stop_watch_when_drops_completed = bool(
                 stop_watch_when_drops_completed
             )
+        android.offer()
         streak_history.start(self)
         export.STATE.follow_order = followers_order
         export.start(self)

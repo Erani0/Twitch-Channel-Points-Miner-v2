@@ -299,6 +299,7 @@ def install(app, server):
             logPollInterval=log_poll_interval * 1000,
             server_name=os.environ.get("SERVER_NAME", "Twitch Miner"),
             asset_version=asset_version(),
+            settings_enabled=getattr(server, "eranio_settings_enabled", False),
         )
 
     def streamers():

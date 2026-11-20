@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>{{ server_name }} Einstellungen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.1/css/bulma.css" rel="stylesheet" />
+    <link href="{{url_for('static', filename='dashboard.css')}}?v={{asset_version}}" rel="stylesheet" />
+    <link href="{{url_for('static', filename='dark-theme.css')}}?v={{asset_version}}" rel="stylesheet" id="dark-theme-link" />
+    <link href="{{url_for('static', filename='settings.css')}}?v={{asset_version}}" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="container settings-page">
+        <header class="settings-head">
+            <a href="/" class="header-banner"><img width="260" src="{{url_for('static', filename='banner.png')}}" alt="banner"></a>
+            <div class="settings-head-actions">
+                <label class="hud-checkbox"><input type="checkbox" id="dark-mode" checked><span>Dunkles Design</span></label>
+                <a class="button is-small" href="/"><span class="icon is-small"><i class="fas fa-chart-area"></i></span><span>Dashboard</span></a>
+                <button class="button is-small" id="logout" style="display: none;"><span class="icon is-small"><i class="fas fa-sign-out-alt"></i></span><span>Abmelden</span></button>
+            </div>
+        </header>
+
+        <section class="box settings-login" id="login-box" style="display: none;">
+            <div class="settings-title">Einstellungen</div>
+            <p class="settings-note">Bitte das Passwort eingeben, das in der Startdatei hinterlegt ist.</p>
+            <p class="settings-warning"><i class="fas fa-exclamation-triangle"></i> Diese Verbindung ist unverschlüsselt (http). Das Passwort wird im Klartext übertragen. Nur in vertrauenswürdigen Netzen verwenden.</p>
+            <form id="login-form" class="settings-inline">
+                <input class="input" type="password" id="login-password" autocomplete="current-password" placeholder="Passwort" required>
+                <button class="button is-primary-hud" type="submit">Anmelden</button>
+            </form>
+            <p class="settings-error" id="login-error"></p>
+        </section>
+
+        <div id="settings-root" style="display: none;"></div>
+        <div class="settings-toast" id="toast" role="status"></div>
+    </div>
+    <script type="text/javascript" src="{{url_for('static', filename='settings.js')}}?v={{asset_version}}"></script>
+</body>
+
+</html>

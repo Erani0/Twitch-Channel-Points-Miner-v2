@@ -117,6 +117,9 @@
 
             <!-- Switch Toggles -->
             <div class="toolbar-right">
+                {% if settings_enabled %}
+                <a class="button is-small" href="/settings"><span class="icon is-small"><i class="fas fa-cog"></i></span><span>Einstellungen</span></a>
+                {% endif %}
                 <label class="hud-checkbox" id="toggle-log-label">
                     <input type="checkbox" id="log">
                     <span>Logs</span>
