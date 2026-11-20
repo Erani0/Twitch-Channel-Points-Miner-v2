@@ -166,3 +166,17 @@ replit.nix
 # Supervisor: local alert config and runtime state
 supervisor/miner-alerts.json
 supervisor-logs/
+
+pycache_clear.sh
+settings.json
+.agent/
+.ai/
+.claude/
+.superpowers/
+.vscode/
+.ai-agent-checkpoints/
+*.js
+*.pyc
+drop_campaigns.json
+drop_campaigns.json.tmp
+drop_campaigns.fehlerhaft.json
