@@ -29,6 +29,16 @@ def reset_eranio_streak_state():
 
 
 @pytest.fixture(autouse=True)
+def offline_eranio_points(monkeypatch):
+    from TwitchChannelPointsMiner.eranio import points
+
+    points.STATE.reset()
+    monkeypatch.setattr(points, "_ensure_worker", lambda: None)
+    yield
+    points.STATE.reset()
+
+
+@pytest.fixture(autouse=True)
 def _reset_eranio_quiet_filter():
     yield
     import logging as _logging

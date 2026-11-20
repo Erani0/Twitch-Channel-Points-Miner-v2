@@ -6620,6 +6620,7 @@ class Twitch(object):
         watch_status_interval_minutes=15,
     ):
         from TwitchChannelPointsMiner.eranio import drops as eranio_drops
+        from TwitchChannelPointsMiner.eranio import points as eranio_points
         from TwitchChannelPointsMiner.eranio import streak as eranio_streak
 
         # Streamers already warned about a missing spade URL, so the warning
@@ -6676,6 +6677,10 @@ class Twitch(object):
                     if streamers_snapshot[i].is_online is True
                     and not self.__channel_ban_active(streamers_snapshot[i], now)
                     and eranio_drops.allows_watch(streamers_snapshot[i])
+                    and (
+                        eranio_points.has_points(streamers_snapshot[i])
+                        or self.__drops_condition(streamers_snapshot[i]) is True
+                    )
                     and (
                         not is_drop_discovered(streamers_snapshot[i])
                         or self.__drops_condition(streamers_snapshot[i]) is True

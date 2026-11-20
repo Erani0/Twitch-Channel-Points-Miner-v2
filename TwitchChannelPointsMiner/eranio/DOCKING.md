@@ -196,3 +196,10 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 `tools/update_from_v3.py` (wrappers `.sh`, `.ps1`): fetch of the remote named `v3`, merge into `update/v3-<version>` without pushing, conflicts only tolerated in the `__version__` line (own number wins, other lines of both sides are merged), `eranio/V3_BASE` updated, tests, German summary. `.github/workflows/v3-update-check.yml` runs it daily when the repository variable `V3_REPO_URL` is set and opens a pull request with the change list and the test result; it never merges. Guard tests for all docking points: `tests/test_eranio_docking.py`; rehearsal of the whole upgrade path: `tests/test_eranio_upgrade.py`; tool tests: `tests/test_eranio_update_tool.py`.
 
 | classes/gql/Integration.py | channel_follows: fall back to the last edge cursor when Twitch omits pageInfo.endCursor (otherwise only the first 100 follows load) |
+
+## 3.0.16: Skip channels without channel points
+
+- The online filter in `Twitch.send_minute_watched_events` also requires `eranio.points.has_points(streamer)` unless the stream qualifies for Drops (`__drops_condition`). Channels whose `communityPointsSettings.isEnabled` is false (no Affiliate/Partner, or points switched off) never earn points or streaks, so they no longer take a points or streak slot.
+- `eranio.points` asks Twitch in the background (one GQL request with one alias per channel, up to 35 per request), caches the answer for 12 hours, retries a failed check after 10 minutes and treats unknown channels as allowed. Each channel without points is logged once.
+- Found on 20.11.2026: sintica, vanaessa, myersprincessttv and takotaretriver98 held two of three slots for hours without a single point. An earlier change that polled stream segments for every channel (3.0.15) was based on that wrong reading and was reverted.
+- Tests: `tests/conftest.py` resets the cache and disables the background worker, so no test sends a request.
