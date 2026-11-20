@@ -195,13 +195,22 @@ def now_watching_overview():
         data = read_json_file(os.path.join(analytics_path, "now_watching.json"))
         if isinstance(data, list):
             entries = [e for e in data if isinstance(e, dict)]
+    drop_channels = set()
+    pick = drops.STATE.drop_pick
+    if pick:
+        drop_channels.add(str(pick[0]).lower())
+    campaigns = read_json_file(campaigns_path())
+    if isinstance(campaigns, dict) and isinstance(campaigns.get("jetzt"), dict):
+        channel = text_or_none(campaigns["jetzt"].get("kanal"), 60)
+        if channel:
+            drop_channels.add(channel.lower())
     result = []
     for entry in entries:
         login = text_or_none(entry.get("username"), 60)
         if not login:
             continue
         reasons = []
-        if entry.get("reason") == "drops":
+        if entry.get("reason") == "drops" or login.lower() in drop_channels:
             reasons.append("Drop")
         elif entry.get("reason") == "badge":
             reasons.append("Badge")

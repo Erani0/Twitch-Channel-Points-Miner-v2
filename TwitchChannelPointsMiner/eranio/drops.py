@@ -578,6 +578,7 @@ class State:
         self.last_write = 0.0
         self.last_status = 0.0
         self.day = None
+        self.drop_pick = None
         self.lock = threading.RLock()
 
 
@@ -753,6 +754,9 @@ def _sync_categories(settings, ranked):
         categories[:] = desired
 
 
+STATUS_LINES = 10
+
+
 def _log_status(ordered, finished, settings, live, blocked, statuses):
     if not ordered and not finished:
         logger.info(
@@ -765,7 +769,16 @@ def _log_status(ordered, finished, settings, live, blocked, statuses):
         len(ordered),
         extra={"emoji": ":package:"},
     )
+    shown = 0
+    hidden = 0
     for position, view in enumerate(ordered, start=1):
+        state = statuses.get(view.id, "")
+        if not DropFile.is_active(view, settings):
+            state = "aus (aktiv: false)"
+        if shown >= STATUS_LINES or not view.watchable() or state.startswith("aus"):
+            hidden += 1
+            continue
+        shown += 1
         nxt = None
         candidates = view.watchable()
         if candidates:
@@ -773,9 +786,6 @@ def _log_status(ordered, finished, settings, live, blocked, statuses):
                 candidates, key=lambda d: d.minutes_required - d.current_minutes_watched
             )
             nxt = f"{closest.current_minutes_watched}/{closest.minutes_required} Min. ({closest.name or closest.benefit or 'Drop'})"
-        state = statuses.get(view.id, "")
-        if not DropFile.is_active(view, settings):
-            state = "aus (aktiv: false)"
         logger.info(
             "Drops %d. %s | %s | %d von %d offen | naechster: %s | %s",
             position,
@@ -786,8 +796,13 @@ def _log_status(ordered, finished, settings, live, blocked, statuses):
             nxt or "-",
             state,
         )
-    for view, status in finished:
-        logger.info("Drops fertig: %s | %s | %s", view.game_name, view.name, status)
+    if hidden:
+        logger.info(
+            "Drops: %d weitere Kampagnen ohne Anzeige hier, vollständige Liste in drop_campaigns.json und auf der Drops-Seite",
+            hidden,
+        )
+    if finished:
+        logger.info("Drops: %d Kampagnen erledigt oder abgelaufen", len(finished))
 
 
 def on_new_day(twitch):
@@ -853,6 +868,15 @@ def _publish(twitch, campaigns, streamers, now):
                             "kampagne": view.name,
                         }
                         break
+            if current is None and STATE.drop_pick is not None:
+                login, cid = STATE.drop_pick
+                view = next((v for v in views if v.id == cid), None)
+                if view is not None:
+                    current = {
+                        "kanal": login,
+                        "spiel": view.game_name,
+                        "kampagne": view.name,
+                    }
             if STATE.file.write(views, settings, statuses, finished, current):
                 STATE.settings = STATE.file._settings
                 STATE.dirty = False
@@ -929,8 +953,11 @@ def reserve(
         if rank is not None:
             candidates.append((rank, index))
     if not candidates:
+        STATE.drop_pick = None
         return watching
     best_rank, best = min(candidates)
+    if 0 <= best_rank < len(STATE.rank_ids):
+        STATE.drop_pick = (snapshot[best].username, STATE.rank_ids[best_rank])
     if best in watching:
         kept = [
             i

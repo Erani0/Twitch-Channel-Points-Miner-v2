@@ -469,3 +469,20 @@ def test_the_front_end_keeps_the_streak_display():
         )
     page = (ASSETS / "index.html").read_text(encoding="utf-8")
     assert "Streak ascending" in page and "Streak descending" in page
+
+
+def test_drop_pick_is_shown_as_drop_reason(env, tmp_path, monkeypatch):
+    from TwitchChannelPointsMiner.eranio import dashboard, drops
+
+    monkeypatch.setattr(drops.STATE, "drop_pick", ("alpha", "x"), raising=False)
+    monkeypatch.setattr(
+        dashboard,
+        "read_json_file",
+        lambda path: (
+            [{"username": "alpha", "reason": "points"}]
+            if str(path).endswith("now_watching.json")
+            else {}
+        ),
+    )
+    channels = dashboard.now_watching_overview()["channels"]
+    assert channels[0]["reasons"][0] == "Drop"

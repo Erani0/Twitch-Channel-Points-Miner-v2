@@ -26,3 +26,16 @@ def reset_eranio_streak_state():
     yield
     streak.STATE.reset()
     drops.STATE.reset()
+
+
+@pytest.fixture(autouse=True)
+def _reset_eranio_quiet_filter():
+    yield
+    import logging as _logging
+
+    from TwitchChannelPointsMiner.eranio import quiet as _quiet
+
+    _target = _logging.getLogger(_quiet.LOGGER_NAME)
+    for _f in list(_target.filters):
+        if isinstance(_f, _quiet.DemoteNoisyInfo):
+            _target.removeFilter(_f)

@@ -117,6 +117,9 @@ class TwitchChannelPointsMiner(BaseMiner):
         normalized_priority = normalize_priority(priority)
         if normalized_priority is not None:
             options["priority"] = normalized_priority
+        from TwitchChannelPointsMiner.eranio import quiet
+
+        quiet.install()
         super().__init__(
             username,
             claim_drops_startup=claim_drops_startup,
