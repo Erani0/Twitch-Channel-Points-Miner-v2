@@ -68,6 +68,7 @@ def git(*args, cwd, check=True):
 
 
 def old_egg_run_py():
+    require_old_tag()
     source = subprocess.check_output(
         [
             "git",
@@ -136,6 +137,7 @@ def rehearsal(tmp_path_factory):
         cwd=origin,
     )
 
+    require_old_tag()
     install = top / "install"
     clone = subprocess.run(
         [
@@ -278,9 +280,21 @@ def bash():
     pytest.skip("bash fehlt")
 
 
+def require_old_tag():
+    found = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", "v2-final-2.6.4^{commit}"],
+        cwd=ROOT,
+        capture_output=True,
+    )
+    if found.returncode != 0:
+        pytest.skip("Tag v2-final-2.6.4 fehlt in dieser Kopie")
+
+
 def egg_yaml(new):
     import yaml
 
+    if not new:
+        require_old_tag()
     if new:
         return yaml.safe_load((ROOT / EGG).read_text(encoding="utf-8"))
     return yaml.safe_load(
