@@ -124,6 +124,16 @@ def test_twitch_hooks_are_in_place():
     assert "eranio_drops.remember" in sync and "eranio_drops.publish" in sync
 
 
+def test_segment_polling_hook_is_in_place():
+    from TwitchChannelPointsMiner.eranio import segments
+
+    assert "eranio_segments.should_poll" in source(
+        twitch_module.Twitch._poll_stream_segments
+    )
+    assert segments.should_poll(True) is True
+    assert segments.should_poll(False) is True
+
+
 def test_dashboard_hook_and_view_functions():
     assert "dashboard.install" in source(server_module.AnalyticsServer.__init__)
     assert hasattr(Streamer, "persistent_series") and hasattr(

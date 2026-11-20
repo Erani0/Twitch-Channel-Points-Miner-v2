@@ -2303,6 +2303,9 @@ def test_poll_stream_segments_skips_streams_without_drops(monkeypatch):
         StreamSegmentWatcher,
     )
 
+    from TwitchChannelPointsMiner.eranio import segments
+
+    monkeypatch.setattr(segments, "POLL_ALL_WATCHED", False)
     started = []
     monkeypatch.setattr(
         StreamSegmentWatcher, "start_poll", lambda self, now=None: started.append(self)
@@ -2313,6 +2316,23 @@ def test_poll_stream_segments_skips_streams_without_drops(monkeypatch):
 
     assert twitch.stream_segment_watchers == {}
     assert started == []
+
+
+def test_poll_stream_segments_also_polls_points_streams_by_default(monkeypatch):
+    from TwitchChannelPointsMiner.classes.StreamSegmentWatcher import (
+        StreamSegmentWatcher,
+    )
+
+    started = []
+    monkeypatch.setattr(
+        StreamSegmentWatcher, "start_poll", lambda self, now=None: started.append(self)
+    )
+    twitch = _segment_twitch()
+
+    twitch._poll_stream_segments(_segment_streamer(), False)
+
+    assert list(twitch.stream_segment_watchers) == ["alice"]
+    assert len(started) == 1
 
 
 def test_poll_stream_segments_is_noop_without_gql():

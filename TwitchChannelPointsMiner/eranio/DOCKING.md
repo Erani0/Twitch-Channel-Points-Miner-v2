@@ -196,3 +196,9 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 `tools/update_from_v3.py` (wrappers `.sh`, `.ps1`): fetch of the remote named `v3`, merge into `update/v3-<version>` without pushing, conflicts only tolerated in the `__version__` line (own number wins, other lines of both sides are merged), `eranio/V3_BASE` updated, tests, German summary. `.github/workflows/v3-update-check.yml` runs it daily when the repository variable `V3_REPO_URL` is set and opens a pull request with the change list and the test result; it never merges. Guard tests for all docking points: `tests/test_eranio_docking.py`; rehearsal of the whole upgrade path: `tests/test_eranio_upgrade.py`; tool tests: `tests/test_eranio_update_tool.py`.
 
 | classes/gql/Integration.py | channel_follows: fall back to the last edge cursor when Twitch omits pageInfo.endCursor (otherwise only the first 100 follows load) |
+
+## 3.0.15: Stream segments for every watched channel
+
+- `Twitch._poll_stream_segments` asks `eranio.segments.should_poll(drop_stream)` instead of returning for every stream that is not the Drops stream. With `POLL_ALL_WATCHED = True` (default) every watched channel requests its HLS segments.
+- Reason: measured on 20.11.2026 with two accounts, 18 minutes each. Channels without segment requests got no watch points and no watch streak at all; only the channel in the Drops slot (which requests segments) earned. Twitch evidently requires segment requests for channel points as well, not only for Drops.
+- The base test `test_poll_stream_segments_skips_streams_without_drops` sets `POLL_ALL_WATCHED = False` to keep checking the base behaviour.
