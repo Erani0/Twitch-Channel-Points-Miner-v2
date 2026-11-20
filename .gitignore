@@ -143,6 +143,8 @@ cython_debug/
 
 # Custom files
 run.py
+run.py.v2-sicherung*
+run.py.neu
 chromedriver*
 
 # Folders
@@ -177,8 +179,11 @@ settings.json
 .ai-agent-checkpoints/
 *.js
 *.pyc
+drop_campaigns*.json
 drop_campaigns.json
 drop_campaigns.json.tmp
 drop_campaigns.fehlerhaft.json
 
 !assets/eranio/*.js
+
+!TwitchChannelPointsMiner/eranio/templates/run.py
