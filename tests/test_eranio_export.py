@@ -201,19 +201,19 @@ def test_export_persists_the_days_into_the_analytics_file(miner, tmp_path, monke
     assert [entry["y"] for entry in data["streak"]] == [7]
 
 
-def test_banned_column_fetches_the_status_once(miner):
+def test_banned_column_uses_the_base_ban_status_once(miner):
+    from TwitchChannelPointsMiner.classes.entities.ChannelBanStatus import (
+        ChannelBanStatus,
+    )
+
     calls = []
 
     class Gql:
-        parser = SimpleNamespace(parse_base_response=lambda response, flag: (None, None, response))
+        def channel_ban_statuses(self, channel_ids):
+            calls.append(list(channel_ids))
+            return {"123456": ChannelBanStatus(True, permanent=True)}
 
-        def post_gql_request_single(self, name, payload, parser):
-            calls.append((name, payload["variables"]))
-            return {"chatRoomBanStatus": {"banStatus": {"isPermanent": True}}}
-
-    miner.twitch = SimpleNamespace(
-        gql=Gql(), twitch_login=SimpleNamespace(get_user_id=lambda: "77")
-    )
+    miner.twitch = SimpleNamespace(gql=Gql(), channel_bans={})
     streak.STATE.known_length["demo"] = 1
     streamer = Streamer("demo")
     streamer.channel_id = "123456"
@@ -221,7 +221,26 @@ def test_banned_column_fetches_the_status_once(miner):
 
     assert export.build_rows(miner)[0]["Banned"] == "yes"
     assert export.build_rows(miner)[0]["Banned"] == "yes"
-    assert calls == [("ChatRoomBanStatus", {"targetUserID": "77", "channelID": "123456"})]
+    assert calls == [["123456"]]
+
+
+def test_banned_column_prefers_the_base_cache(miner):
+    from TwitchChannelPointsMiner.classes.entities.ChannelBanStatus import (
+        ChannelBanStatus,
+    )
+
+    class Gql:
+        def channel_ban_statuses(self, channel_ids):
+            raise AssertionError("cache must be used")
+
+    miner.twitch = SimpleNamespace(
+        gql=Gql(), channel_bans={"123456": (ChannelBanStatus(False), 0)}
+    )
+    streamer = Streamer("demo")
+    streamer.channel_id = "123456"
+    streak.STATE.known_length["demo"] = 1
+    miner.streamers = [streamer]
+    assert export.build_rows(miner)[0]["Banned"] == "no"
 
 
 def test_follow_dates_are_read_from_the_follow_pages(miner):

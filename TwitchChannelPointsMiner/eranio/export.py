@@ -4,6 +4,7 @@ import logging
 import os
 import tempfile
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -32,16 +33,6 @@ COLUMNS = [
 ]
 INTERVAL_SECONDS = 10 * 60
 START_POLL_SECONDS = 5
-CHAT_BAN_OPERATION = {
-    "operationName": "ChatRoomBanStatus",
-    "extensions": {
-        "persistedQuery": {
-            "version": 1,
-            "sha256Hash": "319f2a9a3ac7ddecd7925944416c14b818b65676ab69da604460b68938d22bea",
-        }
-    },
-}
-
 
 def style_sheet(sheet) -> None:
     header_fill = PatternFill("solid", fgColor="1F4E78")
@@ -452,53 +443,24 @@ def load_follow_dates(miner):
         logger.warning("Failed to load follower dates for export: %s", error)
 
 
-def is_chat_banned(status):
-    if status is None:
-        return False
-    if isinstance(status, dict):
-        if "banStatus" in status:
-            return is_chat_banned(status.get("banStatus"))
-        if "isBanned" in status:
-            return bool(status.get("isBanned"))
-        if not status:
-            return False
-        known = {
-            "bannedUser",
-            "createdAt",
-            "expiresAt",
-            "expiresInMs",
-            "isPermanent",
-            "moderator",
-            "reason",
-            "roomOwner",
-        }
-        return any(field in status for field in known)
-    return bool(status)
-
-
 def chat_banned(miner, streamer):
     login = streamer.username
-    known = STATE.ban_status.get(login, False)
-    channel_id = getattr(streamer, "channel_id", None)
-    if login in STATE.ban_lookup_attempted or not channel_id:
-        return known
+    channel_id = str(getattr(streamer, "channel_id", "") or "")
+    if not channel_id:
+        return STATE.ban_status.get(login, False)
+    cached = (getattr(miner.twitch, "channel_bans", None) or {}).get(channel_id)
+    if cached and cached[0] is not None:
+        STATE.ban_status[login] = bool(cached[0].active(time.time()))
+        return STATE.ban_status[login]
+    if login in STATE.ban_lookup_attempted:
+        return STATE.ban_status.get(login, False)
     STATE.ban_lookup_attempted.add(login)
     try:
-        viewer_id = miner.twitch.twitch_login.get_user_id()
-        if viewer_id is None:
-            return known
-        payload = copy.deepcopy(CHAT_BAN_OPERATION)
-        payload["variables"] = {"targetUserID": f"{viewer_id}", "channelID": channel_id}
-        gql = miner.twitch.gql
-        data = gql.post_gql_request_single(
-            payload["operationName"],
-            payload,
-            lambda response: gql.parser.parse_base_response(response, True)[2],
-        )
-        if isinstance(data, dict) and "chatRoomBanStatus" in data:
-            STATE.ban_status[login] = is_chat_banned(data.get("chatRoomBanStatus"))
+        status = miner.twitch.gql.channel_ban_statuses([channel_id]).get(channel_id)
+        if status is not None:
+            STATE.ban_status[login] = bool(status.active(time.time()))
     except Exception as error:
-        logger.debug("Failed to fetch chat ban status for %s: %s", login, error)
+        logger.debug("Failed to fetch ban status for %s: %s", login, error)
     return STATE.ban_status.get(login, False)
 
 
