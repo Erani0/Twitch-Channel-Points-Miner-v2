@@ -276,7 +276,7 @@ def test_analytics_accepts_the_old_keywords(workdir, monkeypatch):
     miner.analytics(host="127.0.0.1", port=5001)
     miner.analytics(host="0.0.0.0", port=5002, password="secret")
     assert [server.port for server in started] == [5000, 5001, 5002]
-    assert started[2].password == "secret"
+    assert started[2].password is None
 
 
 def test_mine_accepts_the_old_keywords(workdir, monkeypatch):

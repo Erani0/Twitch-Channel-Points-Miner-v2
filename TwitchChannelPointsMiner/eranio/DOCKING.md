@@ -90,3 +90,32 @@ Gaps in v3 (not filled with old code):
 - `Campaign.clear_drops()` removes claimed and not yet started drops before the sync pass. The layer therefore remembers the uncleared campaign in `remember()` (total drops, next start). A campaign that vanishes while its end is in the future is never "alles abgeholt": it shows "heute erledigt, wird täglich neu geprüft" (or "nächster Drop ab ..."), stays listed and is re-checked every 15 minutes and at every day change, so a reset or re-added daily drop (same or new id) turns it back to "läuft" and eligible for the pick. "alles abgeholt" only after the campaign end.
 - v3 asks only channels tagged with drops or listed in a campaign allow-list; the old "ask every live followed channel directly" part is not reproduced.
 - v3 does not store a per-campaign "no progress" state; "pausiert" is taken from `drop_watch_health` per game, not per campaign.
+
+## 8. Dashboard (phase 4, `eranio/dashboard.py`, `eranio/streak_history.py`, `assets/eranio/`)
+
+Base lines touched:
+
+| File | Change |
+|---|---|
+| `classes/AnalyticsServer.py` | end of `__init__`: import of `eranio.dashboard` and `dashboard.install(self.app, self)` (4 lines). Everything else of the base server (auth code, endpoints, cache, log tail) stays unchanged. |
+| `classes/entities/Streamer.py` | new method `persistent_streak_days(days)` after `persistent_series` (writes the key `streak` into the analytics JSON, same shape as the old version: `{"x": ms, "y": days}`). |
+| `TwitchChannelPointsMiner.py` | startup log: the repository URL line removed (name and our own version stay); `__check_for_update`: the container/release-page instruction text replaced by one neutral sentence ("Restart the miner to install the update."). |
+| `constants.py` | `GITHUB_REPOSITORY_URL` / `GITHUB_LATEST_RELEASE_API` point to our own repository (Erani0/Twitch-Channel-Points-Miner-v2). |
+| `__init__.py` | `__version__` is our own number (3.0.0), not the base number. A merge of the base release will conflict on this one line: keep ours. |
+| `eranio/streak.py` | `run_check` records the RewardList value through `streak_history.record` (3 lines). |
+| `eranio/compat.py` | `analytics()` always builds the open dashboard (the old `password` argument is accepted and ignored), `mine()` starts `streak_history.start(self)`. |
+| `.gitignore` | `!assets/eranio/*.js` (the base ignores `*.js`). |
+
+`dashboard.install` replaces view functions after the base registered them (`app.view_functions[...]`), so the base routes keep their names:
+- `index` renders `assets/eranio/index.html` (our old page plus Drops view, "Now watching" box, log pause button, delete dialog, update banner).
+- `static` serves only `assets/eranio/` (css, js, png, ico, svg, jpg, gif). The base pages and scripts in `assets/` (`charts.html`, `script.js`, `style.css`, `windows_shell.html`, ...) are no longer reachable and carry the base branding; they stay in the repository unchanged.
+- `streamers` adds `watch_streak_days` (last value of the `streak` series).
+- `web_config` and `test_web_notification` answer 404; a `before_request` guard (inserted first) answers 404 for everything under `/config` and keeps the loopback Host check with a neutral message. The base cross-site check (Origin / Sec-Fetch-Site on POST/DELETE) and the path checks of `/json/<name>` and `DELETE /streamers/<name>` (only names from `streamers_available()`) stay active.
+- New routes: `/drops` (campaigns from `drop_campaigns.json` with whitelisted fields, current channel, history from `drops_by_category.json` split into claimed and expired), `/watching` (`now_watching.json` plus streak and drop slot loan state, reasons Drop, Badge, Streak, Points), `/update_info` (reads `__version__` from the master `__init__.py` of our repository, cached 6 hours, 30 minutes after a failure, compared with our own version).
+- Images: server side `safe_image` keeps only https URLs on `jtvnw.net`, `twitchcdn.net`, `twitch.tv`, `ttvnw.net`; the page checks again and falls back to a Font Awesome icon (set already loaded by the old page, no new CDN). All texts are inserted with `textContent`.
+
+Streak history (old display kept): `streak_history.record` writes the days into the per-streamer analytics JSON at most when the value changed or every 6 hours; sources are the RewardList value of `streak.py` (`Track.value`) and the days migrated from the old cache file (`STATE.known_length`). A thread (`Streak history`, started in `compat.mine`) syncs all streamers every 15 minutes. Old analytics files stay readable, existing `streak` entries are appended to. Not ported: the old Excel export of streamers (column "Watchstreaks"): the base has no such export (`streamers_export_path` does not exist there).
+
+Section 6 status: startup repository line removed, update text neutral, release URL no longer passed to a page (our page does not use it), dashboard title/about/badges/credit line live only in the unserved base `assets/charts.html`. Still present as invisible text: gist URLs in `DropBadgeCatalog.py` / `TwitchDropsApp.py`, User-Agent string in `utils/Utils.py: check_versions` (network only, `update_check` is off by default), license files and headers.
+
+`eranio/V3_BASE` (content `<base version> <commit>`) is read only by tooling and never shown or served.

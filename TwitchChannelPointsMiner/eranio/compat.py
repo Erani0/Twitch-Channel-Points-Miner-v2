@@ -3,8 +3,7 @@ import os
 from pathlib import Path
 
 from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
-from TwitchChannelPointsMiner.classes.AnalyticsServer import LOOPBACK_HOSTS
-from TwitchChannelPointsMiner.eranio import drops, streak
+from TwitchChannelPointsMiner.eranio import drops, streak, streak_history
 from TwitchChannelPointsMiner.eranio.streak_cache import migrate_old_cache
 from TwitchChannelPointsMiner.eranio.git_config import dedupe_git_safe_directories
 from TwitchChannelPointsMiner.TwitchChannelPointsMiner import (
@@ -140,23 +139,17 @@ class TwitchChannelPointsMiner(BaseMiner):
         password: str = None,
         log_poll_interval: int = 5,
     ):
-        exposed_without_password = (
-            host not in LOOPBACK_HOSTS and not password and Settings.enable_analytics
-        )
-        if not exposed_without_password:
+        if not Settings.enable_analytics:
             return super().analytics(
                 host=host,
                 port=port,
                 refresh=refresh,
                 days_ago=days_ago,
-                password=password,
+                password=None,
                 log_poll_interval=log_poll_interval,
             )
         from TwitchChannelPointsMiner.classes.AnalyticsServer import AnalyticsServer
 
-        logger.warning(
-            "The dashboard is reachable from the network without a password."
-        )
         http_server = AnalyticsServer(
             host="127.0.0.1",
             port=port,
@@ -205,6 +198,7 @@ class TwitchChannelPointsMiner(BaseMiner):
             self.stop_watch_when_drops_completed = bool(
                 stop_watch_when_drops_completed
             )
+        streak_history.start(self)
         return super().mine(
             list(streamers) if streamers is not None else [],
             list(blacklist) if blacklist is not None else [],

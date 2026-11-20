@@ -1051,6 +1051,10 @@ class AnalyticsServer(Thread):
             methods=["POST"],
         )
 
+        from TwitchChannelPointsMiner.eranio import dashboard
+
+        dashboard.install(self.app, self)
+
     def run(self):
         # Production WSGI server instead of Flask's development server.
         # create_server() does the actual socket bind - split out from

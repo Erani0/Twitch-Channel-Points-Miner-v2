@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ server_name }}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://static.twitchcdn.net/assets/favicon-16-52e571ffea063af7a7f4.png">
+
+    <!-- CSS & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.1/css/bulma.css" rel="stylesheet" />
+    <link href="{{url_for('static', filename='dashboard.css')}}?v={{asset_version}}" rel="stylesheet" />
+    <link href="{{url_for('static', filename='dark-theme.css')}}?v={{asset_version}}" rel="stylesheet" />
+
+    <!-- External Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.42.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+    <!-- Inline overrides to bypass any browser cache issues -->
+    <style>
+        .streamers-sidebar .tabs {
+            border-right: none !important;
+            display: block !important;
+            width: 100% !important;
+            overflow: visible !important;
+            white-space: normal !important;
+        }
+        .streamers-sidebar .tabs ul {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            display: flex !important;
+            width: 100% !important;
+            border-bottom: none !important;
+        }
+        .streamers-sidebar .tabs li {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+        }
+        .streamers-sidebar .tabs a {
+            display: block !important;
+            width: 100% !important;
+            border-bottom: none !important;
+            text-align: left !important;
+            padding: 0.75rem 1.25rem !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="update-banner" id="update-banner" style="display: none;">
+        <span id="update-text"></span>
+        <button class="update-dismiss" id="update-dismiss" aria-label="Dismiss">&times;</button>
+    </div>
+    <div class="container">
+        
+        <!-- Header HUD -->
+        <header class="columns is-vcentered" id="header">
+            <div class="column has-text-centered-mobile">
+                <a href="#" class="header-banner">
+                    <img width="380" src="{{url_for('static', filename='banner.png')}}" alt="banner">
+                </a>
+            </div>
+        </header>
+
+        <!-- Control Toolbar HUD -->
+        <section class="hud-toolbar">
+            <div class="toolbar-left">
+                <!-- Sorting Dropdown -->
+                <div class="dropdown">
+                    <div class="dropdown-trigger">
+                        <button class="button" aria-haspopup="true" aria-controls="dropdown-menu">
+                            <span id="sorting-by">Sort By</span>
+                            <span class="icon is-small">
+                                <i class="fas fa-angle-down" aria-hidden="true"></i>
+                            </span>
+                        </button>
+                    </div>
+                    <div class="dropdown-menu" id="dropdown-menu" role="menu">
+                        <div class="dropdown-content">
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Name ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Name descending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Points ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Points descending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Last activity ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Last activity descending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Streak ascending</a>
+                            <a href="#" class="dropdown-item" onClick="changeSortBy(this); return false;">Streak descending</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="view-switch">
+                    <button class="button is-active" id="switch-charts">Charts</button>
+                    <button class="button" id="switch-drops">Drops</button>
+                </div>
+            </div>
+
+            <!-- Date Range Controls -->
+            <div class="field is-horizontal" style="margin-bottom: 0;">
+                <div class="field-body">
+                    <div class="field">
+                        <p class="control">
+                            <input class="input is-small" type="date" id="startDate">
+                        </p>
+                    </div>
+                    <div class="field">
+                        <p class="control">
+                            <input class="input is-small" type="date" id="endDate">
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Switch Toggles -->
+            <div class="toolbar-right">
+                <label class="hud-checkbox" id="toggle-log-label">
+                    <input type="checkbox" id="log">
+                    <span>Logs</span>
+                </label>
+                <label class="hud-checkbox">
+                    <input type="checkbox" checked id="annotations">
+                    <span>Annotations</span>
+                </label>
+                <label class="hud-checkbox">
+                    <input type="checkbox" checked id="dark-mode">
+                    <span>Dark theme</span>
+                </label>
+                <label class="hud-checkbox">
+                    <input type="checkbox" checked id="toggle-header">
+                    <span>Header</span>
+                </label>
+            </div>
+        </section>
+
+        <!-- Now watching -->
+        <section class="box" id="watching-box">
+            <div class="watching-title">Now watching</div>
+            <div id="watching-list" class="watching-list"></div>
+            <div id="watching-note" class="watching-note" style="display: none;"></div>
+        </section>
+
+        <!-- Main HUD Layout Grid -->
+        <div class="hud-layout">
+            <!-- Left Panel: Streamers List -->
+            <aside class="streamers-sidebar" id="streamers-sidebar-panel">
+                <div class="tabs">
+                    <ul id="streamers-list"></ul>
+                </div>
+            </aside>
+
+            <!-- Right Panel: Main Points Chart -->
+            <main class="chart-container mobile-show" id="chart-panel">
+                <div class="box" id="chart" style="padding: 0.30rem;"></div>
+                <div class="chart-actions">
+                    <button class="button is-small" id="delete-streamer" style="display: none;">
+                        <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                        <span>Delete data of <span id="delete-streamer-name"></span></span>
+                    </button>
+                </div>
+            </main>
+        </div>
+
+        <!-- Drops -->
+        <section class="drops-section" id="drops-panel">
+            <div id="drops-content"></div>
+        </section>
+
+        <!-- Terminal Live Log Output Panel -->
+        <section class="log-section" id="log-panel">
+            <div class="box" id="log-box" style="display: none;">
+                <div class="log-tools">
+                    <button class="button is-small" id="log-pause">
+                        <span class="icon is-small"><i class="fas fa-pause log-pause-icon"></i></span>
+                        <span class="log-pause-label">Pause</span>
+                    </button>
+                </div>
+                <pre id="log-content">In your run.py file set save=True in logger_settings to save logs to a file.&#10;&#13;</pre>
+            </div>
+        </section>
+
+        <!-- Sticky Bottom Tab bar for Mobile Handys -->
+        <nav class="mobile-nav-tabs">
+            <button class="mobile-nav-btn is-active" id="btn-tab-chart" onclick="switchMobileTab('chart', this)">
+                <i class="fas fa-chart-area"></i>
+                <span>Chart</span>
+            </button>
+            <button class="mobile-nav-btn" id="btn-tab-streamers" onclick="switchMobileTab('streamers', this)">
+                <i class="fas fa-user-friends"></i>
+                <span>Streamers</span>
+            </button>
+            <button class="mobile-nav-btn" id="btn-tab-drops" onclick="switchMobileTab('drops', this)">
+                <i class="fas fa-gift"></i>
+                <span>Drops</span>
+            </button>
+            <button class="mobile-nav-btn" id="btn-tab-logs" onclick="switchMobileTab('logs', this)">
+                <i class="fas fa-terminal"></i>
+                <span>Logs</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Delete confirmation -->
+    <div class="hud-modal" id="delete-dialog">
+        <div class="hud-modal-backdrop"></div>
+        <div class="hud-modal-card box">
+            <div class="hud-modal-title">Delete analytics data</div>
+            <p>All stored chart data of <b id="delete-dialog-name"></b> (points, streak history, annotations) will be removed. This cannot be undone.</p>
+            <p class="hud-modal-error" id="delete-error"></p>
+            <div class="hud-modal-buttons">
+                <button class="button" id="delete-cancel">Cancel</button>
+                <button class="button is-danger-hud" id="delete-confirm">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Initialization and dynamic bindings -->
+    <script type="text/javascript">
+        function toggleDarkMode() {
+            var darkMode = $('#dark-mode').prop("checked");
+            $("link[href='{{url_for('static', filename='dark-theme.css')}}']").prop("disabled", !darkMode);
+            if (window.chart) {
+                chart.updateOptions({
+                    colors: darkMode === true ? ["#00ffaa"] : ['#008ffb'],
+                    chart: {
+                        foreColor: darkMode === true ? "#f1f3f9" : '#373d3f'
+                    },
+                    tooltip: {
+                        theme: darkMode === true ? "dark" : "light"
+                    }
+                });
+            }
+        }
+        var refresh = parseInt("{{ refresh }}");
+        var daysAgo = parseInt("{{ daysAgo }}");
+        var logPollInterval = parseInt("{{ logPollInterval }}");
+    </script>
+    <script type="text/javascript" src="{{url_for('static', filename='dashboard.js')}}?v={{asset_version}}"></script>
+</body>
+
+</html>
