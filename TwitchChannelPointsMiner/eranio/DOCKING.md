@@ -186,3 +186,5 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 
 ### Update tooling
 `tools/update_from_v3.py` (wrappers `.sh`, `.ps1`): fetch of the remote named `v3`, merge into `update/v3-<version>` without pushing, conflicts only tolerated in the `__version__` line (own number wins, other lines of both sides are merged), `eranio/V3_BASE` updated, tests, German summary. `.github/workflows/v3-update-check.yml` runs it daily when the repository variable `V3_REPO_URL` is set and opens a pull request with the change list and the test result; it never merges. Guard tests for all docking points: `tests/test_eranio_docking.py`; rehearsal of the whole upgrade path: `tests/test_eranio_upgrade.py`; tool tests: `tests/test_eranio_update_tool.py`.
+
+| classes/gql/Integration.py | channel_follows: fall back to the last edge cursor when Twitch omits pageInfo.endCursor (otherwise only the first 100 follows load) |

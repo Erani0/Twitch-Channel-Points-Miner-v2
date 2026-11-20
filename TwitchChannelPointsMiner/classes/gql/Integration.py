@@ -559,6 +559,8 @@ class GQL:
                 has_next = parsed_response.follows.page_info.has_next_page
                 if has_next:
                     next_cursor = parsed_response.follows.page_info.end_cursor
+                    if next_cursor in (None, "") and parsed_response.follows.edges:
+                        next_cursor = getattr(parsed_response.follows.edges[-1], "cursor", None)
                     if next_cursor in (None, "", last_cursor):
                         logger.warning(
                             "ChannelFollows indicated another page without a new "
