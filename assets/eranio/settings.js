@@ -46,6 +46,46 @@
         tags: 'Tags (kommagetrennt)', topic: 'Thema'
     };
     var SOURCES = { streamers: 'Streamer-Liste', followers: 'Gefolgte Kanäle', categories: 'Kategorien', badges: 'Abzeichen-Drops', wildcard_categories: 'Wildcard-Kategorien' };
+    var ENUM_LABELS = {
+        SMART: 'Smart', MOST_VOTED: 'Meiste Stimmen', HIGH_ODDS: 'Höchste Quote',
+        PERCENTAGE: 'Prozent', SMART_MONEY: 'Meiste Punkte', NUMBER_1: 'Immer Option 1', NUMBER_2: 'Immer Option 2',
+        NUMBER_3: 'Immer Option 3', NUMBER_4: 'Immer Option 4', NUMBER_5: 'Immer Option 5', NUMBER_6: 'Immer Option 6',
+        NUMBER_7: 'Immer Option 7', NUMBER_8: 'Immer Option 8',
+        FROM_START: 'Sekunden nach dem Start', FROM_END: 'Sekunden vor dem Ende',
+        ALWAYS: 'Immer', NEVER: 'Nie', ONLINE: 'Wenn online', OFFLINE: 'Wenn offline'
+    };
+    var PRIORITY_LABELS = {
+        STREAK: 'Watch Streaks', DROPS: 'Drops', ORDER: 'Reihenfolge der Liste', FAVORITE: 'Favoriten',
+        SUBSCRIBED: 'Abonnierte Kanäle', POINTS_ASCENDING: 'Wenigste Punkte zuerst', POINTS_DESCENDING: 'Meiste Punkte zuerst',
+        STREAK_LENGTH_ASCENDING: 'Kürzeste Streak zuerst', STREAK_LENGTH_DESCENDING: 'Längste Streak zuerst'
+    };
+    var HINTS = {
+        streams_watched: 'Kanäle für Punkte und Streaks. Der Drop-Platz kommt immer noch dazu.',
+        auto_discover_drops: 'Sucht selbst Kanäle mit laufenden Drop-Kampagnen.',
+        watch_streak_max_parallel: 'Wie viele Streaks gleichzeitig geprüft werden.',
+        watch_only_drops: 'Schaut nur noch Kanäle, auf denen Drops laufen.',
+        chat: 'Chat-Beitritt ist für Twitch-Punkte nicht nötig. Jeder Kanal ist eine eigene Verbindung.',
+        claim_drops_startup: 'Holt beim Start fertige Drops aus dem Inventar.',
+        percentage: 'Anteil deiner Kanalpunkte je Wette.',
+        max_points: 'Mehr wird nie gesetzt.',
+        minimum_points: 'Unter diesem Stand wird nicht gewettet.',
+        stealth_mode: 'Setzt nie mehr als der größte andere Einsatz.',
+        drop_pick_stickiness_minutes: 'So lange bleibt der Miner beim gewählten Drop-Kanal.',
+        drop_progress_stall_minutes: 'Kommt so lange kein Fortschritt, wird gewechselt.'
+    };
+    var TABS = [
+        ['overview', 'Übersicht', 'fa-home'],
+        ['streamers', 'Streamer', 'fa-users'],
+        ['watching', 'Zuschauen', 'fa-eye'],
+        ['drops', 'Drops und Kategorien', 'fa-gift'],
+        ['bets', 'Wetten', 'fa-coins'],
+        ['notifications', 'Benachrichtigungen', 'fa-bell'],
+        ['logging', 'Protokoll', 'fa-file-alt'],
+        ['account', 'Konto', 'fa-user-shield']
+    ];
+    var activeTab = 'overview';
+    var streamerFilter = '';
+    try { activeTab = localStorage.getItem('settingsTab') || 'overview'; } catch (error) { activeTab = 'overview'; }
 
     var root = document.getElementById('settings-root');
     var loginBox = document.getElementById('login-box');
@@ -110,32 +150,44 @@
         return el('section', { class: 'box' }, [head, note ? el('p', { class: 'settings-note', text: note }) : null].concat(children));
     }
 
+    function hint(name) {
+        return HINTS[name] ? el('small', { class: 'settings-hint', text: HINTS[name] }) : null;
+    }
+
+    function switchField(input, label, hintText) {
+        input.className = (input.className ? input.className + ' ' : '') + 'settings-switch';
+        return el('label', { class: 'settings-field is-check' }, [
+            input,
+            el('span', { class: 'settings-check-text' }, [el('span', { text: label }), hintText ? el('small', { class: 'settings-hint', text: hintText }) : null])
+        ]);
+    }
+
     function fieldInput(name, definition, value) {
         var input;
         var label = LABELS[name] || name;
         if (definition.type === 'bool') {
             input = el('input', { type: 'checkbox', 'data-name': name });
             input.checked = value === true;
-            return el('label', { class: 'settings-field is-check' }, [input, el('span', { text: label })]);
+            return switchField(input, label, HINTS[name]);
         }
         if (definition.type === 'enum' || definition.type === 'choice') {
             input = el('select', { 'data-name': name });
             definition.choices.forEach(function (choice) {
-                var option = el('option', { value: String(choice), text: name === 'chat' ? (CHAT[choice] || choice) : String(choice) });
+                var option = el('option', { value: String(choice), text: ENUM_LABELS[choice] || String(choice) });
                 if (String(choice) === String(value)) { option.selected = true; }
                 input.appendChild(option);
             });
-            return el('label', { class: 'settings-field' }, [el('span', { text: label }), el('div', { class: 'select is-fullwidth' }, [input])]);
+            return el('label', { class: 'settings-field' }, [el('span', { text: label }), el('div', { class: 'select is-fullwidth' }, [input]), hint(name)]);
         }
         if (definition.type === 'text') {
             input = el('input', { type: 'text', class: 'input', 'data-name': name, value: value || '' });
-            return el('label', { class: 'settings-field' }, [el('span', { text: label }), input]);
+            return el('label', { class: 'settings-field' }, [el('span', { text: label }), input, hint(name)]);
         }
         input = el('input', {
             type: 'number', class: 'input', 'data-name': name, min: definition.min, max: definition.max,
             step: definition.type === 'float' ? 'any' : '1', value: value === null || value === undefined ? '' : String(value)
         });
-        return el('label', { class: 'settings-field' }, [el('span', { text: label }), input]);
+        return el('label', { class: 'settings-field' }, [el('span', { text: label }), input, hint(name)]);
     }
 
     function collect(container, spec) {
@@ -179,15 +231,15 @@
             list.textContent = '';
             order.forEach(function (name, index) {
                 list.appendChild(el('li', {}, [
-                    el('span', { text: (index + 1) + '. ' + name }),
-                    el('button', { class: 'button is-small', type: 'button', text: 'Hoch', disabled: index === 0, onclick: function () { order.splice(index - 1, 0, order.splice(index, 1)[0]); draw(); } }),
-                    el('button', { class: 'button is-small', type: 'button', text: 'Runter', disabled: index === order.length - 1, onclick: function () { order.splice(index + 1, 0, order.splice(index, 1)[0]); draw(); } }),
-                    el('button', { class: 'button is-small', type: 'button', text: 'Entfernen', disabled: order.length === 1, onclick: function () { order.splice(index, 1); draw(); } })
+                    el('span', { class: 'settings-priority-name', text: (index + 1) + '. ' + (PRIORITY_LABELS[name] || name) }),
+                    el('button', { class: 'button is-small', type: 'button', title: 'Nach oben', text: '↑', disabled: index === 0, onclick: function () { order.splice(index - 1, 0, order.splice(index, 1)[0]); draw(); } }),
+                    el('button', { class: 'button is-small', type: 'button', title: 'Nach unten', text: '↓', disabled: index === order.length - 1, onclick: function () { order.splice(index + 1, 0, order.splice(index, 1)[0]); draw(); } }),
+                    el('button', { class: 'button is-small', type: 'button', title: 'Entfernen', text: '×', disabled: order.length === 1, onclick: function () { order.splice(index, 1); draw(); } })
                 ]));
             });
             var rest = all.filter(function (name) { return order.indexOf(name) === -1; });
             if (rest.length) {
-                var select = el('select', {}, rest.map(function (name) { return el('option', { value: name, text: name }); }));
+                var select = el('select', {}, rest.map(function (name) { return el('option', { value: name, text: PRIORITY_LABELS[name] || name }); }));
                 list.appendChild(el('li', {}, [
                     el('div', { class: 'select is-small' }, [select]),
                     el('button', { class: 'button is-small', type: 'button', text: 'Hinzufügen', onclick: function () { order.push(select.value); draw(); } })
@@ -210,6 +262,17 @@
             }
         }, [add, el('button', { class: 'button is-primary-hud', type: 'submit', text: 'Hinzufügen' })]));
         var extras = settings.extras.streamer_watch_streak;
+        var search = el('input', { class: 'input settings-search', type: 'search', placeholder: 'Streamer suchen (' + settings.streamers.length + ')', value: streamerFilter });
+        var listBox = el('div', { class: 'settings-streamer-list' });
+        search.addEventListener('input', function () {
+            streamerFilter = search.value;
+            var query = streamerFilter.trim().toLowerCase();
+            listBox.querySelectorAll('.settings-streamer').forEach(function (node) {
+                node.hidden = query !== '' && node.getAttribute('data-name').indexOf(query) === -1;
+            });
+        });
+        children.push(search);
+        children.push(listBox);
         settings.streamers.forEach(function (streamer) {
             var name = streamer.username;
             var body = el('div', { class: 'settings-streamer-body' });
@@ -217,7 +280,7 @@
             ['favorite', 'make_predictions', 'follow_raid', 'claim_drops', 'claim_moments'].forEach(function (key) {
                 var input = el('input', { type: 'checkbox', 'data-key': key });
                 input.checked = streamer.settings[key] === true;
-                grid.appendChild(el('label', { class: 'settings-field is-check' }, [input, el('span', { text: LABELS[key] })]));
+                grid.appendChild(el('label', { class: 'settings-field is-check' }, [input, el('span', { text: key === 'make_predictions' ? 'Wetten bei diesem Streamer' : LABELS[key] })]));
             });
             var watch = el('input', { type: 'checkbox', 'data-key': 'watch_streak' });
             var watchValue = extras[name.toLowerCase()];
@@ -253,10 +316,16 @@
                     }
                 })
             ]));
-            var details = el('details', { class: 'settings-streamer' }, [el('summary', {}, [el('span', { text: name })]), body]);
+            var tags = el('span', { class: 'settings-streamer-tags' }, [
+                streamer.settings.favorite ? el('span', { class: 'settings-badge is-source', text: 'Favorit' }) : null,
+                streamer.settings.make_predictions ? el('span', { class: 'settings-badge is-warn', text: 'Wetten an' }) : null
+            ]);
+            var details = el('details', { class: 'settings-streamer', 'data-name': name.toLowerCase() }, [el('summary', {}, [el('span', { text: name }), tags]), body]);
             if (openStreamers[name]) { details.open = true; }
+            var query = streamerFilter.trim().toLowerCase();
+            details.hidden = query !== '' && name.toLowerCase().indexOf(query) === -1;
             details.addEventListener('toggle', function () { openStreamers[name] = details.open; });
-            children.push(details);
+            listBox.appendChild(details);
         });
         return section('Streamer', null, children, 'Hinzufügen und Entfernen gilt sofort, geänderte Einstellungen eines Streamers nach dem nächsten Neustart.');
     }
@@ -447,46 +516,118 @@
     }
 
     function sourceBar() {
-                var items = [
+        var items = [
             el('div', { class: 'settings-section-title' }, [
-                el('span', { text: 'Einstellungen' }),
+                el('span', { text: 'Wo die Werte stehen' }),
                 el('span', { class: 'settings-badge is-source', text: 'Quelle: ' + view.source })
             ]),
             el('p', { class: 'settings-note', text: 'Die Werte stehen in ' + view.config_path + '. Ziel und Anschluss des Dashboards sowie das Passwort der Einstellungsseite stehen immer in der Startdatei.' }),
             el('p', { class: 'settings-note', text: 'Sofort aktiv: ' + view.live.join(', ') + '. Alles andere gilt nach dem nächsten Neustart des Miners.' })
         ];
         if (view.readonly_reason) { items.push(el('p', { class: 'settings-warning', text: view.readonly_reason })); }
-        items.push(el('details', {}, [el('summary', { text: 'Hier nicht einstellbar' }), el('ul', { class: 'settings-list' }, view.base_only.map(function (text) { return el('li', { text: text }); }))]));
+        items.push(el('details', { class: 'settings-more' }, [el('summary', { text: 'Hier nicht einstellbar' }), el('ul', { class: 'settings-list' }, view.base_only.map(function (text) { return el('li', { text: text }); }))]));
         return el('section', { class: 'box' }, items);
+    }
+
+    function statCard(label, value, kind, tab) {
+        return el('button', { class: 'settings-stat' + (kind ? ' is-' + kind : ''), type: 'button', onclick: function () { selectTab(tab); } }, [
+            el('span', { class: 'settings-stat-label', text: label }),
+            el('span', { class: 'settings-stat-value', text: value })
+        ]);
+    }
+
+    function betStreamerNames(settings) {
+        return settings.streamers.filter(function (s) { return s.settings.make_predictions === true; }).map(function (s) { return s.username; });
+    }
+
+    function overviewSection(settings) {
+        var extras = settings.extras;
+        var betsOn = extras.defaults.make_predictions === true;
+        var betStreamers = betStreamerNames(settings).length;
+        var betText = betsOn ? 'An' : (betStreamers ? 'Aus, bei ' + betStreamers + ' Streamern an' : 'Aus');
+        var cards = el('div', { class: 'settings-stats' }, [
+            statCard('Wetten', betText, betsOn || betStreamers ? 'warn' : 'ok', 'bets'),
+            statCard('Streams gleichzeitig', String(extras.miner.streams_watched) + ' + Drop-Platz', null, 'watching'),
+            statCard('Chat-Anwesenheit', CHAT[extras.defaults.chat] || extras.defaults.chat, extras.defaults.chat === 'NEVER' ? 'ok' : 'warn', 'watching'),
+            statCard('Drops automatisch suchen', extras.eranio.auto_discover_drops ? 'An' : 'Aus', null, 'drops'),
+            statCard('Streaks gleichzeitig', String(extras.eranio.watch_streak_max_parallel || 1), null, 'watching'),
+            statCard('Streamer in der Liste', String(settings.streamers.length), null, 'streamers')
+        ]);
+        return [section('Auf einen Blick', null, [cards]), sourceBar()];
+    }
+
+    function betSection(settings, spec) {
+        var on = settings.extras.defaults.make_predictions === true;
+        var master = el('input', { type: 'checkbox' });
+        master.checked = on;
+        var betStreamers = betStreamerNames(settings);
+        var status = el('div', { class: 'settings-bet-status ' + (on ? 'is-on' : 'is-off') }, [
+            el('i', { class: 'fas ' + (on ? 'fa-exclamation-triangle' : 'fa-check-circle') }),
+            el('span', { text: on ? 'Wetten sind eingeschaltet. Der Miner setzt Kanalpunkte auf Vorhersagen.' : 'Wetten sind ausgeschaltet. Der Miner setzt keine Kanalpunkte.' })
+        ]);
+        var head = section('Wetten', 'restart', [
+            status,
+            el('div', { class: 'settings-bet-master' }, [
+                switchField(master, 'Wetten für alle Streamer einschalten', 'Einzelne Streamer können im Reiter Streamer eigene Werte haben.'),
+                el('button', { class: 'button is-primary-hud', type: 'button', text: 'Schalter speichern', onclick: function () { save({ action: 'update_defaults', values: { make_predictions: master.checked } }); } })
+            ]),
+            betStreamers.length ? el('p', { class: 'settings-warning', text: 'Bei diesen Streamern sind Wetten trotzdem an: ' + betStreamers.join(', ') }) : null
+        ]);
+        var note = on ? 'So wird gewettet.' : 'Diese Werte werden erst genutzt, wenn Wetten eingeschaltet sind.';
+        if (!settings.extras.has_bet) { note += ' Es gibt noch keine Wetteinstellungen, beim Speichern werden sie angelegt.'; }
+        var details = groupSection('Wett-Einstellungen', null, 'update_bet', spec.update_bet, settings.extras.bet, null, null, note);
+        if (!on && !betStreamers.length) { details.classList.add('is-dimmed'); }
+        return [head, details];
+    }
+
+    function selectTab(name) {
+        activeTab = name;
+        try { localStorage.setItem('settingsTab', name); } catch (error) { }
+        render();
+        window.scrollTo(0, 0);
+    }
+
+    function tabContent(name, settings, spec) {
+        if (name === 'overview') { return overviewSection(settings); }
+        if (name === 'streamers') { return [streamerSection(settings, spec)]; }
+        if (name === 'watching') {
+            var priority = priorityEditor(spec.update_eranio, settings.extras.eranio.priority);
+            var eranioSection = groupSection('Auswahl und Streaks', 'restart', 'update_eranio', spec.update_eranio, settings.extras.eranio, ['priority'], [el('div', { class: 'settings-subtitle', text: LABELS.priority }), priority], 'Welche Kanäle der Miner bevorzugt und wie Streaks geprüft werden.');
+            eranioSection.querySelector('.settings-actions button').onclick = function () {
+                var values = collect(eranioSection.querySelector('.settings-grid'), spec.update_eranio);
+                values.priority = priority.getOrder();
+                save({ action: 'update_eranio', values: values });
+            };
+            return [
+                groupSection('Miner', 'restart', 'update_miner', spec.update_miner, settings.extras.miner, null, null, null),
+                eranioSection,
+                groupSection('Standard für alle Streamer', 'restart', 'update_defaults', spec.update_defaults, settings.extras.defaults, ['make_predictions'], null, 'Gilt für jeden Streamer ohne eigene Angabe. Wetten stellst du im Reiter Wetten ein.')
+            ];
+        }
+        if (name === 'drops') {
+            return [categorySection(settings), groupSection('Drops und Abzeichen', 'live', 'update_mine', spec.update_mine, settings.extras.mine, null, null, 'Die Wildcard-Werte gelten sofort, die übrigen nach dem nächsten Neustart.')];
+        }
+        if (name === 'bets') { return betSection(settings, spec); }
+        if (name === 'notifications') { return [notificationSection(settings)]; }
+        if (name === 'logging') { return loggingSection(settings, spec); }
+        if (name === 'account') { return [androidSection(settings)]; }
+        return [];
     }
 
     function render() {
         root.textContent = '';
-        root.appendChild(sourceBar());
         if (!view.editable || !view.settings) {
+            root.appendChild(sourceBar());
             return;
         }
-        var settings = view.settings;
-        var spec = view.spec;
-        var priority = priorityEditor(spec.update_eranio, settings.extras.eranio.priority);
-        var eranioSection = groupSection('Eigene Optionen', 'restart', 'update_eranio', spec.update_eranio, settings.extras.eranio, ['priority'], [el('div', { class: 'settings-title', text: LABELS.priority }), priority], 'Drops, Watch Streak und Auswahlreihenfolge des Miners.');
-        eranioSection.querySelector('.settings-actions button').onclick = function () {
-            var values = collect(eranioSection.querySelector('.settings-grid'), spec.update_eranio);
-            values.priority = priority.getOrder();
-            save({ action: 'update_eranio', values: values });
-        };
-        var minerSection = groupSection('Miner', 'restart', 'update_miner', spec.update_miner, settings.extras.miner, null, null, null);
-        root.appendChild(streamerSection(settings, spec));
-        root.appendChild(minerSection);
-        root.appendChild(eranioSection);
-        root.appendChild(groupSection('Standard für alle Streamer', 'restart', 'update_defaults', spec.update_defaults, settings.extras.defaults, null, null, 'Gilt für jeden Streamer, der keine eigene Angabe hat.'));
-        var betNote = settings.extras.has_bet ? null : 'Es gibt noch keine Wetteinstellungen. Beim Speichern werden sie angelegt.';
-        root.appendChild(groupSection('Wetten', 'restart', 'update_bet', spec.update_bet, settings.extras.bet, null, null, betNote));
-        root.appendChild(categorySection(settings));
-        root.appendChild(groupSection('Drops und Abzeichen', 'live', 'update_mine', spec.update_mine, settings.extras.mine, null, null, 'Die Wildcard-Werte gelten sofort, die übrigen nach dem nächsten Neustart.'));
-        loggingSection(settings, spec).forEach(function (node) { root.appendChild(node); });
-        root.appendChild(notificationSection(settings));
-        root.appendChild(androidSection(settings));
+        if (!TABS.some(function (tab) { return tab[0] === activeTab; })) { activeTab = 'overview'; }
+        var nav = el('nav', { class: 'settings-nav', 'aria-label': 'Bereiche' }, TABS.map(function (tab) {
+            return el('button', { type: 'button', class: 'settings-nav-item' + (tab[0] === activeTab ? ' is-active' : ''), onclick: function () { selectTab(tab[0]); } }, [
+                el('i', { class: 'fas ' + tab[2] }), el('span', { text: tab[1] })
+            ]);
+        }));
+        var content = el('div', { class: 'settings-content' }, tabContent(activeTab, view.settings, view.spec));
+        root.appendChild(el('div', { class: 'settings-layout' }, [nav, content]));
     }
 
     function showLogin() {

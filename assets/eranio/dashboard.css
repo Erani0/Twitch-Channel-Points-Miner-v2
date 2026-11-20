@@ -1090,3 +1090,24 @@ body {
         text-align: center;
     }
 }
+
+.drops-game-campaigns {
+    margin: 0 1rem 0.75rem calc(1rem + 32px + 0.85rem);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+}
+
+.drops-game-campaigns .drops-row-head:hover {
+    background: var(--bg-card);
+}
+
+.drops-game-campaigns .drops-row.is-current {
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+@media screen and (max-width: 768px) {
+    .drops-game-campaigns {
+        margin: 0 0.5rem 0.6rem;
+    }
+}

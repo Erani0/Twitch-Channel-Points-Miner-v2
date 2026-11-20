@@ -824,11 +824,16 @@ function fillActiveCampaigns() {
         list.appendChild(el('div', 'drops-empty', 'No campaign matches this filter.'));
         return;
     }
-    shown.slice(0, dropsUi.activeLimit).forEach(function (campaign) {
-        list.appendChild(campaignRow(campaign, isCurrentCampaign(campaign, current)));
+    var games = groupByGame(shown);
+    games.slice(0, dropsUi.activeLimit).forEach(function (game) {
+        if (game.campaigns.length === 1) {
+            list.appendChild(campaignRow(game.campaigns[0], isCurrentCampaign(game.campaigns[0], current)));
+        } else {
+            list.appendChild(gameRow(game, current));
+        }
     });
-    if (shown.length > dropsUi.activeLimit) {
-        var more = el('button', 'button drops-more', 'Show more (' + (shown.length - dropsUi.activeLimit) + ' left)');
+    if (games.length > dropsUi.activeLimit) {
+        var more = el('button', 'button drops-more', 'Show more (' + (games.length - dropsUi.activeLimit) + ' left)');
         more.type = 'button';
         more.addEventListener('click', function () {
             dropsUi.activeLimit += DROPS_PAGE;
@@ -836,6 +841,86 @@ function fillActiveCampaigns() {
         });
         list.appendChild(more);
     }
+}
+
+function groupByGame(campaigns) {
+    var games = [];
+    var byKey = {};
+    campaigns.forEach(function (campaign) {
+        var key = (campaign.spiel || 'Unknown game').toLowerCase();
+        if (!byKey[key]) {
+            byKey[key] = {key: key, name: campaign.spiel || 'Unknown game', image: campaign.spiel_bild, campaigns: []};
+            games.push(byKey[key]);
+        }
+        if (!byKey[key].image && campaign.spiel_bild) byKey[key].image = campaign.spiel_bild;
+        byKey[key].campaigns.push(campaign);
+    });
+    return games;
+}
+
+function gameRow(game, current) {
+    var key = 'game:' + game.key;
+    var hasCurrent = game.campaigns.some(function (campaign) { return isCurrentCampaign(campaign, current); });
+    var open = dropsUi.touched[key] ? !!dropsUi.open[key] : hasCurrent;
+    var lead = game.campaigns[0];
+    var group = campaignGroup(lead);
+    var counts = {running: 0, waiting: 0, action: 0, daily: 0};
+    var claimed = 0;
+    var total = 0;
+    var done = 0;
+    var needed = 0;
+    var soonest = null;
+    game.campaigns.forEach(function (campaign) {
+        counts[campaignGroup(campaign)] += 1;
+        var progress = campaignProgress(campaign);
+        claimed += progress.claimed;
+        total += progress.total;
+        done += progress.done;
+        needed += progress.needed;
+        var end = Date.parse(campaign.ende_utc);
+        if (!isNaN(end) && end > Date.now() && (soonest === null || end < soonest)) soonest = end;
+    });
+    var row = el('div', 'drops-row is-game is-' + group + (hasCurrent ? ' is-current' : '') + (open ? ' is-open' : ''));
+    var head = el('button', 'drops-row-head');
+    head.type = 'button';
+    head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    head.appendChild(imageOrIcon(game.image, 'drops-row-image', 'fa-gamepad'));
+    var main = el('div', 'drops-row-main');
+    var line = el('div', 'drops-row-line');
+    line.appendChild(el('span', 'drops-row-game', game.name));
+    line.appendChild(badge(game.campaigns.length + ' campaigns', 'is-cyan'));
+    if (hasCurrent) line.appendChild(badge('Watching', ''));
+    main.appendChild(line);
+    var parts = [];
+    if (counts.running) parts.push(counts.running + ' running');
+    if (counts.waiting) parts.push(counts.waiting + ' waiting for live');
+    if (counts.action) parts.push(counts.action + ' need action');
+    if (counts.daily) parts.push(counts.daily + ' done today');
+    main.appendChild(el('div', 'drops-row-campaign', parts.join(' · ')));
+    main.appendChild(progressBar(done, needed));
+    head.appendChild(main);
+    var side = el('div', 'drops-row-side');
+    side.appendChild(el('span', 'drops-status is-' + group, lead.status));
+    var facts = [];
+    if (total) facts.push(claimed + '/' + total + ' drops');
+    if (soonest !== null) facts.push('first ends ' + remainingText(new Date(soonest).toISOString()));
+    side.appendChild(el('span', 'drops-row-facts', facts.join(' · ')));
+    head.appendChild(side);
+    head.appendChild(el('i', 'fas fa-chevron-down drops-chevron'));
+    head.addEventListener('click', function () {
+        dropsUi.touched[key] = true;
+        dropsUi.open[key] = !open;
+        fillActiveCampaigns();
+    });
+    row.appendChild(head);
+    if (open) {
+        var inner = el('div', 'drops-game-campaigns');
+        game.campaigns.forEach(function (campaign) {
+            inner.appendChild(campaignRow(campaign, isCurrentCampaign(campaign, current)));
+        });
+        row.appendChild(inner);
+    }
+    return row;
 }
 
 function campaignRow(campaign, isCurrent) {
