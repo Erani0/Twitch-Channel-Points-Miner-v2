@@ -13,3 +13,12 @@ def configured_logger():
     Settings.logger = SimpleNamespace(less=False, console_format=LoggingFormat.TEXT)
     yield
     Settings.logger = previous
+
+
+@pytest.fixture(autouse=True)
+def reset_eranio_streak_state():
+    from TwitchChannelPointsMiner.eranio import streak
+
+    streak.STATE.reset()
+    yield
+    streak.STATE.reset()

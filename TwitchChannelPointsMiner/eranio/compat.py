@@ -1,7 +1,11 @@
 import logging
+import os
+from pathlib import Path
 
 from TwitchChannelPointsMiner.classes.Settings import FollowersOrder, Priority, Settings
 from TwitchChannelPointsMiner.classes.AnalyticsServer import LOOPBACK_HOSTS
+from TwitchChannelPointsMiner.eranio import streak
+from TwitchChannelPointsMiner.eranio.streak_cache import migrate_old_cache
 from TwitchChannelPointsMiner.eranio.git_config import dedupe_git_safe_directories
 from TwitchChannelPointsMiner.TwitchChannelPointsMiner import (
     TwitchChannelPointsMiner as BaseMiner,
@@ -101,11 +105,24 @@ class TwitchChannelPointsMiner(BaseMiner):
 
         if use_hermes:
             logger.info("The classic event connection (PubSub) is used.")
-        if any(entry in STREAK_LENGTH_PRIORITIES for entry in self._as_list(priority)):
-            logger.info(
-                "Priority.STREAK_LENGTH_ASCENDING/DESCENDING currently behave "
-                "like Priority.STREAK."
-            )
+        state_dir = os.path.join(Path().absolute(), "logs")
+        _, known_length = migrate_old_cache(
+            self.watch_streak_cache,
+            os.path.join(
+                state_dir, f"watch_streak_cache.{self.username.lower()}.json"
+            ),
+            self.watch_streak_min_offline_seconds,
+        )
+        streak.configure(
+            max_parallel=self.watch_streak_max_parallel,
+            min_gap_seconds=self.watch_streak_min_offline_seconds,
+            requested_priority=self._as_list(priority),
+            cache=self.watch_streak_cache,
+            missed_path=os.path.join(
+                state_dir, ".state", f"eranio_streak_missed.{self.username.lower()}.json"
+            ),
+            known_length=known_length,
+        )
 
     @staticmethod
     def _as_list(priority):

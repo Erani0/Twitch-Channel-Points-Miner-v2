@@ -222,7 +222,6 @@ def test_streak_length_priorities_are_accepted_and_logged(workdir, caplog):
         Priority.STREAK_LENGTH_DESCENDING,
         Priority.ORDER,
     ]
-    assert any("STREAK_LENGTH" in record.getMessage() for record in caplog.records)
 
 
 def test_minimal_construction_and_v3_options(workdir):
@@ -448,3 +447,19 @@ def test_egg_template_run_py_starts_up_to_the_login(workdir, monkeypatch):
 
     assert logins == [str(tmp_path / "cookies" / "someone.pkl")]
     compile(script.read_text(encoding="utf-8"), "run.py", "exec")
+
+
+def test_streak_extension_is_configured_from_constructor_options(workdir):
+    from TwitchChannelPointsMiner.eranio import streak
+
+    _, created = workdir
+    options = owner_options()
+    options["priority"] = [Priority.STREAK_LENGTH_DESCENDING, Priority.ORDER]
+    options["watch_streak_min_offline_seconds"] = 900
+    miner = package.TwitchChannelPointsMiner(**options)
+    created.append(miner)
+    assert streak.STATE.configured is True
+    assert streak.STATE.max_parallel == 4
+    assert streak.STATE.min_gap_seconds == 900
+    assert streak.STATE.length_order == "desc"
+    assert streak.STATE.cache is miner.watch_streak_cache

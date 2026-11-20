@@ -6412,6 +6412,11 @@ class Twitch(object):
 
     @staticmethod
     def _has_pending_watch_streak(streamer, now=None):
+        from TwitchChannelPointsMiner.eranio import streak as eranio_streak
+
+        extended = eranio_streak.is_pending(streamer, now)
+        if extended is not None:
+            return extended
         settings = getattr(streamer, "settings", None)
         stream = getattr(streamer, "stream", None)
         if (
@@ -6614,6 +6619,8 @@ class Twitch(object):
         drop_pick_stickiness_minutes=0,
         watch_status_interval_minutes=15,
     ):
+        from TwitchChannelPointsMiner.eranio import streak as eranio_streak
+
         # Streamers already warned about a missing spade URL, so the warning
         # is logged once per outage instead of on every watch cycle.
         spade_url_warned = set()
@@ -7476,7 +7483,16 @@ class Twitch(object):
                         elif not _may_share_drop_slot(index, kept_drop_index):
                             continue
                     filtered_streamers_watching.append(index)
-                streamers_watching = filtered_streamers_watching
+                streamers_watching = eranio_streak.apply(
+                    self,
+                    streamers_snapshot,
+                    filtered_streamers_watching,
+                    streamers_index,
+                    priority,
+                    streams_watched,
+                    _is_drop_stream,
+                    now,
+                )
 
                 # Log the category/wildcard picks only now that every slot
                 # decision is final - a badge or higher-ranked Drops stream can
