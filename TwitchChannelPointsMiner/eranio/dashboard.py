@@ -229,13 +229,95 @@ def drops_overview():
                 "kampagne": text_or_none(raw_current.get("kampagne")),
             }
     history = drop_history(images)
-    history["kampagnen"] = ended[:HISTORY_LIMIT]
+    history["kampagnen"] = ended
+    history = remember_history(history)
     return {
         "kampagnen": campaigns,
         "jetzt": current,
         "aktualisiert": updated,
         "verlauf": history,
     }
+
+
+HISTORY_FILE = "drop_history_eranio.json"
+HISTORY_KEEP = 2000
+HISTORY_KINDS = ("abgeholt", "abgelaufen", "kampagnen")
+HISTORY_LOCK = threading.Lock()
+
+
+def history_key(kind, row):
+    if kind == "kampagnen":
+        parts = (row.get("id"), row.get("spiel"), row.get("kampagne"))
+        if not row.get("id"):
+            parts = (None, row.get("spiel"), row.get("kampagne"), row.get("ende_utc"))
+    else:
+        parts = (
+            row.get("drop_id"),
+            row.get("campaign"),
+            row.get("item_name"),
+            row.get("benefit"),
+        )
+        if not row.get("drop_id"):
+            parts = parts + (row.get("datetime"),)
+    return kind + ":" + "|".join(str(p or "").casefold() for p in parts)
+
+
+def history_sort_value(kind, row):
+    if kind == "kampagnen":
+        return row.get("ende_utc") or ""
+    return row.get("datetime") or ""
+
+
+def remember_history(current):
+    analytics_path = getattr(Settings, "analytics_path", None)
+    if not analytics_path:
+        return {k: list(current.get(k) or [])[:HISTORY_LIMIT] for k in HISTORY_KINDS}
+    path = os.path.join(analytics_path, HISTORY_FILE)
+    with HISTORY_LOCK:
+        stored = read_json_file(path)
+        entries = stored.get("eintraege") if isinstance(stored, dict) else None
+        known = {}
+        for entry in entries if isinstance(entries, list) else []:
+            if (
+                isinstance(entry, dict)
+                and entry.get("art") in HISTORY_KINDS
+                and isinstance(entry.get("daten"), dict)
+                and isinstance(entry.get("key"), str)
+            ):
+                known[entry["key"]] = entry
+        changed = False
+        for kind in HISTORY_KINDS:
+            image_field = "spiel_bild" if kind == "kampagnen" else "item_art_url"
+            for row in current.get(kind) or []:
+                key = history_key(kind, row)
+                entry = known.get(key)
+                if entry is None:
+                    known[key] = {"key": key, "art": kind, "daten": dict(row)}
+                    changed = True
+                elif not entry["daten"].get(image_field) and row.get(image_field):
+                    entry["daten"][image_field] = row[image_field]
+                    changed = True
+        ordered = sorted(
+            known.values(),
+            key=lambda e: history_sort_value(e["art"], e["daten"]),
+            reverse=True,
+        )
+        if len(ordered) > HISTORY_KEEP:
+            ordered = ordered[:HISTORY_KEEP]
+            changed = True
+        if changed:
+            try:
+                temporary = path + ".tmp"
+                with open(temporary, "w", encoding="utf-8") as handle:
+                    json.dump({"version": 1, "eintraege": ordered}, handle)
+                os.replace(temporary, path)
+            except OSError:
+                logger.warning("Der Drop-Verlauf konnte nicht gespeichert werden.")
+    result = {kind: [] for kind in HISTORY_KINDS}
+    for entry in ordered:
+        if len(result[entry["art"]]) < HISTORY_LIMIT:
+            result[entry["art"]].append(entry["daten"])
+    return result
 
 
 def drop_history(images=None):

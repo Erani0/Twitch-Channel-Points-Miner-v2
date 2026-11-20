@@ -259,7 +259,36 @@ def test_game_and_history_images_are_filled_in():
     assert dashboard.history_image({"campaign": "Other", "item_name": "Hat"}, index) is None
 
 
+def test_history_is_kept_in_its_own_file(env, tmp_path):
+    first = env.client.get("/drops").get_json()["verlauf"]
+    assert [r["item_name"] for r in first["abgeholt"]] == ["Hat"]
+    stored = json.loads(
+        (env.analytics / dashboard.HISTORY_FILE).read_text(encoding="utf-8")
+    )
+    assert {e["art"] for e in stored["eintraege"]} == {"abgeholt", "abgelaufen"}
+    (env.analytics / "drops_by_category.json").unlink()
+    (tmp_path / "drop_campaigns.json").unlink()
+    later = env.client.get("/drops").get_json()["verlauf"]
+    assert [r["item_name"] for r in later["abgeholt"]] == ["Hat"]
+    assert [r["item_name"] for r in later["abgelaufen"]] == ["Gone"]
+
+
+def test_history_does_not_duplicate_and_fills_missing_images(env):
+    env.client.get("/drops")
+    env.client.get("/drops")
+    path = env.analytics / dashboard.HISTORY_FILE
+    stored = json.loads(path.read_text(encoding="utf-8"))
+    assert len(stored["eintraege"]) == 2
+    gone = next(e for e in stored["eintraege"] if e["art"] == "abgelaufen")
+    assert gone["daten"]["item_art_url"] is None
+    result = dashboard.remember_history(
+        {"abgelaufen": [dict(gone["daten"], item_art_url=DROP_CDN)]}
+    )
+    assert result["abgelaufen"][0]["item_art_url"] == DROP_CDN
+
+
 def test_drops_endpoint_without_files_is_empty(env, tmp_path):
+    (env.analytics / dashboard.HISTORY_FILE).unlink(missing_ok=True)
     (tmp_path / "drop_campaigns.json").unlink()
     (env.analytics / "drops_by_category.json").unlink()
     data = env.client.get("/drops").get_json()
