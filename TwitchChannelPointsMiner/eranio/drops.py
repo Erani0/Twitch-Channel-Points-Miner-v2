@@ -1156,26 +1156,8 @@ def reserve(
     if 0 <= best_rank < len(STATE.rank_ids):
         STATE.drop_pick = (snapshot[best].username, STATE.rank_ids[best_rank])
     if best in watching:
-        kept = [
-            i
-            for i in watching
-            if i == best
-            or not is_drop(i)
-            or (
-                streamer_rank(snapshot[i]) is not None
-                and streamer_rank(snapshot[i]) <= best_rank
-            )
-        ]
-        return kept
-    result = [
-        i
-        for i in watching
-        if not is_drop(i)
-        or (
-            streamer_rank(snapshot[i]) is not None
-            and streamer_rank(snapshot[i]) <= best_rank
-        )
-    ]
+        return [i for i in watching if i == best or not is_drop(i)]
+    result = [i for i in watching if not is_drop(i)]
     if result and len(result) >= streams_watched:
         for position in range(len(result) - 1, -1, -1):
             if not is_drop(result[position]):

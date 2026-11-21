@@ -240,3 +240,7 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 
 - `drops.quest_stream` is also true for a live stream whose category belongs to a ranked category quest (`STATE.quest_category_slugs`, e.g. Pokemon Evolutions in DJs or Just Chatting), so a followed DJ channel can take the drop slot and get its segments polled. The ranking still decides which campaign wins.
 - `guess_game` also knows the games listed under `spiele` in the file, so creator quests join "Grand Theft Auto VI" even when no regular GTA campaign is live at the moment.
+
+## 3.0.26: One drop stream
+
+- `drops.reserve` keeps exactly one drop stream (the best ranked); further drop streams are left out instead of sharing the slot. Twitch counts drop and quest minutes on one channel only, so several DJ channels for the same Pokemon quest only took points slots away.

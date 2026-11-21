@@ -221,6 +221,25 @@ class TestSelection:
         assert drops.quest_stream(gamer) is False
         assert drops.streamer_rank(dj) == 0
 
+    def test_only_one_matching_stream_keeps_the_drop_slot(self, tmp_path):
+        drops.configure(path=str(tmp_path / "d.json"), categories=["base"])
+        install(pokemon_inventory(), details={POKEMON: pokemon_details()})
+        layer = type("L", (), {"twitch": FakeTwitch()})()
+        djs = [streamer(f"dj{i}", game="DJs") for i in range(3)]
+        other = streamer("plain", game="Rust")
+        snapshot = djs + [other]
+        publish(layer, [campaign(POKEMON, game="Special Events")], snapshot)
+        kept = drops.reserve(
+            layer.twitch,
+            snapshot,
+            [0, 1, 2, 3],
+            [0, 1, 2, 3],
+            3,
+            lambda i: drops.quest_stream(snapshot[i]),
+        )
+        assert sum(1 for i in kept if i < 3) == 1
+        assert 3 in kept
+
     def test_file_shows_channel_and_sub_hint(self, tmp_path):
         import json
 
