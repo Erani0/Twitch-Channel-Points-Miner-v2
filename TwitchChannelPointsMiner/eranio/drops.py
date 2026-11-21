@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from TwitchChannelPointsMiner.classes.entities.Drop import utc_now
 from TwitchChannelPointsMiner.classes.entities.Streamer import is_drop_discovered
-from TwitchChannelPointsMiner.eranio import quests
+from TwitchChannelPointsMiner.eranio import quests, selfcheck
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,16 @@ class DropView:
         self.quest_slugs = []
         self.sub_hint = None
         self.channel_logins = []
+        self.creator_off = False
+        self.repeating = any("(repeat " in str(d.name or "") for d in self.drops)
+
+    @property
+    def daily(self):
+        if self.repeating:
+            return True
+        if self.start_at and self.end_at:
+            return (self.end_at - self.start_at) <= timedelta(hours=DAILY_HOURS)
+        return False
 
     def open_drops(self):
         return [d for d in self.drops if not d.is_claimed]
@@ -151,8 +161,55 @@ class DropView:
         return any(d.requires_subscription for d in self.open_drops())
 
 
+DEFAULT_OPTIONS = {"creator_quests": True, "auto_within_game": True}
+DAILY_HOURS = 26
+CREATOR_OFF_STATUS = "Creator-Quest ausgeschaltet"
+
+
 def empty_settings():
-    return {"games": {}, "campaigns": {}, "order": []}
+    return {
+        "games": {},
+        "campaigns": {},
+        "order": [],
+        "game_order": [],
+        "options": dict(DEFAULT_OPTIONS),
+    }
+
+
+def read_options(data):
+    raw = data.get("einstellungen") if isinstance(data, dict) else None
+    raw = raw if isinstance(raw, dict) else {}
+    return {
+        "creator_quests": as_bool(raw.get("creator_quests"), True),
+        "auto_within_game": as_bool(raw.get("innerhalb_spiel_automatisch"), True),
+    }
+
+
+def write_options(options):
+    return {
+        "creator_quests": bool(options.get("creator_quests", True)),
+        "innerhalb_spiel_automatisch": bool(options.get("auto_within_game", True)),
+    }
+
+
+def acronym(name):
+    words = re.findall(r"[A-Za-z]+", str(name or ""))
+    letters = "".join(word[0] for word in words[:3]).upper()
+    return letters if len(letters) >= 3 else None
+
+
+def guess_game(campaign_name, game_names):
+    text = str(campaign_name or "")
+    upper = text.upper()
+    for game in game_names:
+        if not game or game in ("Quest", "Unbekannt"):
+            continue
+        if game.lower() in text.lower():
+            return game
+        short = acronym(game)
+        if short and re.search(r"(?<![A-Z])" + re.escape(short) + r"(?![A-Z])", upper):
+            return game
+    return None
 
 
 class DropFile:
@@ -219,12 +276,15 @@ class DropFile:
     @staticmethod
     def _from_data(data):
         games = {}
+        game_order = []
         for entry in data.get("spiele") or []:
             if isinstance(entry, dict) and entry.get("spiel"):
                 games[str(entry["spiel"])] = {
                     "active": as_bool(entry.get("aktiv")),
                     "slug": entry.get("slug") or None,
                 }
+                if str(entry["spiel"]) not in game_order:
+                    game_order.append(str(entry["spiel"]))
         campaigns = {}
         order = []
         for entry in data.get("kampagnen") or []:
@@ -238,7 +298,13 @@ class DropFile:
                     "entry": entry,
                 }
                 order.append(cid)
-        return {"games": games, "campaigns": campaigns, "order": order}
+        return {
+            "games": games,
+            "campaigns": campaigns,
+            "order": order,
+            "game_order": game_order,
+            "options": read_options(data),
+        }
 
     @staticmethod
     def _parse(text):
@@ -304,7 +370,13 @@ class DropFile:
             order.append(cid)
         if not order and not games:
             return None
-        return {"games": games, "campaigns": campaigns, "order": order}
+        return {
+            "games": games,
+            "campaigns": campaigns,
+            "order": order,
+            "game_order": list(games),
+            "options": dict(DEFAULT_OPTIONS),
+        }
 
     def _keep_broken_copy(self, text):
         copy_path = re.sub(r"\.json$", "", self.path) + ".fehlerhaft.json"
@@ -318,7 +390,35 @@ class DropFile:
     def is_active(view, settings):
         own = settings["campaigns"].get(view.id, {})
         game = settings["games"].get(view.game_name, {})
-        return own.get("active", True) and game.get("active", True)
+        return (
+            own.get("active", True)
+            and game.get("active", True)
+            and not getattr(view, "creator_off", False)
+        )
+
+    @staticmethod
+    def arrange(order, info, settings):
+        options = settings.get("options") or DEFAULT_OPTIONS
+        if not options.get("auto_within_game", True):
+            return list(order)
+        games = []
+        for cid in order:
+            game = info.get(cid, ("", False, None))[0]
+            if game not in games:
+                games.append(game)
+        position = {game: index for index, game in enumerate(games)}
+        manual = {cid: index for index, cid in enumerate(order)}
+
+        def key(cid):
+            game, daily, remaining = info.get(cid, ("", False, None))
+            return (
+                position.get(game, len(games)),
+                0 if daily else 1,
+                remaining if remaining is not None else 10**9,
+                manual[cid],
+            )
+
+        return sorted(order, key=key)
 
     @staticmethod
     def _auto_key(view):
@@ -365,20 +465,24 @@ class DropFile:
     @classmethod
     def ordered(cls, views, settings):
         by_id = {v.id: v for v in views}
-        return [
-            by_id[cid]
+        order = [
+            cid
             for cid in cls.merge_order(
                 settings.get("order", []), cls._items(views, settings)
             )
             if cid in by_id
         ]
+        info = {v.id: (v.game_name, v.daily, v.remaining_minutes()) for v in views}
+        return [by_id[cid] for cid in cls.arrange(order, info, settings)]
 
     @classmethod
     def rank(cls, views, settings):
         return [
             v
             for v in cls.ordered(views, settings)
-            if cls.is_active(v, settings) and v.is_earnable()
+            if cls.is_active(v, settings)
+            and v.is_earnable()
+            and not selfcheck.is_blocked(v.id)
         ]
 
     def write(self, views, settings, statuses=None, finished=None, active=None):
@@ -422,6 +526,16 @@ class DropFile:
                 entries[cid] = carried
                 items.append((cid, str(carried.get("spiel") or ""), None))
             order = self.merge_order(settings.get("order", []), items)
+            live = {v.id: v for v in views}
+            info = {
+                cid: (
+                    entries[cid].get("spiel") or "Unbekannt",
+                    live[cid].daily if cid in live else False,
+                    live[cid].remaining_minutes() if cid in live else None,
+                )
+                for cid in order
+            }
+            order = self.arrange(order, info, settings)
             games_seen = []
             for cid in order:
                 name = entries[cid].get("spiel") or "Unbekannt"
@@ -433,6 +547,8 @@ class DropFile:
             data = {
                 "hinweis": HINT,
                 "aktualisiert": local_text(now),
+                "einstellungen": write_options(settings.get("options") or {}),
+                "hinweise_selbstkontrolle": selfcheck.warnings_for_file(),
                 "jetzt": active,
                 "spiele": [
                     self._game_entry(name, settings, entries) for name in games_seen
@@ -534,6 +650,8 @@ class DropFile:
                 )
             ),
             "abo_hinweis": view.sub_hint,
+            "taeglich": view.daily,
+            "creator_quest": view.quest_channel,
             "konto_verbunden": connected,
             "art": "Quest" if view.quest else "Drop-Kampagne",
             "spiel_bild": view.game_image,
@@ -589,6 +707,7 @@ class State:
         self.day = None
         self.drop_pick = None
         self.quest_channels = set()
+        self.last_current = None
         self.lock = threading.RLock()
 
 
@@ -706,10 +825,25 @@ def _build_views(twitch, campaigns):
         views.append(view)
     known = {v.id for v in views}
     views.extend(DropView(extra) for extra in quests.extra_campaigns(known))
-    return quests.patch_views(views)
+    views = quests.patch_views(views, STATE.settings.get("options") or DEFAULT_OPTIONS)
+    names = []
+    for view in views:
+        if view.game_name not in names:
+            names.append(view.game_name)
+    for view in views:
+        if view.game_name in ("Quest", "Unbekannt"):
+            found = guess_game(view.name, names)
+            if found:
+                view.game_name = found
+                view.game_slug = slugify(found)
+    return views
 
 
 def _status(view, live, blocked, now_utc):
+    if getattr(view, "creator_off", False):
+        return CREATOR_OFF_STATUS
+    if selfcheck.is_blocked(view.id):
+        return "pausiert (Selbstkontrolle: kein Fortschritt bei Twitch)"
     if view.end_at and now_utc > view.end_at:
         return "abgelaufen"
     if not view.is_earnable():
@@ -861,8 +995,29 @@ def publish(twitch, campaigns, streamers, now=None):
         logger.debug("Drop-Liste konnte nicht aktualisiert werden", exc_info=True)
 
 
+def _current(views, streamers):
+    if STATE.drop_pick is not None:
+        login, cid = STATE.drop_pick
+        view = next((v for v in views if v.id == cid), None)
+        if view is not None:
+            return {"kanal": login, "spiel": view.game_name, "kampagne": view.name}
+    for streamer in streamers or []:
+        if getattr(streamer, "is_watching", False) is not True:
+            continue
+        ids = [STATE.position[i] for i in matched_ids(streamer) if i in STATE.position]
+        if ids:
+            view = next(v for v in views if v.id == STATE.rank_ids[min(ids)])
+            return {
+                "kanal": streamer.username,
+                "spiel": view.game_name,
+                "kampagne": view.name,
+            }
+    return None
+
+
 def _publish(twitch, campaigns, streamers, now):
     quests.refresh(twitch, now)
+    selfcheck.fetch(twitch, now)
     with STATE.lock:
         now_utc = utc_now()
         key = day_key()
@@ -889,34 +1044,14 @@ def _publish(twitch, campaigns, streamers, now):
         live = _live_ids(streamers)
         blocked = _blocked_games(twitch, now)
         statuses = {v.id: _status(v, live, blocked, now_utc) for v in views}
+        selfcheck.evaluate(
+            views, ranked, statuses, streamers, STATE.drop_pick, slugify, now
+        )
+        current = _current(views, streamers)
+        if current != STATE.last_current:
+            STATE.dirty = True
         if STATE.dirty or now - STATE.last_write >= WRITE_INTERVAL_SECONDS:
-            current = None
-            for streamer in streamers or []:
-                if getattr(streamer, "is_watching", False) is True:
-                    ids = [
-                        STATE.position[i]
-                        for i in _stream_ids(streamer)
-                        if i in STATE.position
-                    ]
-                    if ids:
-                        view = next(
-                            v for v in views if v.id == STATE.rank_ids[min(ids)]
-                        )
-                        current = {
-                            "kanal": streamer.username,
-                            "spiel": view.game_name,
-                            "kampagne": view.name,
-                        }
-                        break
-            if current is None and STATE.drop_pick is not None:
-                login, cid = STATE.drop_pick
-                view = next((v for v in views if v.id == cid), None)
-                if view is not None:
-                    current = {
-                        "kanal": login,
-                        "spiel": view.game_name,
-                        "kampagne": view.name,
-                    }
+            STATE.last_current = current
             if STATE.file.write(views, settings, statuses, finished, current):
                 STATE.settings = STATE.file._settings
                 STATE.dirty = False
@@ -1033,3 +1168,129 @@ def reserve(
         else:
             result.pop()
     return [best] + result
+
+
+def _file_path():
+    if STATE.file is not None:
+        return STATE.file.path
+    return DEFAULT_PATH
+
+
+def _read_file():
+    try:
+        with open(_file_path(), "r", encoding="utf-8-sig") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+EDITOR_FIELDS = (
+    "id",
+    "kampagne",
+    "status",
+    "naechster_drop",
+    "abo_hinweis",
+    "taeglich",
+    "creator_quest",
+    "aktiv",
+    "offen",
+    "endet",
+    "kanaele",
+    "konto_verbunden",
+)
+
+
+def editor_view():
+    with STATE.lock:
+        data = _read_file()
+    if data is None:
+        return {"available": False}
+    games = []
+    by_name = {}
+    active_games = {
+        str(g.get("spiel")): as_bool(g.get("aktiv"))
+        for g in data.get("spiele") or []
+        if isinstance(g, dict) and g.get("spiel")
+    }
+    for entry in data.get("kampagnen") or []:
+        if not isinstance(entry, dict) or not entry.get("id"):
+            continue
+        if str(entry.get("status") or "") in ("abgelaufen", "alles abgeholt"):
+            continue
+        name = str(entry.get("spiel") or "Unbekannt")
+        if name not in by_name:
+            by_name[name] = {
+                "name": name,
+                "active": active_games.get(name, True),
+                "campaigns": [],
+            }
+            games.append(by_name[name])
+        by_name[name]["campaigns"].append(
+            {field: entry.get(field) for field in EDITOR_FIELDS}
+        )
+    return {
+        "available": True,
+        "options": read_options(data),
+        "games": games,
+        "jetzt": data.get("jetzt"),
+        "hinweise": data.get("hinweise_selbstkontrolle") or [],
+        "aktualisiert": data.get("aktualisiert"),
+    }
+
+
+def apply_editor(payload):
+    with STATE.lock:
+        data = _read_file()
+        if data is None:
+            raise ValueError("drop_campaigns.json gibt es noch nicht.")
+        entries = [
+            e
+            for e in data.get("kampagnen") or []
+            if isinstance(e, dict) and e.get("id")
+        ]
+        wanted = [str(cid) for cid in payload.get("order") or []]
+        position = {cid: index for index, cid in enumerate(wanted)}
+        entries.sort(key=lambda e: position.get(str(e["id"]), len(wanted)))
+        active = payload.get("active") or {}
+        for entry in entries:
+            if str(entry["id"]) in active:
+                entry["aktiv"] = active[str(entry["id"])] is True
+        data["kampagnen"] = entries
+        games_active = payload.get("games_active") or {}
+        names = []
+        for entry in entries:
+            name = str(entry.get("spiel") or "Unbekannt")
+            if name not in names:
+                names.append(name)
+        old_games = {
+            str(g.get("spiel")): g
+            for g in data.get("spiele") or []
+            if isinstance(g, dict) and g.get("spiel")
+        }
+        for name in old_games:
+            if name not in names:
+                names.append(name)
+        games = []
+        for name in names:
+            game = dict(old_games.get(name) or {"spiel": name, "aktiv": True})
+            if name in games_active:
+                game["aktiv"] = games_active[name] is True
+            games.append(game)
+        data["spiele"] = games
+        options = read_options(data)
+        incoming = payload.get("options") or {}
+        for key in ("creator_quests", "auto_within_game"):
+            if key in incoming:
+                options[key] = incoming[key] is True
+        data["einstellungen"] = write_options(options)
+        path = _file_path()
+        tmp = f"{path}.tmp"
+        with open(tmp, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+        if STATE.configured and STATE.file is not None:
+            STATE.settings = STATE.file.read_settings()
+            STATE.dirty = True
+    logger.info("Drop-Reihenfolge auf der Einstellungsseite gespeichert.")
+    return editor_view()

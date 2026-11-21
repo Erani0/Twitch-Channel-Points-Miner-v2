@@ -204,7 +204,7 @@ def test_the_base_pages_are_not_served(env):
 
 def test_drops_endpoint_shape_and_image_filter(env):
     data = env.client.get("/drops").get_json()
-    assert set(data) == {"kampagnen", "jetzt", "aktualisiert", "verlauf"}
+    assert set(data) == {"kampagnen", "jetzt", "aktualisiert", "hinweise", "verlauf"}
     first, second = data["kampagnen"]
     assert first["spiel_bild"] == CDN
     assert first["art"] == "Quest"

@@ -159,6 +159,8 @@ def clean_campaign(item):
         "art": "Quest" if item.get("art") == "Quest" else "Drop-Kampagne",
         "abo_noetig": item.get("abo_noetig") == "ja",
         "abo_hinweis": text_or_none(item.get("abo_hinweis")),
+        "taeglich": item.get("taeglich") is True,
+        "creator_quest": item.get("creator_quest") is True,
         "kanaele": text_or_none(item.get("kanaele")),
         "konto_verbunden": (
             item.get("konto_verbunden")
@@ -212,7 +214,16 @@ def drops_overview():
     current = None
     updated = None
     images = {}
+    hints = []
     if isinstance(data, dict):
+        hints = [
+            text
+            for text in (
+                text_or_none(item, 300)
+                for item in data.get("hinweise_selbstkontrolle") or []
+            )
+            if text
+        ]
         images = drop_image_index(data.get("kampagnen") or [])
         for item in data.get("kampagnen") or []:
             campaign = clean_campaign(item)
@@ -238,6 +249,7 @@ def drops_overview():
         "kampagnen": campaigns,
         "jetzt": current,
         "aktualisiert": updated,
+        "hinweise": hints,
         "verlauf": history,
     }
 

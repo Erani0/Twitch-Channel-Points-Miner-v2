@@ -78,6 +78,7 @@
         ['streamers', 'Streamer', 'fa-users'],
         ['watching', 'Zuschauen', 'fa-eye'],
         ['drops', 'Drops und Kategorien', 'fa-gift'],
+        ['droporder', 'Drop-Reihenfolge', 'fa-sort-amount-down'],
         ['bets', 'Wetten', 'fa-coins'],
         ['notifications', 'Benachrichtigungen', 'fa-bell'],
         ['logging', 'Protokoll', 'fa-file-alt'],
@@ -580,6 +581,181 @@
         return [head, details];
     }
 
+    var dropEditor = { data: null, open: {} };
+
+    function sortable(list, itemClass, onDrop) {
+        list.addEventListener('pointerdown', function (event) {
+            var handle = event.target.closest('.drop-order-handle');
+            if (!handle || handle.closest('ul') !== list) { return; }
+            var item = handle.closest('.' + itemClass);
+            if (!item) { return; }
+            event.preventDefault();
+            item.classList.add('is-dragging');
+            try { handle.setPointerCapture(event.pointerId); } catch (error) { }
+            function move(moveEvent) {
+                var y = moveEvent.clientY;
+                if (y < 70) { window.scrollBy(0, -14); }
+                if (y > window.innerHeight - 70) { window.scrollBy(0, 14); }
+                var siblings = Array.prototype.filter.call(list.children, function (node) { return node !== item && node.classList.contains(itemClass); });
+                for (var i = 0; i < siblings.length; i++) {
+                    var box = siblings[i].getBoundingClientRect();
+                    if (y < box.top + box.height / 2) { list.insertBefore(item, siblings[i]); return; }
+                }
+                list.appendChild(item);
+            }
+            function up() {
+                item.classList.remove('is-dragging');
+                handle.removeEventListener('pointermove', move);
+                handle.removeEventListener('pointerup', up);
+                handle.removeEventListener('pointercancel', up);
+                onDrop();
+            }
+            handle.addEventListener('pointermove', move);
+            handle.addEventListener('pointerup', up);
+            handle.addEventListener('pointercancel', up);
+        });
+    }
+
+    function shift(item, direction, onDrop) {
+        var list = item.parentNode;
+        if (direction < 0 && item.previousElementSibling) { list.insertBefore(item, item.previousElementSibling); }
+        if (direction > 0 && item.nextElementSibling) { list.insertBefore(item.nextElementSibling, item); }
+        onDrop();
+    }
+
+    function isCurrentEntry(campaign, current) {
+        return !!(current && current.kampagne === campaign.kampagne);
+    }
+
+    function dropOrderSection() {
+        var box = el('section', { class: 'box' }, [
+            el('div', { class: 'settings-section-title' }, [el('span', { text: 'Drop-Reihenfolge' }), badge('live')]),
+            el('p', { class: 'settings-note', text: 'Wird geladen ...' })
+        ]);
+        api('GET', '/settings/api/drops').then(function (data) {
+            dropEditor.data = data;
+            box.replaceWith(dropOrderContent(data));
+        }).catch(function (error) { toast(error.message, true); });
+        return box;
+    }
+
+    function dropOrderContent(data) {
+        if (!data.available) {
+            return section('Drop-Reihenfolge', 'live', [el('p', { class: 'settings-note', text: 'Die Drop-Liste gibt es noch nicht. Der Miner legt sie nach dem ersten Abgleich der Kampagnen an.' })]);
+        }
+        var options = data.options || {};
+        var creator = el('input', { type: 'checkbox' });
+        creator.checked = options.creator_quests !== false;
+        var auto = el('input', { type: 'checkbox' });
+        auto.checked = options.auto_within_game !== false;
+        var gameList = el('ul', { class: 'drop-order-games' });
+        var dirty = el('span', { class: 'settings-badge is-warn drop-order-dirty', text: 'nicht gespeichert' });
+        dirty.hidden = true;
+        function changed() { dirty.hidden = false; }
+
+        function campaignItem(campaign) {
+            var active = el('input', { type: 'checkbox', 'data-campaign': campaign.id });
+            active.checked = campaign.aktiv !== false;
+            active.addEventListener('change', changed);
+            var tags = [];
+            if (campaign.taeglich) { tags.push(el('span', { class: 'settings-badge is-source', text: 'täglich' })); }
+            if (campaign.creator_quest) { tags.push(el('span', { class: 'settings-badge is-source', text: 'Creator-Quest' })); }
+            if (campaign.abo_hinweis) { tags.push(el('span', { class: 'settings-badge is-warn', text: campaign.abo_hinweis })); }
+            if (campaign.konto_verbunden === 'nein') { tags.push(el('span', { class: 'settings-badge is-warn', text: 'Konto nicht verbunden' })); }
+            var item = el('li', { class: 'drop-order-campaign' + (isCurrentEntry(campaign, data.jetzt) ? ' is-current' : ''), 'data-id': campaign.id }, [
+                el('span', { class: 'drop-order-handle' + (auto.checked ? ' is-hidden' : ''), title: 'Ziehen zum Verschieben' }, [el('i', { class: 'fas fa-grip-vertical' })]),
+                el('div', { class: 'drop-order-main' }, [
+                    el('div', { class: 'drop-order-name' }, [el('span', { text: campaign.kampagne || campaign.id })].concat(isCurrentEntry(campaign, data.jetzt) ? [el('span', { class: 'settings-badge is-live', text: 'läuft jetzt auf ' + (data.jetzt.kanal || '') })] : [])),
+                    el('div', { class: 'drop-order-tags' }, tags),
+                    el('small', { class: 'settings-hint', text: [campaign.status, campaign.naechster_drop, campaign.kanaele && campaign.kanaele.indexOf('nur ') === 0 ? 'Kanal: ' + campaign.kanaele.slice(4) : null].filter(Boolean).join(' · ') })
+                ]),
+                el('label', { class: 'settings-field is-check drop-order-switch' }, [active]),
+                el('div', { class: 'drop-order-move' + (auto.checked ? ' is-hidden' : '') }, [
+                    el('button', { class: 'button is-small', type: 'button', title: 'Nach oben', text: '↑', onclick: function (event) { shift(event.target.closest('li'), -1, changed); } }),
+                    el('button', { class: 'button is-small', type: 'button', title: 'Nach unten', text: '↓', onclick: function (event) { shift(event.target.closest('li'), 1, changed); } })
+                ])
+            ]);
+            return item;
+        }
+
+        (data.games || []).forEach(function (game) {
+            var activeGame = el('input', { type: 'checkbox', 'data-game': game.name });
+            activeGame.checked = game.active !== false;
+            activeGame.addEventListener('change', changed);
+            var campaigns = el('ul', { class: 'drop-order-campaigns' }, game.campaigns.map(campaignItem));
+            sortable(campaigns, 'drop-order-campaign', changed);
+            var running = game.campaigns.some(function (campaign) { return isCurrentEntry(campaign, data.jetzt); });
+            var details = el('details', { class: 'drop-order-details' }, [
+                el('summary', { text: game.campaigns.length + (game.campaigns.length === 1 ? ' Kampagne' : ' Kampagnen') }),
+                campaigns
+            ]);
+            if (dropEditor.open[game.name] || running) { details.open = true; }
+            details.addEventListener('toggle', function () { dropEditor.open[game.name] = details.open; });
+            gameList.appendChild(el('li', { class: 'drop-order-game' + (running ? ' is-current' : ''), 'data-game-name': game.name }, [
+                el('div', { class: 'drop-order-row' }, [
+                    el('span', { class: 'drop-order-handle', title: 'Ziehen zum Verschieben' }, [el('i', { class: 'fas fa-grip-vertical' })]),
+                    el('span', { class: 'drop-order-game-name', text: game.name }),
+                    running ? el('span', { class: 'settings-badge is-live', text: 'läuft jetzt' }) : null,
+                    el('label', { class: 'settings-field is-check drop-order-switch' }, [activeGame]),
+                    el('div', { class: 'drop-order-move' }, [
+                        el('button', { class: 'button is-small', type: 'button', title: 'Nach oben', text: '↑', onclick: function (event) { shift(event.target.closest('.drop-order-game'), -1, changed); } }),
+                        el('button', { class: 'button is-small', type: 'button', title: 'Nach unten', text: '↓', onclick: function (event) { shift(event.target.closest('.drop-order-game'), 1, changed); } })
+                    ])
+                ]),
+                details
+            ]));
+        });
+        sortable(gameList, 'drop-order-game', changed);
+        auto.addEventListener('change', function () {
+            changed();
+            gameList.querySelectorAll('.drop-order-campaign .drop-order-handle, .drop-order-campaign .drop-order-move').forEach(function (node) { node.classList.toggle('is-hidden', auto.checked); });
+        });
+        creator.addEventListener('change', changed);
+
+        function collectOrder() {
+            var order = [];
+            var active = {};
+            var gamesActive = {};
+            gameList.querySelectorAll('.drop-order-game').forEach(function (gameNode) {
+                var box = gameNode.querySelector('[data-game]');
+                gamesActive[box.getAttribute('data-game')] = box.checked;
+                gameNode.querySelectorAll('.drop-order-campaign').forEach(function (node) {
+                    var id = node.getAttribute('data-id');
+                    order.push(id);
+                    active[id] = node.querySelector('[data-campaign]').checked;
+                });
+            });
+            return { order: order, active: active, games_active: gamesActive, options: { creator_quests: creator.checked, auto_within_game: auto.checked } };
+        }
+
+        var hints = (data.hinweise || []).length ? el('div', { class: 'drop-order-warnings' }, [el('div', { class: 'settings-subtitle', text: 'Selbstkontrolle' })].concat(data.hinweise.map(function (text) {
+            return el('p', { class: 'settings-warning' }, [el('i', { class: 'fas fa-exclamation-triangle' }), ' ' + text]);
+        }))) : null;
+
+        var content = section('Drop-Reihenfolge', 'live', [
+            hints,
+            el('div', { class: 'settings-grid' }, [
+                switchField(creator, 'Creator-Quests sammeln', 'Quests, die nur auf einem bestimmten Kanal zählen (z. B. lacy, zarbex). Der Miner schaut den Kanal auch ohne Follow. Aus: Sie stehen nur als Hinweis in der Liste.'),
+                switchField(auto, 'Innerhalb eines Spiels automatisch ordnen', 'Tägliche Drops und Quests zuerst, danach die kürzeste Watchtime. Aus: deine Reihenfolge der Kampagnen gilt genau so.')
+            ]),
+            el('p', { class: 'settings-note', text: 'Ganz oben wird zuerst gesammelt. Ist dort gerade nichts per Zuschauen machbar (kein Live-Kanal, heute erledigt, nur mit Abo), geht der Miner zum nächsten Eintrag. Verschieben per Ziehen am Griff oder mit den Pfeilen, auf dem Handy mit dem Finger.' }),
+            gameList,
+            el('div', { class: 'settings-actions' }, [
+                el('button', {
+                    class: 'button is-primary-hud', type: 'button', text: 'Reihenfolge speichern', onclick: function () {
+                        api('POST', '/settings/api/drops', collectOrder()).then(function (fresh) {
+                            dropEditor.data = fresh;
+                            toast('Gespeichert. Gilt ab dem nächsten Abgleich, ohne Neustart.', false);
+                            content.replaceWith(dropOrderContent(fresh));
+                        }).catch(function (error) { toast(error.message, true); });
+                    }
+                }),
+                dirty
+            ])
+        ], 'Stand ' + (data.aktualisiert || '') + '. Nur Kampagnen mit Watchtime werden geschaut, alles andere zeigt der Miner nur an.');
+        return content;
+    }
+
     function selectTab(name) {
         activeTab = name;
         try { localStorage.setItem('settingsTab', name); } catch (error) { }
@@ -607,6 +783,7 @@
         if (name === 'drops') {
             return [categorySection(settings), groupSection('Drops und Abzeichen', 'live', 'update_mine', spec.update_mine, settings.extras.mine, null, null, 'Die Wildcard-Werte gelten sofort, die übrigen nach dem nächsten Neustart.')];
         }
+        if (name === 'droporder') { return [dropOrderSection()]; }
         if (name === 'bets') { return betSection(settings, spec); }
         if (name === 'notifications') { return [notificationSection(settings)]; }
         if (name === 'logging') { return loggingSection(settings, spec); }

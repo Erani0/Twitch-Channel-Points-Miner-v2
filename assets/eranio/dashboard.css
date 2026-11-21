@@ -746,7 +746,39 @@ body {
 }
 
 .drops-row.is-current {
-    box-shadow: inset 3px 0 0 var(--accent);
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    box-shadow: 0 0 14px rgba(0, 255, 170, 0.25), inset 4px 0 0 var(--accent);
+    background: rgba(0, 255, 170, 0.06);
+    margin: 0.25rem 0;
+}
+
+.hud-badge.is-now {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0, 255, 170, 0.12);
+    font-weight: 700;
+}
+
+.drops-selfcheck {
+    margin: 0.5rem 1rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--accent-orange, #ff9d45);
+    border-radius: 6px;
+    background: rgba(255, 157, 69, 0.08);
+}
+
+.drops-selfcheck-title {
+    font-family: var(--font-header, 'Rajdhani', sans-serif);
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--accent-orange, #ff9d45);
+    margin-bottom: 0.25rem;
+}
+
+.drops-selfcheck-line {
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
 }
 
 .drops-row-head {
@@ -1103,7 +1135,7 @@ body {
 }
 
 .drops-game-campaigns .drops-row.is-current {
-    box-shadow: inset 3px 0 0 var(--accent);
+    box-shadow: 0 0 14px rgba(0, 255, 170, 0.25), inset 4px 0 0 var(--accent);
 }
 
 @media screen and (max-width: 768px) {

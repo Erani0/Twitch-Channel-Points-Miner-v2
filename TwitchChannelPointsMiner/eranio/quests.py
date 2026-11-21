@@ -114,6 +114,7 @@ class Quest:
         self.claimable = []
         self.game = None
         self.end_at = None
+        self.repeating = False
 
     @property
     def channel_quest(self):
@@ -211,6 +212,8 @@ def build_quests(inventory, details, now):
             times = max(_count((repeat or {}).get("repeatableTimes")), 1)
             grants = _count(own.get("grantCount"))
             claimed = status in DONE_STATUSES or grants >= times
+            if kind == "WATCH" and times > 1:
+                quest.repeating = True
             window = own.get("currentWindow") or {}
             expires = _parse(window.get("expiresAt"))
             window_open = expires is None or expires > now
@@ -338,7 +341,8 @@ def _claim(twitch, quests, now):
                 logger.debug("Quests: Abholen fehlgeschlagen", exc_info=True)
 
 
-def patch_views(views):
+def patch_views(views, options=None):
+    creators = (options or {}).get("creator_quests", True) is not False
     with STATE.lock:
         quests = dict(STATE.quests)
     for view in views:
@@ -347,12 +351,16 @@ def patch_views(views):
         view.quest_slugs = []
         view.sub_hint = None
         view.channel_logins = []
+        view.creator_off = False
         if quest is None:
             continue
         view.quest = True
         view.sub_hint = quest.sub_label()
+        if quest.repeating:
+            view.repeating = True
         if quest.channel_quest:
             view.quest_channel = True
+            view.creator_off = not creators
             view.drops = list(quest.drops)
             view.total_drops = len(view.drops)
             view.future_drops = 0

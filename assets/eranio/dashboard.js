@@ -619,7 +619,8 @@ var ACTIVE_FILTERS = [
     ['running', 'Running'],
     ['waiting', 'Waiting for live'],
     ['action', 'Needs action'],
-    ['daily', 'Done today']
+    ['daily', 'Done today'],
+    ['creatoroff', 'Creator quests off']
 ];
 var HISTORY_FILTERS = [
     ['all', 'All'],
@@ -662,6 +663,7 @@ function campaignKey(campaign) {
 }
 
 function campaignGroup(campaign) {
+    if (campaign.status === 'Creator-Quest ausgeschaltet') return 'creatoroff';
     if (campaign.status === 'läuft') return 'running';
     if (campaign.konto_verbunden === 'nein' || campaign.pausiert || campaign.status === 'nur mit Abo' || campaign.status === 'nichts per Zuschauen machbar') return 'action';
     if (campaign.tages_drop) return 'daily';
@@ -792,14 +794,14 @@ function fillActiveCampaigns() {
     var data = dropsUi.data || {};
     var current = data.jetzt;
     var campaigns = (data.kampagnen || []).slice();
-    var rank = {running: 1, waiting: 2, daily: 3, action: 4};
+    var rank = {running: 1, waiting: 2, daily: 3, action: 4, creatoroff: 6};
     campaigns.sort(function (a, b) {
         var ra = isCurrentCampaign(a, current) ? 0 : (a.aktiv ? rank[campaignGroup(a)] : 5);
         var rb = isCurrentCampaign(b, current) ? 0 : (b.aktiv ? rank[campaignGroup(b)] : 5);
         if (ra !== rb) return ra - rb;
         return (Date.parse(a.ende_utc) || 8.64e15) - (Date.parse(b.ende_utc) || 8.64e15);
     });
-    var counts = {all: campaigns.length, running: 0, waiting: 0, action: 0, daily: 0};
+    var counts = {all: campaigns.length, running: 0, waiting: 0, action: 0, daily: 0, creatoroff: 0};
     campaigns.forEach(function (campaign) { counts[campaignGroup(campaign)] += 1; });
     var chips = document.getElementById('drops-active-chips');
     chips.textContent = '';
@@ -812,6 +814,12 @@ function fillActiveCampaigns() {
     document.getElementById('drops-active-count').textContent = campaigns.length;
     var list = document.getElementById('drops-active-list');
     list.textContent = '';
+    if ((data.hinweise || []).length) {
+        var warnBox = el('div', 'drops-selfcheck');
+        warnBox.appendChild(el('div', 'drops-selfcheck-title', 'Self-check'));
+        data.hinweise.forEach(function (text) { warnBox.appendChild(el('div', 'drops-selfcheck-line', text)); });
+        list.appendChild(warnBox);
+    }
     var shown = campaigns.filter(function (campaign) {
         if (dropsUi.filter !== 'all' && campaignGroup(campaign) !== dropsUi.filter) return false;
         return matchesSearch(campaign.spiel + ' ' + campaign.kampagne, dropsUi.search);
@@ -864,7 +872,7 @@ function gameRow(game, current) {
     var open = dropsUi.touched[key] ? !!dropsUi.open[key] : hasCurrent;
     var lead = game.campaigns[0];
     var group = campaignGroup(lead);
-    var counts = {running: 0, waiting: 0, action: 0, daily: 0};
+    var counts = {running: 0, waiting: 0, action: 0, daily: 0, creatoroff: 0};
     var claimed = 0;
     var total = 0;
     var done = 0;
@@ -935,12 +943,17 @@ function campaignRow(campaign, isCurrent) {
     var main = el('div', 'drops-row-main');
     var line = el('div', 'drops-row-line');
     line.appendChild(el('span', 'drops-row-game', campaign.spiel || 'Unknown game'));
-    if (isCurrent) line.appendChild(badge('Watching', ''));
+    if (isCurrent) {
+        var nowData = (dropsUi.data || {}).jetzt || {};
+        line.appendChild(badge(nowData.kanal ? 'Collecting now on ' + nowData.kanal : 'Collecting now', 'is-now'));
+    }
     if (campaign.art === 'Quest') line.appendChild(badge('Quest', 'is-cyan'));
     if (campaign.abo_hinweis) line.appendChild(badge(campaign.abo_hinweis, 'is-warn'));
     else if (campaign.abo_noetig) line.appendChild(badge('Sub nötig', 'is-warn'));
     if (campaign.konto_verbunden === 'nein') line.appendChild(badge('Link account', 'is-warn'));
     if (campaign.tages_drop) line.appendChild(badge('Daily', 'is-cyan'));
+    else if (campaign.taeglich) line.appendChild(badge('Daily drop', 'is-cyan'));
+    if (campaign.creator_quest) line.appendChild(badge('Creator quest', 'is-cyan'));
     if (!campaign.aktiv) line.appendChild(badge('Off', 'is-muted'));
     main.appendChild(line);
     main.appendChild(el('div', 'drops-row-campaign', campaign.kampagne));

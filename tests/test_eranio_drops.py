@@ -147,15 +147,15 @@ def publish(layer, campaigns, streamers=(), now=T0):
 
 
 class TestOrder:
-    def test_without_file_started_and_closest_drops_come_first(self):
+    def test_without_file_shortest_remaining_watchtime_comes_first(self):
         views = [
             view("long", minutes=120),
             view("fresh", minutes=10),
             view("started", minutes=60, watched=20),
         ]
         assert ids(DropFile.rank(views, empty_settings())) == [
-            "started",
             "fresh",
+            "started",
             "long",
         ]
 

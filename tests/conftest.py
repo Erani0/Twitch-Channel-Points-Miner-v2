@@ -19,15 +19,17 @@ def configured_logger():
 def reset_eranio_streak_state():
     from TwitchChannelPointsMiner.eranio import streak
 
-    from TwitchChannelPointsMiner.eranio import drops, quests
+    from TwitchChannelPointsMiner.eranio import drops, quests, selfcheck
 
     streak.STATE.reset()
     drops.STATE.reset()
     quests.STATE.reset()
+    selfcheck.STATE.reset()
     yield
     streak.STATE.reset()
     drops.STATE.reset()
     quests.STATE.reset()
+    selfcheck.STATE.reset()
 
 
 @pytest.fixture(autouse=True)

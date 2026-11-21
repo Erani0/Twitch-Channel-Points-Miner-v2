@@ -267,6 +267,33 @@ def install(app, server, password, miner_info=None):
             200 if ok else 400,
         )
 
+    def drop_list():
+        denied = require()
+        if denied:
+            return denied
+        from TwitchChannelPointsMiner.eranio import drops
+
+        if request.method == "GET":
+            return json_response(drops.editor_view())
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return json_response({"error": "Ungültige Anfrage."}, 400)
+        try:
+            return json_response(drops.apply_editor(payload))
+        except ValueError as error:
+            return json_response({"error": str(error)}, 409)
+        except Exception as error:
+            logger.warning("Drop-Reihenfolge nicht gespeichert: %s", error)
+            return json_response(
+                {"error": "Die Drop-Reihenfolge konnte nicht gespeichert werden."}, 500
+            )
+
+    app.add_url_rule(
+        "/settings/api/drops",
+        "eranio_settings_drops",
+        drop_list,
+        methods=["GET", "POST"],
+    )
     app.add_url_rule("/settings", "eranio_settings", page, methods=["GET"])
     app.add_url_rule(
         "/settings/api/session",
