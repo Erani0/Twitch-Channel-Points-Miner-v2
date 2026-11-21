@@ -704,6 +704,8 @@ def _build_views(twitch, campaigns):
         if memo and memo.view.total_drops < len(view.drops):
             view.total_drops = len(view.drops)
         views.append(view)
+    known = {v.id for v in views}
+    views.extend(DropView(extra) for extra in quests.extra_campaigns(known))
     return quests.patch_views(views)
 
 

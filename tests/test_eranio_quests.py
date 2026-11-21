@@ -228,6 +228,32 @@ class TestSelection:
         assert entry["naechster_drop"].startswith("30 von 300 Minuten")
 
 
+class TestMissingCampaign:
+    def test_creator_quest_without_base_campaign_gets_its_own_entry(self, tmp_path):
+        import json
+
+        path = tmp_path / "d.json"
+        drops.configure(path=str(path), categories=["base"])
+        details = lacy_details()
+        details["game"] = {
+            "displayName": "Grand Theft Auto VI",
+            "slug": "grand-theft-auto-vi",
+        }
+        details["endAt"] = iso(NOW + timedelta(days=9))
+        install(lacy_inventory(), details={LACY: details})
+        lacy = streamer("lacy", game="Just Chatting", channel_id="494543675")
+        layer = type("L", (), {"twitch": FakeTwitch()})()
+        publish(layer, [], [lacy])
+        assert drops.quest_stream(lacy) is True
+        entry = next(
+            e
+            for e in json.loads(path.read_text(encoding="utf-8"))["kampagnen"]
+            if e["id"] == LACY
+        )
+        assert entry["spiel"] == "Grand Theft Auto VI"
+        assert entry["status"] == "läuft"
+
+
 class TestChannels:
     def test_missing_quest_channels_are_added_once(self):
         added = []

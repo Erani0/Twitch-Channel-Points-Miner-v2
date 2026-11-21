@@ -3,6 +3,7 @@ import logging
 import threading
 import time
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ INVENTORY_REQUEST = {
 DETAILS_QUERY = (
     "query EranioQuestDetails($id: ID!) {"
     "dropsCampaign(id: $id) {"
-    "id name status endAt "
+    "id name status endAt game { id displayName slug boxArtURL } "
     "rewardGroups {"
     "id name "
     "progressCriteria {"
@@ -111,6 +112,8 @@ class Quest:
         self.channels = {}
         self.category_slugs = []
         self.claimable = []
+        self.game = None
+        self.end_at = None
 
     @property
     def channel_quest(self):
@@ -180,6 +183,9 @@ def build_quests(inventory, details, now):
             if isinstance(g, dict)
         }
         quest = Quest(campaign_id, campaign.get("name") or campaign_id)
+        if isinstance(info.get("game"), dict):
+            quest.game = dict(info["game"])
+        quest.end_at = _parse(info.get("endAt") or campaign.get("endAt"))
         groups = [g for g in campaign.get("rewardGroups") or [] if isinstance(g, dict)]
         seen = {str(g.get("id")) for g in groups}
         groups += [g for gid, g in info_groups.items() if gid not in seen]
@@ -396,3 +402,25 @@ def ensure_streamers(logins):
             STATE.adding = False
 
     threading.Thread(target=run, name="eranio-quest-channels", daemon=True).start()
+
+
+def extra_campaigns(known_ids):
+    with STATE.lock:
+        quests = list(STATE.quests.values())
+    extra = []
+    for quest in quests:
+        if quest.id in known_ids or not quest.channel_quest:
+            continue
+        extra.append(
+            SimpleNamespace(
+                id=quest.id,
+                name=quest.name,
+                game=quest.game or {"displayName": "Quest"},
+                reward_categories=[],
+                end_at=quest.end_at,
+                start_at=None,
+                drops=[],
+                channels=[],
+            )
+        )
+    return extra
