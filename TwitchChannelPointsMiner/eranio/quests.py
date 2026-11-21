@@ -180,7 +180,10 @@ def build_quests(inventory, details, now):
             if isinstance(g, dict)
         }
         quest = Quest(campaign_id, campaign.get("name") or campaign_id)
-        for group in campaign.get("rewardGroups") or []:
+        groups = [g for g in campaign.get("rewardGroups") or [] if isinstance(g, dict)]
+        seen = {str(g.get("id")) for g in groups}
+        groups += [g for gid, g in info_groups.items() if gid not in seen]
+        for group in groups:
             if not isinstance(group, dict) or not group.get("id"):
                 continue
             group_id = str(group["id"])
@@ -261,7 +264,7 @@ def refresh(twitch, now=None):
             INVENTORY_REQUEST["operationName"], copy.deepcopy(INVENTORY_REQUEST)
         )
     except Exception:
-        logger.debug("Quests: Inventar nicht lesbar", exc_info=True)
+        logger.warning("Quests: Inventar bei Twitch nicht lesbar", exc_info=True)
         return
     campaigns = (
         (((inventory or {}).get("data") or {}).get("currentUser") or {}).get(
@@ -288,11 +291,22 @@ def refresh(twitch, now=None):
             info = ((answer or {}).get("data") or {}).get("dropsCampaign") or {}
             STATE.details[campaign_id] = (current, info)
         except Exception:
-            logger.debug("Quests: Details nicht lesbar", exc_info=True)
+            logger.warning(
+                "Quests: Details zu %s nicht lesbar", campaign_id, exc_info=True
+            )
     details = {key: value[1] for key, value in STATE.details.items()}
     quests = build_quests(inventory, details, datetime.utcnow())
     with STATE.lock:
+        changed = set(quests) != set(STATE.quests)
         STATE.quests = quests
+    if changed:
+        bound = [q for q in quests.values() if q.channel_quest]
+        logger.info(
+            "Quests geladen: %s, davon %s an Kanäle gebunden (%s)",
+            len(quests),
+            len(bound),
+            ", ".join(sorted({l for q in bound for l in q.channels.values() if l})),
+        )
     _claim(twitch, quests, current)
 
 
@@ -377,7 +391,7 @@ def ensure_streamers(logins):
             STATE.added.update(missing)
             logger.info("Quest-Kanäle aufgenommen: %s", ", ".join(missing))
         except Exception:
-            logger.debug("Quests: Kanäle nicht aufgenommen", exc_info=True)
+            logger.warning("Quests: Kanäle nicht aufgenommen", exc_info=True)
         finally:
             STATE.adding = False
 

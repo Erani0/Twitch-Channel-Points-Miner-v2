@@ -112,6 +112,13 @@ class TestBuild:
         assert quest.remaining() == 270
         assert quest.sub_label() == "Sub nötig"
 
+    def test_sub_groups_only_known_from_details_still_count(self):
+        item = lacy_inventory()
+        item["rewardGroups"] = item["rewardGroups"][1:]
+        quest = built(item, details={LACY: lacy_details()})[LACY]
+        assert quest.sub_label() == "Sub nötig"
+        assert quest.remaining() == 270
+
     def test_gift_campaign_says_how_many_subs(self):
         item = lacy_inventory()
         item["rewardGroups"][0] = group("lacy-sub", "SUB", subs=5, status=None)
