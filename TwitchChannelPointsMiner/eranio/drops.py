@@ -798,7 +798,18 @@ def _live_ids(streamers):
         if getattr(streamer, "is_online", False) is True:
             live |= _stream_ids(streamer)
             live |= _quest_channel_ids(streamer)
+            live |= _quest_category_ids(streamer)
     return live
+
+
+def _quest_category_ids(streamer):
+    stream = getattr(streamer, "stream", None)
+    game = getattr(stream, "game_name", None)
+    name = game() if callable(game) else None
+    slug = slugify(name or "")
+    if not slug:
+        return set()
+    return {v.id for v in STATE.views if slug in (v.quest_slugs or [])}
 
 
 def quest_stream(streamer):

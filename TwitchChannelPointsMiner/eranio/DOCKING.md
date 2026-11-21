@@ -244,3 +244,7 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 ## 3.0.26: One drop stream
 
 - `drops.reserve` keeps exactly one drop stream (the best ranked); further drop streams are left out instead of sharing the slot. Twitch counts drop and quest minutes on one channel only, so several DJ channels for the same Pokemon quest only took points slots away.
+
+## 3.0.27: Live status of category quests
+
+- `_live_ids` also counts a live stream in one of a category quest's categories, so Pokemon Evolutions shows "läuft" while a DJ channel collects it.

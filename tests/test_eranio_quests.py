@@ -220,6 +220,7 @@ class TestSelection:
         assert drops.quest_stream(dj) is True
         assert drops.quest_stream(gamer) is False
         assert drops.streamer_rank(dj) == 0
+        assert POKEMON in drops._live_ids([dj])
 
     def test_only_one_matching_stream_keeps_the_drop_slot(self, tmp_path):
         drops.configure(path=str(tmp_path / "d.json"), categories=["base"])
