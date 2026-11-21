@@ -12019,6 +12019,7 @@ class Twitch(object):
         return campaigns, last_full_success, now
 
     def sync_campaigns(self, streamers, chunk_size=3):
+        from TwitchChannelPointsMiner.eranio import awards as eranio_awards
         from TwitchChannelPointsMiner.eranio import drops as eranio_drops
 
         # Full dashboard refresh every 15 minutes. A failed refresh keeps the
@@ -12043,6 +12044,7 @@ class Twitch(object):
                     # run claim_all_drops_from_inventory concurrently.
                     with self.prompt_claim_pass_lock:
                         self.claim_all_drops_from_inventory()
+                    awards_inventory = getattr(_drop_inventory_state, "inventory", None)
                     #####################################
 
                     # Expand dashboard campaigns together with exact campaigns
@@ -12140,11 +12142,17 @@ class Twitch(object):
                             )
 
                     refreshed_campaigns = []
+                    awards_shared_ids = eranio_awards.shared_benefit_ids(
+                        campaigns_details
+                    )
 
                     # Going to clear array and structure. Remove all the timeBasedDrops expired or not started yet
                     for index in range(0, len(campaigns_details)):
                         if campaigns_details[index] is not None:
                             campaign = Campaign(campaigns_details[index])
+                            eranio_awards.mark_awarded(
+                                campaign, awards_inventory, awards_shared_ids
+                            )
                             eranio_drops.remember(campaign)
                             if campaign.dt_match is True:
                                 # Remove all the drops already claimed or with dt not matching

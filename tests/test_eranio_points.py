@@ -74,7 +74,7 @@ def test_fetch_sends_a_single_request(monkeypatch):
 
 
 def test_disabled_channel_is_reported_once(caplog):
-    caplog.set_level("INFO")
+    caplog.set_level("DEBUG")
     points.store(["alpha"], {"alpha": False}, now=0)
     points.store(["alpha"], {"alpha": False}, now=1)
     assert caplog.text.count("alpha hat keine Kanalpunkte") == 1

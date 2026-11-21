@@ -320,6 +320,52 @@ def test_history_does_not_duplicate_and_fills_missing_images(env):
     assert result["abgelaufen"][0]["item_art_url"] == DROP_CDN
 
 
+def test_the_same_drop_after_a_restart_is_one_history_entry(env):
+    path = env.analytics / dashboard.HISTORY_FILE
+    row = {
+        "category": "Where Winds Meet",
+        "campaign": "Where Winds Meet Dec",
+        "item_name": "15min drop Dec",
+        "benefit": "15min drop Dec",
+    }
+    old_key = "abgeholt:" + "|".join(
+        ["", "where winds meet dec", "15min drop dec", "15min drop dec", ""]
+    )
+    path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "eintraege": [
+                    {
+                        "key": old_key + "a",
+                        "art": "abgeholt",
+                        "daten": dict(row, datetime="2026-11-20 21:10:13"),
+                    },
+                    {
+                        "key": old_key + "b",
+                        "art": "abgeholt",
+                        "daten": dict(row, datetime="2026-11-20 23:37:19"),
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = dashboard.remember_history(
+        {"abgeholt": [dict(row, datetime="2026-11-21 09:00:00")]}
+    )
+    rows = [r for r in result["abgeholt"] if r["campaign"] == "Where Winds Meet Dec"]
+    assert [r["datetime"] for r in rows] == ["2026-11-20 21:10:13"]
+    stored = json.loads(path.read_text(encoding="utf-8"))
+    assert (
+        sum(
+            e["daten"].get("campaign") == "Where Winds Meet Dec"
+            for e in stored["eintraege"]
+        )
+        == 1
+    )
+
+
 def test_drops_endpoint_without_files_is_empty(env, tmp_path):
     (env.analytics / dashboard.HISTORY_FILE).unlink(missing_ok=True)
     (tmp_path / "drop_campaigns.json").unlink()

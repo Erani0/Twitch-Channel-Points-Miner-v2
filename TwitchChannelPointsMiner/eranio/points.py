@@ -187,7 +187,7 @@ def store(logins, results, now=None):
         if any(login in results for login in logins):
             _save_locked(now)
     for login in newly_disabled:
-        logger.info(
+        logger.debug(
             "%s hat keine Kanalpunkte und wird nur noch für Drops geschaut",
             login,
         )

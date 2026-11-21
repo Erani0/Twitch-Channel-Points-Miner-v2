@@ -258,7 +258,7 @@ def history_key(kind, row):
             row.get("benefit"),
         )
         if not row.get("drop_id"):
-            parts = parts + (row.get("datetime"),)
+            parts = (row.get("category"),) + parts[1:]
     return kind + ":" + "|".join(str(p or "").casefold() for p in parts)
 
 
@@ -277,6 +277,7 @@ def remember_history(current):
         stored = read_json_file(path)
         entries = stored.get("eintraege") if isinstance(stored, dict) else None
         known = {}
+        changed = False
         for entry in entries if isinstance(entries, list) else []:
             if (
                 isinstance(entry, dict)
@@ -284,8 +285,18 @@ def remember_history(current):
                 and isinstance(entry.get("daten"), dict)
                 and isinstance(entry.get("key"), str)
             ):
-                known[entry["key"]] = entry
-        changed = False
+                key = history_key(entry["art"], entry["daten"])
+                if key != entry["key"]:
+                    entry = dict(entry, key=key)
+                    changed = True
+                earlier = known.get(key)
+                if earlier is not None:
+                    changed = True
+                    if history_sort_value(
+                        entry["art"], entry["daten"]
+                    ) >= history_sort_value(earlier["art"], earlier["daten"]):
+                        continue
+                known[key] = entry
         for kind in HISTORY_KINDS:
             image_field = "spiel_bild" if kind == "kampagnen" else "item_art_url"
             for row in current.get(kind) or []:

@@ -203,3 +203,11 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 - `eranio.points` asks Twitch in the background (one GQL request with one alias per channel, up to 15 per request, the Twitch limit for aliases), caches the answer for 24 hours in analytics/<account>/points_check_eranio.json (survives restarts), retries a failed check after 10 minutes and treats unknown channels as allowed. Each channel without points is logged once.
 - Found on 20.11.2026: sintica, vanaessa, myersprincessttv and takotaretriver98 held two of three slots for hours without a single point. An earlier change that polled stream segments for every channel (3.0.15) was based on that wrong reading and was reverted.
 - Tests: `tests/conftest.py` resets the cache and disables the background worker, so no test sends a request.
+
+## 3.0.19: Campaigns Twitch already completed
+
+- `Twitch.sync_campaigns` keeps the inventory that `claim_all_drops_from_inventory` just read (`_drop_inventory_state.inventory`) and calls `eranio.awards.mark_awarded(campaign, inventory, shared_ids)` for every new `Campaign` before `eranio_drops.remember` and `clear_drops`.
+- A drop counts as done when its campaign is no longer in `dropCampaignsInProgress` and every benefit ID of the drop appears in `gameEventDrops` with `lastAwardedAt` inside the drop's window. Benefit IDs used by more than one drop among the loaded campaigns are never trusted. Names are not compared.
+- Found on 21.11.2026: Black Desert "Master Class 26 (Nov 20)" was finished (2 Hour Reward awarded 00:53 UTC), but Twitch drops a finished campaign from the inventory and sends `self: null` in its details, so the campaign looked new with 0 minutes and was watched for eight hours without progress. The base check `__drop_benefits_were_awarded` was skipped because the reward name "2 Hour Reward" also belongs to older Black Desert campaigns.
+- Drop history (`drop_history_eranio.json`): rows without `drop_id` no longer use the time in their key, so a restart does not add the same drop again; existing duplicates are merged on the next read, keeping the earliest time.
+- "hat keine Kanalpunkte" is now a debug line (more than 800 lines a night, mostly drop channels).
