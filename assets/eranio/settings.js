@@ -648,6 +648,11 @@
         creator.checked = options.creator_quests !== false;
         var auto = el('input', { type: 'checkbox' });
         auto.checked = options.auto_within_game !== false;
+        var linked = el('input', { type: 'checkbox' });
+        linked.checked = options.linked_only === true;
+        var followed = el('input', { type: 'checkbox' });
+        followed.checked = options.followed_only === true;
+        var always = el('input', { type: 'text', class: 'input', value: (options.always_games || []).join(', '), placeholder: 'z. B. Pokemon Evolutions, Grand Theft Auto VI' });
         var gameList = el('ul', { class: 'drop-order-games' });
         var dirty = el('span', { class: 'settings-badge is-warn drop-order-dirty', text: 'nicht gespeichert' });
         dirty.hidden = true;
@@ -711,6 +716,9 @@
             gameList.querySelectorAll('.drop-order-campaign .drop-order-handle, .drop-order-campaign .drop-order-move').forEach(function (node) { node.classList.toggle('is-hidden', auto.checked); });
         });
         creator.addEventListener('change', changed);
+        linked.addEventListener('change', changed);
+        followed.addEventListener('change', changed);
+        always.addEventListener('input', changed);
 
         function collectOrder() {
             var order = [];
@@ -725,7 +733,11 @@
                     active[id] = node.querySelector('[data-campaign]').checked;
                 });
             });
-            return { order: order, active: active, games_active: gamesActive, options: { creator_quests: creator.checked, auto_within_game: auto.checked } };
+            return { order: order, active: active, games_active: gamesActive, options: {
+                creator_quests: creator.checked, auto_within_game: auto.checked,
+                linked_only: linked.checked, followed_only: followed.checked,
+                always_games: always.value.split(',').map(function (part) { return part.trim(); }).filter(function (part) { return part; })
+            } };
         }
 
         var hints = (data.hinweise || []).length ? el('div', { class: 'drop-order-warnings' }, [el('div', { class: 'settings-subtitle', text: 'Selbstkontrolle' })].concat(data.hinweise.map(function (text) {
@@ -736,7 +748,10 @@
             hints,
             el('div', { class: 'settings-grid' }, [
                 switchField(creator, 'Creator-Quests sammeln', 'Quests, die nur auf einem bestimmten Kanal zählen (z. B. lacy, zarbex). Der Miner schaut den Kanal auch ohne Follow. Aus: Sie stehen nur als Hinweis in der Liste.'),
-                switchField(auto, 'Innerhalb eines Spiels automatisch ordnen', 'Tägliche Drops und Quests zuerst, danach die kürzeste Watchtime. Aus: deine Reihenfolge der Kampagnen gilt genau so.')
+                switchField(auto, 'Innerhalb eines Spiels automatisch ordnen', 'Tägliche Drops und Quests zuerst, danach die kürzeste Watchtime. Aus: deine Reihenfolge der Kampagnen gilt genau so.'),
+                switchField(linked, 'Nur Kampagnen mit verbundenem Spielkonto', 'Der Miner fragt alle 30 Minuten bei Twitch nach, bei welchen Spielen dein Konto verbunden ist. Alles andere bleibt aus, außer den Spielen unter „Immer sammeln“.'),
+                switchField(followed, 'Nur gefolgte Kanäle', 'Keine fremden Kanäle suchen, Drops nur bei Kanälen, denen du folgst. Ausnahme: „Immer sammeln“. Gilt voll nach einem Neustart.'),
+                el('label', { class: 'settings-field' }, [el('span', { text: 'Immer sammeln' }), always, el('small', { class: 'settings-hint', text: 'Spiele oder Kampagnen, durch Komma getrennt. Für sie gelten die beiden Schalter darüber nicht.' })])
             ]),
             el('p', { class: 'settings-note', text: 'Ganz oben wird zuerst gesammelt. Ist dort gerade nichts per Zuschauen machbar (kein Live-Kanal, heute erledigt, nur mit Abo), geht der Miner zum nächsten Eintrag. Verschieben per Ziehen am Griff oder mit den Pfeilen, auf dem Handy mit dem Finger.' }),
             gameList,

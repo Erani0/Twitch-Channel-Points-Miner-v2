@@ -6,6 +6,7 @@ import threading
 import time
 import unicodedata
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 from TwitchChannelPointsMiner.classes.entities.Drop import utc_now
 from TwitchChannelPointsMiner.classes.entities.Streamer import is_drop_discovered
@@ -161,9 +162,17 @@ class DropView:
         return any(d.requires_subscription for d in self.open_drops())
 
 
-DEFAULT_OPTIONS = {"creator_quests": True, "auto_within_game": True}
+DEFAULT_OPTIONS = {
+    "creator_quests": True,
+    "auto_within_game": True,
+    "linked_only": False,
+    "followed_only": False,
+    "always_games": [],
+}
 DAILY_HOURS = 26
 CREATOR_OFF_STATUS = "Creator-Quest ausgeschaltet"
+UNLINKED_OFF_STATUS = "aus: Spielkonto nicht verbunden"
+LINKS_SECONDS = 30 * 60
 
 
 def empty_settings():
@@ -179,9 +188,17 @@ def empty_settings():
 def read_options(data):
     raw = data.get("einstellungen") if isinstance(data, dict) else None
     raw = raw if isinstance(raw, dict) else {}
+    always = raw.get("immer_sammeln")
     return {
         "creator_quests": as_bool(raw.get("creator_quests"), True),
         "auto_within_game": as_bool(raw.get("innerhalb_spiel_automatisch"), True),
+        "linked_only": as_bool(raw.get("nur_verbundene_konten"), False),
+        "followed_only": as_bool(raw.get("nur_gefolgte_kanaele"), False),
+        "always_games": [
+            str(item).strip()
+            for item in (always if isinstance(always, list) else [])
+            if str(item or "").strip()
+        ],
     }
 
 
@@ -189,7 +206,39 @@ def write_options(options):
     return {
         "creator_quests": bool(options.get("creator_quests", True)),
         "innerhalb_spiel_automatisch": bool(options.get("auto_within_game", True)),
+        "nur_verbundene_konten": bool(options.get("linked_only", False)),
+        "nur_gefolgte_kanaele": bool(options.get("followed_only", False)),
+        "immer_sammeln": list(options.get("always_games") or []),
     }
+
+
+def always_collected(view, options):
+    names = (options or {}).get("always_games") or []
+    if not names:
+        return False
+    texts = (
+        slugify(getattr(view, "game_name", "")),
+        slugify(getattr(view, "name", "")),
+    )
+    for name in names:
+        wanted = slugify(name)
+        if wanted and any(wanted == t or wanted in t for t in texts if t):
+            return True
+    return False
+
+
+def unlinked_off(view, options):
+    options = options or {}
+    if not options.get("linked_only") or STATE.links is None:
+        return False
+    if always_collected(view, options):
+        return False
+    return getattr(view, "account_connected", None) is not True
+
+
+def followed_off(view, options):
+    options = options or {}
+    return bool(options.get("followed_only")) and not always_collected(view, options)
 
 
 def acronym(name):
@@ -394,6 +443,7 @@ class DropFile:
             own.get("active", True)
             and game.get("active", True)
             and not getattr(view, "creator_off", False)
+            and not unlinked_off(view, settings.get("options"))
         )
 
     @staticmethod
@@ -709,6 +759,8 @@ class State:
         self.quest_channels = set()
         self.quest_category_slugs = set()
         self.last_current = None
+        self.links = None
+        self.links_at = 0.0
         self.lock = threading.RLock()
 
 
@@ -751,6 +803,52 @@ def remember(campaign):
         logger.debug("Drop-Liste: Kampagne konnte nicht gemerkt werden", exc_info=True)
 
 
+def fetch_links(twitch, now):
+    options = (STATE.settings or {}).get("options") or {}
+    if not options.get("linked_only"):
+        return
+    if STATE.links is not None and now - STATE.links_at < LINKS_SECONDS:
+        return
+    gql = getattr(twitch, "gql", None)
+    if gql is None:
+        return
+    STATE.links_at = now
+    try:
+        answer = gql.post_gql_request_raw(
+            "EranioDropLinks",
+            {
+                "operationName": "EranioDropLinks",
+                "query": (
+                    "query EranioDropLinks { currentUser { dropCampaigns { id "
+                    "self { isAccountConnected } } } }"
+                ),
+                "variables": {},
+            },
+        )
+        campaigns = (((answer or {}).get("data") or {}).get("currentUser") or {}).get(
+            "dropCampaigns"
+        )
+    except Exception:
+        campaigns = None
+    if not isinstance(campaigns, list) or not campaigns:
+        logger.warning(
+            "Drops: Kontoverbindungen bei Twitch nicht lesbar, Filter vorerst aus"
+        )
+        return
+    links = {}
+    for campaign in campaigns:
+        if isinstance(campaign, dict) and campaign.get("id"):
+            own = campaign.get("self") or {}
+            links[str(campaign["id"])] = own.get("isAccountConnected") is True
+    if STATE.links is None:
+        logger.info(
+            "Drops: Kontoverbindungen gelesen, %s von %s Kampagnen mit verbundenem Konto",
+            sum(links.values()),
+            len(links),
+        )
+    STATE.links = links
+
+
 def _link_states(twitch):
     states = {}
     try:
@@ -761,6 +859,8 @@ def _link_states(twitch):
                 )
     except Exception:
         pass
+    for cid, linked in (STATE.links or {}).items():
+        states[cid] = linked
     return states
 
 
@@ -866,6 +966,8 @@ def _build_views(twitch, campaigns):
 def _status(view, live, blocked, now_utc):
     if getattr(view, "creator_off", False):
         return CREATOR_OFF_STATUS
+    if unlinked_off(view, (STATE.settings or {}).get("options")):
+        return UNLINKED_OFF_STATUS
     if selfcheck.is_blocked(view.id):
         return "pausiert (Selbstkontrolle: kein Fortschritt bei Twitch)"
     if view.end_at and now_utc > view.end_at:
@@ -922,9 +1024,15 @@ def _sync_categories(settings, ranked):
         return
     known = {slugify(c) for c in STATE.base_categories}
     extra = []
+    options = settings.get("options") or {}
+    followed = bool(options.get("followed_only"))
     games = settings["games"]
     for name, info in games.items():
         slug = info.get("slug")
+        if followed and not always_collected(
+            SimpleNamespace(game_name=name, name=""), options
+        ):
+            continue
         if (
             slug
             and info.get("active", True)
@@ -932,6 +1040,8 @@ def _sync_categories(settings, ranked):
             and slug not in extra
         ):
             extra.append(slug)
+    if followed:
+        ranked = [v for v in ranked if not followed_off(v, options)]
     for view in ranked[:TOP_GAMES_SEARCHED]:
         if (
             view.game_slug
@@ -1042,6 +1152,11 @@ def _current(views, streamers):
 def _publish(twitch, campaigns, streamers, now):
     quests.refresh(twitch, now)
     selfcheck.fetch(twitch, now)
+    if STATE.file.changed():
+        with STATE.lock:
+            STATE.settings = STATE.file.read_settings()
+            STATE.dirty = True
+    fetch_links(twitch, now)
     with STATE.lock:
         now_utc = utc_now()
         key = day_key()
@@ -1060,13 +1175,15 @@ def _publish(twitch, campaigns, streamers, now):
         STATE.rank_ids = [v.id for v in ranked]
         STATE.position = {cid: index for index, cid in enumerate(STATE.rank_ids)}
         STATE.all_ids = {v.id for v in views}
+        options = settings.get("options") or {}
+        reachable = [v for v in ranked if not followed_off(v, options)]
         STATE.quest_channels = {
-            channel for v in ranked if v.quest_channel for channel in v.channels
+            channel for v in reachable if v.quest_channel for channel in v.channels
         }
         STATE.quest_category_slugs = {
-            slug for v in ranked if not v.quest_channel for slug in v.quest_slugs
+            slug for v in reachable if not v.quest_channel for slug in v.quest_slugs
         }
-        quests.ensure_streamers(quests.wanted_logins(ranked))
+        quests.ensure_streamers(quests.wanted_logins(reachable))
         _sync_categories(settings, ranked)
         live = _live_ids(streamers)
         blocked = _blocked_games(twitch, now)
@@ -1289,9 +1406,20 @@ def apply_editor(payload):
         data["spiele"] = games
         options = read_options(data)
         incoming = payload.get("options") or {}
-        for key in ("creator_quests", "auto_within_game"):
+        for key in (
+            "creator_quests",
+            "auto_within_game",
+            "linked_only",
+            "followed_only",
+        ):
             if key in incoming:
                 options[key] = incoming[key] is True
+        if isinstance(incoming.get("always_games"), list):
+            options["always_games"] = [
+                str(item).strip()
+                for item in incoming["always_games"]
+                if str(item or "").strip()
+            ][:20]
         data["einstellungen"] = write_options(options)
         path = _file_path()
         tmp = f"{path}.tmp"

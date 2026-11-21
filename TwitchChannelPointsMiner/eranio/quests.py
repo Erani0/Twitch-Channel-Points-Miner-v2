@@ -27,22 +27,6 @@ INVENTORY_REQUEST = {
     },
 }
 
-DETAILS_QUERY = (
-    "query EranioQuestDetails($id: ID!) {"
-    "dropsCampaign(id: $id) {"
-    "id name status endAt game { id displayName slug boxArtURL } "
-    "rewardGroups {"
-    "id name "
-    "progressCriteria {"
-    "requirementType requirements { minutesWatched subs } "
-    "channels { id login } categories { id displayName }"
-    "} "
-    "rewards { id name thumbnailURL }"
-    "}"
-    "}"
-    "}"
-)
-
 
 def _slugify(value):
     from TwitchChannelPointsMiner.eranio.drops import slugify
@@ -293,7 +277,21 @@ def refresh(twitch, now=None):
                 "EranioQuestDetails",
                 {
                     "operationName": "EranioQuestDetails",
-                    "query": DETAILS_QUERY,
+                    "query": (
+                        "query EranioQuestDetails($id: ID!) {"
+                        "dropsCampaign(id: $id) {"
+                        "id name status endAt game { id displayName slug boxArtURL } "
+                        "rewardGroups {"
+                        "id name "
+                        "progressCriteria {"
+                        "requirementType requirements { minutesWatched subs } "
+                        "channels { id login } categories { id displayName }"
+                        "} "
+                        "rewards { id name thumbnailURL }"
+                        "}"
+                        "}"
+                        "}"
+                    ),
                     "variables": {"id": campaign_id},
                 },
             )

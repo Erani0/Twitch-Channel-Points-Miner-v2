@@ -248,3 +248,10 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 ## 3.0.27: Live status of category quests
 
 - `_live_ids` also counts a live stream in one of a category quest's categories, so Pokemon Evolutions shows "läuft" while a DJ channel collects it.
+
+## 3.0.28: Linked accounts only, followed channels only
+
+- Options in `drop_campaigns.json` under `einstellungen` (and on the settings page, tab Drop-Reihenfolge): `nur_verbundene_konten`, `nur_gefolgte_kanaele`, `immer_sammeln` (list of games or campaign names, matched by slug, exempt from both). All default off, so nothing changes unless switched on.
+- Linked only: `drops.fetch_links` asks `currentUser.dropCampaigns { id self { isAccountConnected } }` every 30 minutes over the miner's own GQL session (works with the Android login; the TV login returns an empty list). Campaigns without a linked account (and campaigns missing from that list, such as quests) are left out of the ranking with status "aus: Spielkonto nicht verbunden". If Twitch gives no answer the filter stays off.
+- Followed only: `_sync_categories` only searches categories of `immer_sammeln` games, quest channels and quest categories only come from those, and `compat.mine` forces `wildcard_categories=False` at start. Set `wildcard_categories` to False in config.py too, because a config reload would read it again.
+- Both hand-written GQL queries (`EranioQuestDetails`, `EranioDropLinks`) are now literal in the payload so `test_gql_named_operations` can read them.

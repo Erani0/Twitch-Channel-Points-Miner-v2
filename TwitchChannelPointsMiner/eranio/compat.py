@@ -244,6 +244,14 @@ class TwitchChannelPointsMiner(BaseMiner):
                 kwargs["categories"] = shared
             drops.configure(categories=shared)
             quests.configure(self)
+            drops.STATE.settings = drops.STATE.file.read_settings()
+            if (drops.STATE.settings.get("options") or {}).get("followed_only"):
+                kwargs["wildcard_categories"] = False
+                logger.info(
+                    "Drops: nur gefolgte Kanäle, fremde Kanäle nur für %s",
+                    ", ".join(drops.STATE.settings["options"].get("always_games") or [])
+                    or "nichts",
+                )
             kwargs.setdefault("wildcard_categories", True)
             kwargs.setdefault("drop_pick_stickiness_minutes", 0)
         else:
