@@ -7219,6 +7219,7 @@ class Twitch(object):
                     return (
                         index in discovered_tiers
                         or self.__drops_condition(streamers_snapshot[index]) is True
+                        or eranio_drops.quest_stream(streamers_snapshot[index])
                     )
 
                 override_streamer_drops = (

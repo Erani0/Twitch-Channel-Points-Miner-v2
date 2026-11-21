@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from TwitchChannelPointsMiner.classes.entities.Drop import utc_now
 from TwitchChannelPointsMiner.classes.entities.Streamer import is_drop_discovered
+from TwitchChannelPointsMiner.eranio import quests
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,10 @@ class DropView:
         self.future_drops = future
         self.next_start = next_start
         self.account_connected = connected
+        self.quest_channel = False
+        self.quest_slugs = []
+        self.sub_hint = None
+        self.channel_logins = []
 
     def open_drops(self):
         return [d for d in self.drops if not d.is_claimed]
@@ -373,9 +378,7 @@ class DropFile:
         return [
             v
             for v in cls.ordered(views, settings)
-            if cls.is_active(v, settings)
-            and v.is_earnable()
-            and v.account_connected is not False
+            if cls.is_active(v, settings) and v.is_earnable()
         ]
 
     def write(self, views, settings, statuses=None, finished=None, active=None):
@@ -522,10 +525,15 @@ class DropFile:
             "offen": f"{view.open_count()} von {view.total_drops} Drops",
             "naechster_drop": next_drop,
             "kanaele": (
-                "nur bestimmte Kanäle"
-                if view.channels
-                else "alle Kanäle mit Drops für dieses Spiel"
+                "nur " + ", ".join(view.channel_logins)
+                if view.channel_logins
+                else (
+                    "nur bestimmte Kanäle"
+                    if view.channels
+                    else "alle Kanäle mit Drops für dieses Spiel"
+                )
             ),
+            "abo_hinweis": view.sub_hint,
             "konto_verbunden": connected,
             "art": "Quest" if view.quest else "Drop-Kampagne",
             "spiel_bild": view.game_image,
@@ -538,6 +546,7 @@ class DropFile:
                     "minuten_noetig": d.minutes_required,
                     "minuten_aktuell": d.current_minutes_watched,
                     "abo_noetig": d.requires_subscription,
+                    "abos": getattr(d, "subs_required", 0) or 0,
                     "abgeholt": d.is_claimed,
                 }
                 for d in view.drops
@@ -579,6 +588,7 @@ class State:
         self.last_status = 0.0
         self.day = None
         self.drop_pick = None
+        self.quest_channels = set()
         self.lock = threading.RLock()
 
 
@@ -651,12 +661,32 @@ def _stream_ids(streamer):
     return ids
 
 
+def _quest_channel_ids(streamer):
+    channel_id = str(getattr(streamer, "channel_id", "") or "")
+    if not channel_id:
+        return set()
+    return {
+        v.id
+        for v in STATE.views
+        if getattr(v, "quest_channel", False) and channel_id in v.channels
+    }
+
+
 def _live_ids(streamers):
     live = set()
     for streamer in streamers or []:
         if getattr(streamer, "is_online", False) is True:
             live |= _stream_ids(streamer)
+            live |= _quest_channel_ids(streamer)
     return live
+
+
+def quest_stream(streamer):
+    if not STATE.configured or not STATE.quest_channels:
+        return False
+    if getattr(streamer, "is_online", False) is not True:
+        return False
+    return str(getattr(streamer, "channel_id", "") or "") in STATE.quest_channels
 
 
 def _build_views(twitch, campaigns):
@@ -674,7 +704,7 @@ def _build_views(twitch, campaigns):
         if memo and memo.view.total_drops < len(view.drops):
             view.total_drops = len(view.drops)
         views.append(view)
-    return views
+    return quests.patch_views(views)
 
 
 def _status(view, live, blocked, now_utc):
@@ -749,6 +779,9 @@ def _sync_categories(settings, ranked):
             and view.game_slug not in extra
         ):
             extra.append(view.game_slug)
+        for slug in quests.category_slugs(view):
+            if slugify(slug) not in known and slug not in extra:
+                extra.append(slug)
     desired = list(STATE.base_categories) + extra
     if list(categories) != desired:
         categories[:] = desired
@@ -827,6 +860,7 @@ def publish(twitch, campaigns, streamers, now=None):
 
 
 def _publish(twitch, campaigns, streamers, now):
+    quests.refresh(twitch, now)
     with STATE.lock:
         now_utc = utc_now()
         key = day_key()
@@ -845,6 +879,10 @@ def _publish(twitch, campaigns, streamers, now):
         STATE.rank_ids = [v.id for v in ranked]
         STATE.position = {cid: index for index, cid in enumerate(STATE.rank_ids)}
         STATE.all_ids = {v.id for v in views}
+        STATE.quest_channels = {
+            channel for v in ranked if v.quest_channel for channel in v.channels
+        }
+        quests.ensure_streamers(quests.wanted_logins(ranked))
         _sync_categories(settings, ranked)
         live = _live_ids(streamers)
         blocked = _blocked_games(twitch, now)
@@ -889,7 +927,7 @@ def _publish(twitch, campaigns, streamers, now):
 def matched_ids(streamer):
     ids = {i for i in _stream_ids(streamer) if i in STATE.all_ids}
     if ids:
-        return ids
+        return ids | _quest_channel_ids(streamer)
     stream = getattr(streamer, "stream", None)
     game = (
         stream.game_name()
@@ -901,8 +939,14 @@ def matched_ids(streamer):
     return {
         v.id
         for v in STATE.views
-        if slug and v.game_slug == slug and (not v.channels or channel_id in v.channels)
-    }
+        if (
+            slug
+            and v.game_slug == slug
+            and not v.quest_channel
+            and (not v.channels or channel_id in v.channels)
+        )
+        or (slug and slug in v.quest_slugs)
+    } | _quest_channel_ids(streamer)
 
 
 def streamer_rank(streamer):

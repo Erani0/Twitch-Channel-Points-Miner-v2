@@ -937,7 +937,8 @@ function campaignRow(campaign, isCurrent) {
     line.appendChild(el('span', 'drops-row-game', campaign.spiel || 'Unknown game'));
     if (isCurrent) line.appendChild(badge('Watching', ''));
     if (campaign.art === 'Quest') line.appendChild(badge('Quest', 'is-cyan'));
-    if (campaign.abo_noetig) line.appendChild(badge('Sub', 'is-warn'));
+    if (campaign.abo_hinweis) line.appendChild(badge(campaign.abo_hinweis, 'is-warn'));
+    else if (campaign.abo_noetig) line.appendChild(badge('Sub nötig', 'is-warn'));
     if (campaign.konto_verbunden === 'nein') line.appendChild(badge('Link account', 'is-warn'));
     if (campaign.tages_drop) line.appendChild(badge('Daily', 'is-cyan'));
     if (!campaign.aktiv) line.appendChild(badge('Off', 'is-muted'));
@@ -970,6 +971,7 @@ function campaignDetails(campaign) {
     var details = el('div', 'drops-row-details');
     if (campaign.endet) details.appendChild(el('div', 'drop-end', 'Ends ' + campaign.endet + (campaign.offen ? ' · ' + campaign.offen : '')));
     if (campaign.naechster_drop) details.appendChild(el('div', 'drop-end', 'Next drop: ' + campaign.naechster_drop));
+    if (campaign.kanaele && campaign.kanaele.indexOf('nur ') === 0) details.appendChild(el('div', 'drop-end', 'Kanal: ' + campaign.kanaele.slice(4)));
     var list = el('div', 'drop-items');
     (campaign.drops || []).forEach(function (drop) {
         var item = el('div', 'drop-item' + (drop.abgeholt ? ' is-done' : ''));
@@ -981,7 +983,7 @@ function campaignDetails(campaign) {
             meta.appendChild(badge('Claimed', ''));
         } else {
             meta.appendChild(el('span', '', drop.minuten_aktuell + ' of ' + drop.minuten_noetig + ' min'));
-            if (drop.abo_noetig) meta.appendChild(badge('Sub required', 'is-warn'));
+            if (drop.abo_noetig) meta.appendChild(badge(drop.abos && drop.abos > 1 ? drop.abos + ' Subs nötig, auch verschenkt' : 'Sub nötig', 'is-warn'));
         }
         body.appendChild(meta);
         body.appendChild(progressBar(drop.abgeholt ? 1 : drop.minuten_aktuell, drop.abgeholt ? 1 : drop.minuten_noetig));

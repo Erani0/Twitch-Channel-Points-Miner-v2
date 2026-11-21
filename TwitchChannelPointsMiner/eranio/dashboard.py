@@ -87,6 +87,7 @@ def clean_drop(item):
         "minuten_noetig": number_or_zero(item.get("minuten_noetig")),
         "minuten_aktuell": number_or_zero(item.get("minuten_aktuell")),
         "abo_noetig": item.get("abo_noetig") is True,
+        "abos": number_or_zero(item.get("abos")),
         "abgeholt": item.get("abgeholt") is True,
     }
 
@@ -157,6 +158,8 @@ def clean_campaign(item):
         "naechster_start": text_or_none(item.get("naechster_start")),
         "art": "Quest" if item.get("art") == "Quest" else "Drop-Kampagne",
         "abo_noetig": item.get("abo_noetig") == "ja",
+        "abo_hinweis": text_or_none(item.get("abo_hinweis")),
+        "kanaele": text_or_none(item.get("kanaele")),
         "konto_verbunden": (
             item.get("konto_verbunden")
             if item.get("konto_verbunden") in ("ja", "nein", "unbekannt")

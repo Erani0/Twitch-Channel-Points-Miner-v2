@@ -9,6 +9,7 @@ from TwitchChannelPointsMiner.eranio import (
     config_file,
     drops,
     export,
+    quests,
     settings_page,
     streak,
     streak_history,
@@ -242,10 +243,12 @@ class TwitchChannelPointsMiner(BaseMiner):
                 shared = list(kwargs.get("categories") or [])
                 kwargs["categories"] = shared
             drops.configure(categories=shared)
+            quests.configure(self)
             kwargs.setdefault("wildcard_categories", True)
             kwargs.setdefault("drop_pick_stickiness_minutes", 0)
         else:
             drops.STATE.reset()
+            quests.STATE.reset()
         args, kwargs = without_discovered_chat(args, kwargs)
         if watch_only_drops is not None:
             self.watch_only_drops = bool(watch_only_drops)

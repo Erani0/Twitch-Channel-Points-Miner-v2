@@ -179,7 +179,7 @@ class TestOrder:
             "other",
         ]
 
-    def test_switched_off_subscription_only_and_unlinked_are_skipped(self):
+    def test_switched_off_and_subscription_only_are_skipped_unlinked_is_kept(self):
         off, sub, ok, game_off, unlinked = (
             view("off"),
             view("sub", subscription=True),
@@ -194,7 +194,8 @@ class TestOrder:
             "order": ["off", "sub", "ok", "g", "u"],
         }
         assert ids(DropFile.rank([off, sub, ok, game_off, unlinked], settings)) == [
-            "ok"
+            "ok",
+            "u",
         ]
 
     def test_zero_minute_drops_and_missing_precondition_do_not_count(self):
