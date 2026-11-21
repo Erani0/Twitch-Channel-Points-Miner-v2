@@ -235,3 +235,8 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 - Settings page: tab "Drop-Reihenfolge" (`/settings/api/drops`, GET and POST, login required). Games and campaigns are moved by dragging the grip (pointer events, works with mouse and touch) or with arrows, each with an on/off switch, plus both switches above. Saving writes `drop_campaigns.json` under the drop layer's lock and reloads its settings, so it applies at the next sync without a restart.
 - New `eranio/selfcheck.py`, run from `drops._publish`: the inventory is read every 30 minutes. A drop pick with status "läuft" whose Twitch minutes do not move for 60 minutes is paused for 2 hours (status "pausiert (Selbstkontrolle ...)", left out of the ranking). A top campaign without a live channel for 2 hours while channels of its categories are online, and anything Twitch awarded that is not in the miner's list, are reported. Reports go to the log (WARNING) and to `hinweise_selbstkontrolle` in the file, which the Drops tab and the editor show.
 - The current drop pick (`jetzt`) now comes from the actual drop slot first and is written as soon as it changes; the Drops tab frames it and names the channel.
+
+## 3.0.25: Category quests on matching streams, game names from the file
+
+- `drops.quest_stream` is also true for a live stream whose category belongs to a ranked category quest (`STATE.quest_category_slugs`, e.g. Pokemon Evolutions in DJs or Just Chatting), so a followed DJ channel can take the drop slot and get its segments polled. The ranking still decides which campaign wins.
+- `guess_game` also knows the games listed under `spiele` in the file, so creator quests join "Grand Theft Auto VI" even when no regular GTA campaign is live at the moment.

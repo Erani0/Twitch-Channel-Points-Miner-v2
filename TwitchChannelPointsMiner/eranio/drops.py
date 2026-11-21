@@ -707,6 +707,7 @@ class State:
         self.day = None
         self.drop_pick = None
         self.quest_channels = set()
+        self.quest_category_slugs = set()
         self.last_current = None
         self.lock = threading.RLock()
 
@@ -801,11 +802,20 @@ def _live_ids(streamers):
 
 
 def quest_stream(streamer):
-    if not STATE.configured or not STATE.quest_channels:
+    if not STATE.configured:
+        return False
+    if not STATE.quest_channels and not STATE.quest_category_slugs:
         return False
     if getattr(streamer, "is_online", False) is not True:
         return False
-    return str(getattr(streamer, "channel_id", "") or "") in STATE.quest_channels
+    if str(getattr(streamer, "channel_id", "") or "") in STATE.quest_channels:
+        return True
+    if not STATE.quest_category_slugs:
+        return False
+    stream = getattr(streamer, "stream", None)
+    game = getattr(stream, "game_name", None)
+    name = game() if callable(game) else None
+    return bool(name) and slugify(name) in STATE.quest_category_slugs
 
 
 def _build_views(twitch, campaigns):
@@ -830,6 +840,9 @@ def _build_views(twitch, campaigns):
     for view in views:
         if view.game_name not in names:
             names.append(view.game_name)
+    for name in list((STATE.settings or {}).get("games") or {}):
+        if name not in names:
+            names.append(name)
     for view in views:
         if view.game_name in ("Quest", "Unbekannt"):
             found = guess_game(view.name, names)
@@ -1038,6 +1051,9 @@ def _publish(twitch, campaigns, streamers, now):
         STATE.all_ids = {v.id for v in views}
         STATE.quest_channels = {
             channel for v in ranked if v.quest_channel for channel in v.channels
+        }
+        STATE.quest_category_slugs = {
+            slug for v in ranked if not v.quest_channel for slug in v.quest_slugs
         }
         quests.ensure_streamers(quests.wanted_logins(ranked))
         _sync_categories(settings, ranked)

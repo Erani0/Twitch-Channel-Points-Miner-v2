@@ -79,6 +79,26 @@ class TestGameGuess:
         assert drops.guess_game("Dogninja", names) is None
 
 
+class TestGameGuessFromFile:
+    def test_quest_joins_a_game_known_only_from_the_file(self, tmp_path):
+        path = tmp_path / "d.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "spiele": [{"spiel": "Grand Theft Auto VI", "aktiv": True}],
+                    "kampagnen": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+        drops.configure(path=str(path), categories=["base"])
+        install(lacy_inventory(), details={LACY: lacy_details()})
+        layer = SimpleNamespace(twitch=FakeTwitch())
+        publish(layer, [], [])
+        lacy_view = next(v for v in drops.STATE.views if v.id == LACY)
+        assert lacy_view.game_name == "Grand Theft Auto VI"
+
+
 class TestCreatorSwitch:
     def test_switched_off_creator_quests_are_listed_but_not_watched(self, tmp_path):
         path = tmp_path / "d.json"

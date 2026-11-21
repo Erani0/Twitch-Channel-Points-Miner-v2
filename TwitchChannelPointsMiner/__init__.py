@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__version__ = "3.0.24"  # x-release-please-version
+__version__ = "3.0.25"  # x-release-please-version
 
 from .TwitchChannelPointsMiner import TwitchChannelPointsMiner
 from .eranio import TwitchChannelPointsMiner

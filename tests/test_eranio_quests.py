@@ -210,6 +210,17 @@ class TestSelection:
         dj = streamer("tschessy", game="DJs")
         assert POKEMON in drops.matched_ids(dj)
 
+    def test_followed_dj_stream_collects_the_category_quest(self, tmp_path):
+        drops.configure(path=str(tmp_path / "d.json"), categories=["base"])
+        install(pokemon_inventory(), details={POKEMON: pokemon_details()})
+        layer = type("L", (), {"twitch": FakeTwitch()})()
+        dj = streamer("tschessy", game="DJs")
+        gamer = streamer("gamer", game="Rust")
+        publish(layer, [campaign(POKEMON, game="Special Events")], [dj, gamer])
+        assert drops.quest_stream(dj) is True
+        assert drops.quest_stream(gamer) is False
+        assert drops.streamer_rank(dj) == 0
+
     def test_file_shows_channel_and_sub_hint(self, tmp_path):
         import json
 
