@@ -150,6 +150,34 @@ class TestBuild:
         }
         assert built(item)[GTA].remaining() is None
 
+    def test_daily_goal_of_a_category_quest_waits_for_the_next_window(self, tmp_path):
+        item = pokemon_inventory()
+        until = NOW + timedelta(hours=20)
+        item["rewardGroups"] = [
+            group(
+                "blastoise",
+                "WATCH",
+                minutes=20,
+                watched=20,
+                grantCount=2,
+                repeat={"repeatableTimes": 3, "resetIntervalSeconds": 86400},
+                currentWindow={"expiresAt": iso(until)},
+            )
+        ]
+        details = pokemon_details()
+        details["rewardGroups"][0]["id"] = "blastoise"
+        quest = built(item, details={POKEMON: details})[POKEMON]
+        assert quest.remaining() is None
+        assert quest.next_at == until
+        drops.configure(path=str(tmp_path / "d.json"), categories=["base"])
+        install(item, details={POKEMON: details})
+        layer = type("L", (), {"twitch": FakeTwitch()})()
+        dj = streamer("colaway", game="DJs")
+        publish(layer, [campaign(POKEMON, game="Special Events")], [dj])
+        assert POKEMON not in drops.STATE.rank_ids
+        view = next(v for v in drops.STATE.views if v.id == POKEMON)
+        assert view.next_start == until
+
     def test_expired_window_starts_again_at_zero(self):
         item = pokemon_inventory()
         item["rewardGroups"][0]["self"]["currentWindow"] = {

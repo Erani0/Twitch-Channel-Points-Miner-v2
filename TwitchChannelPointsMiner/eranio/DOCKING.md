@@ -255,3 +255,8 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 - Linked only: `drops.fetch_links` asks `currentUser.dropCampaigns { id self { isAccountConnected } }` every 30 minutes over the miner's own GQL session (works with the Android login; the TV login returns an empty list). Campaigns without a linked account (and campaigns missing from that list, such as quests) are left out of the ranking with status "aus: Spielkonto nicht verbunden". If Twitch gives no answer the filter stays off.
 - Followed only: `_sync_categories` only searches categories of `immer_sammeln` games, quest channels and quest categories only come from those, and `compat.mine` forces `wildcard_categories=False` at start. Set `wildcard_categories` to False in config.py too, because a config reload would read it again.
 - Both hand-written GQL queries (`EranioQuestDetails`, `EranioDropLinks`) are now literal in the payload so `test_gql_named_operations` can read them.
+
+## 3.0.29: Daily goal of category quests
+
+- `quests.patch_views` now replaces the drops of every quest view with the quest inventory groups, not only for channel quests. v3 does not know the 24 hour window of repeatable groups (Pokemon Evolutions: 20 minutes on 3 days) and showed "0/20" after the daily goal, so the drop slot stayed on a DJ channel for hours. `Quest.next_at` is the earliest window end or `nextEligibleAt` of a waiting group and becomes `view.next_start`, shown as "heute erledigt, nächster Drop ab ...".
+- `ensure_streamers` logs "not ready" at start as INFO and tries again on the next round.

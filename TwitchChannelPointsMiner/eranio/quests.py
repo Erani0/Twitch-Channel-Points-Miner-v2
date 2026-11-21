@@ -99,6 +99,7 @@ class Quest:
         self.game = None
         self.end_at = None
         self.repeating = False
+        self.next_at = None
 
     @property
     def channel_quest(self):
@@ -209,6 +210,12 @@ def build_quests(inventory, details, now):
             if status == "CLAIMABLE":
                 quest.claimable.append(group_id)
                 waiting = True
+            if waiting and not claimed:
+                until = next_at if next_at is not None and next_at > now else expires
+                if until is not None and until > now:
+                    quest.next_at = (
+                        until if quest.next_at is None else min(quest.next_at, until)
+                    )
             rewards = [r for r in group.get("rewards") or [] if isinstance(r, dict)]
             reward = rewards[0] if rewards else {}
             quest.drops.append(
@@ -356,12 +363,14 @@ def patch_views(views, options=None):
         view.sub_hint = quest.sub_label()
         if quest.repeating:
             view.repeating = True
+        view.drops = list(quest.drops)
+        view.total_drops = len(view.drops)
+        view.future_drops = 0
+        if quest.remaining() is None and quest.next_at is not None:
+            view.next_start = quest.next_at
         if quest.channel_quest:
             view.quest_channel = True
             view.creator_off = not creators
-            view.drops = list(quest.drops)
-            view.total_drops = len(view.drops)
-            view.future_drops = 0
             view.channels = list(quest.channels)
             view.channel_logins = [l for l in quest.channels.values() if l]
         else:
@@ -402,6 +411,8 @@ def ensure_streamers(logins):
             miner.add_streamers(missing)
             STATE.added.update(missing)
             logger.info("Quest-Kanäle aufgenommen: %s", ", ".join(missing))
+        except RuntimeError as error:
+            logger.info("Quest-Kanäle folgen nach dem Start (%s)", error)
         except Exception:
             logger.warning("Quests: Kanäle nicht aufgenommen", exc_info=True)
         finally:

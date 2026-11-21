@@ -975,7 +975,11 @@ def _status(view, live, blocked, now_utc):
     if not view.is_earnable():
         if view.account_connected is False:
             return "Konto nicht verbunden"
-        if view.next_start and view.next_start > now_utc and not view.open_drops():
+        if (
+            view.next_start
+            and view.next_start > now_utc
+            and (not view.open_drops() or getattr(view, "quest", False))
+        ):
             return f"heute erledigt, nächster Drop ab {local_text(view.next_start)}"
         if view.only_subscription():
             return "nur mit Abo"
