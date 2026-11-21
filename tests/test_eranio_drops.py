@@ -627,7 +627,7 @@ class TestSlot:
         ) == [0]
 
     def test_slot_is_lent_at_most_fifteen_minutes_then_returned(self, layer):
-        streak.configure()
+        streak.configure(lend_drop_slot=True)
         streak.STATE.client = SimpleNamespace(
             reward_list=lambda cid: streak.Milestone(
                 state="NONE", value=0, achievement_at=None, expires_at=None

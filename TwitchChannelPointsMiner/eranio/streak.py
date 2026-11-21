@@ -185,6 +185,7 @@ class StreakState:
     def reset(self):
         self.configured = False
         self.max_parallel = None
+        self.lend_drop_slot = False
         self.min_gap_seconds = 1800
         self.length_order = None
         self.cache = None
@@ -210,9 +211,11 @@ def configure(
     cache=None,
     missed_path=None,
     known_length=None,
+    lend_drop_slot=False,
 ):
     STATE.reset()
     STATE.max_parallel = max_parallel
+    STATE.lend_drop_slot = bool(lend_drop_slot)
     STATE.min_gap_seconds = max(0, int(min_gap_seconds))
     for entry in list(requested_priority or []):
         if entry == Priority.STREAK_LENGTH_DESCENDING:
@@ -628,20 +631,26 @@ def apply(
                 and streak_enabled(streamer)
             ):
                 update(streamer, now)
-        pending = pending_order(snapshot, candidates, now)
-        pending_set = set(pending)
-        drop_holders = [
+        drop_holders = [index for index in watching if is_drop_stream(index)]
+        pending = [
             index
-            for index in watching
-            if index not in pending_set and is_drop_stream(index)
+            for index in pending_order(snapshot, candidates, now)
+            if index not in drop_holders
         ]
+        pending_set = set(pending)
         if STATE.max_parallel is None:
             streak_slots = max(0, streams_watched - len(drop_holders))
         else:
             streak_slots = STATE.max_parallel
         served = pending[:streak_slots]
         unserved = pending[streak_slots:]
-        loan = update_loan(snapshot, pending, unserved, bool(drop_holders), now)
+        loan = update_loan(
+            snapshot,
+            pending,
+            unserved,
+            bool(drop_holders) and STATE.lend_drop_slot,
+            now,
+        )
         lent = []
         if loan is not None and drop_holders:
             loan_index = next(

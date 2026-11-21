@@ -344,6 +344,7 @@ def test_old_cache_file_is_migrated(tmp_path):
 
 
 def test_loan_lends_drop_slot_briefly_and_returns_it(client):
+    streak.STATE.lend_drop_slot = True
     drop, a, b = make("drop", watch_streak=False), make("a"), make("b")
     streamers = [drop, a, b]
     is_drop = lambda i: i == 0
@@ -363,6 +364,7 @@ def test_loan_lends_drop_slot_briefly_and_returns_it(client):
 
 
 def test_loan_ends_immediately_when_streak_confirmed(client):
+    streak.STATE.lend_drop_slot = True
     drop, a, b = make("drop", watch_streak=False), make("a"), make("b")
     streamers = [drop, a, b]
     is_drop = lambda i: i == 0
@@ -377,6 +379,7 @@ def test_loan_ends_immediately_when_streak_confirmed(client):
 
 
 def test_only_one_loan_at_a_time_with_cooldown(client):
+    streak.STATE.lend_drop_slot = True
     drop = make("drop", watch_streak=False)
     pending = [make(f"p{i}") for i in range(4)]
     streamers = [drop] + pending
@@ -399,6 +402,7 @@ def test_only_one_loan_at_a_time_with_cooldown(client):
 
 
 def test_loan_never_blocks_drop_slot_for_unconfirmable_streak(client):
+    streak.STATE.lend_drop_slot = True
     drop = make("drop", watch_streak=False)
     streamers = [drop, make("a"), make("b")]
     is_drop = lambda i: i == 0
@@ -451,3 +455,19 @@ def test_minute_watcher_uses_streak_selection_with_fan_out(monkeypatch):
         priority=[Priority.STREAK, Priority.ORDER],
     )
     assert "https://spade.test/s0" not in posted[:3]
+
+
+def test_drop_stream_with_open_streak_keeps_its_drop_slot(client):
+    streak.configure(max_parallel=2)
+    streak.STATE.client = client
+    streamers = [make("a"), make("b"), make("c"), make("lacy")]
+    result = run(
+        streamers,
+        T0,
+        watching=[3, 0, 1],
+        streams_watched=3,
+        is_drop=lambda i: i == 3,
+    )
+    assert 3 in result
+    assert result.count(3) == 1
+    assert len(result) == 3

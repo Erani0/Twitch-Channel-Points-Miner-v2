@@ -221,3 +221,8 @@ Same uuid, image, startup command and `update_url`. All old variables stay (`TWI
 - Channels of quests are added to the running miner through the base `add_streamers` (once, in a background thread). Claimable quest groups are claimed with `claim_drop_rewards("<user>#<campaign>#<group>")`, at most once per hour each.
 - `DropFile.rank` no longer skips campaigns whose game account is not linked (owner's decision: collect anyway, linking later delivers them).
 - File and dashboard: `abo_hinweis` ("Sub nötig" or "N Subs nötig, auch verschenkt") as a campaign badge, per drop `abos`, and the quest channel under the details.
+
+## 3.0.23: The drop slot is not given away for streaks
+
+- `streak.apply`: a watched drop stream stays a drop holder even when its own watch streak is pending (the streak counts while it is watched). Before, such a stream was taken out of the drop holders and dropped whenever the two streak slots were already full, which threw quest channels such as lacy out of the drop slot right after they were picked.
+- Lending the drop slot to a pending streak (15 minutes, then 10 minutes pause) is now opt-in (`streak.configure(lend_drop_slot=True)`), off by default: open drops keep their slot until nothing is left to watch for (owner's decision 21.11.).
